@@ -414,19 +414,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  _buildImpactStat('12', 'Votes'),
-                  const SizedBox(width: 24),
-                  _buildImpactStat('3', 'Initiatives'),
-                  const SizedBox(width: 24),
-                  _buildImpactStat('8', 'Meetings'),
-                ],
-              ),
+              _buildImpactStats(),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildImpactStats() {
+    final activePolls = ref.watch(activePollsProvider);
+    final recentInitiatives = ref.watch(recentInitiativesProvider);
+    final upcomingMeetings = ref.watch(upcomingMeetingsProvider);
+
+    return Row(
+      children: [
+        _buildImpactStat(
+          activePolls.when(
+            data: (polls) => polls.length.toString(),
+            loading: () => '-',
+            error: (_, __) => '0',
+          ),
+          'Active Polls',
+        ),
+        const SizedBox(width: 24),
+        _buildImpactStat(
+          recentInitiatives.when(
+            data: (initiatives) => initiatives.length.toString(),
+            loading: () => '-',
+            error: (_, __) => '0',
+          ),
+          'Initiatives',
+        ),
+        const SizedBox(width: 24),
+        _buildImpactStat(
+          upcomingMeetings.when(
+            data: (meetings) => meetings.length.toString(),
+            loading: () => '-',
+            error: (_, __) => '0',
+          ),
+          'Meetings',
+        ),
+      ],
     );
   }
 
@@ -454,6 +483,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildQuickStats(BuildContext context, AppLocalizations l10n) {
+    final activePolls = ref.watch(activePollsProvider);
+    final documents = ref.watch(documentsProvider(const DocumentFilter()));
+    final allUsers = ref.watch(allUsersProvider);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
@@ -461,28 +494,40 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           Expanded(
             child: _QuickStatCard(
               icon: Icons.how_to_vote_rounded,
-              title: 'Active Polls',
-              value: '2',
+              title: l10n.translate('active_polls'),
+              value: activePolls.when(
+                data: (polls) => polls.length.toString(),
+                loading: () => '-',
+                error: (_, __) => '0',
+              ),
               color: const Color(0xFF8B5CF6),
-              onTap: () {},
+              onTap: () => context.go(RouteNames.polls),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _QuickStatCard(
               icon: Icons.description_rounded,
-              title: 'Documents',
-              value: '15',
+              title: l10n.translate('documents'),
+              value: documents.when(
+                data: (docs) => docs.length.toString(),
+                loading: () => '-',
+                error: (_, __) => '0',
+              ),
               color: const Color(0xFF3B82F6),
-              onTap: () {},
+              onTap: () => context.go(RouteNames.documents),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: _QuickStatCard(
               icon: Icons.group_rounded,
-              title: 'Members',
-              value: '124',
+              title: l10n.translate('members'),
+              value: allUsers.when(
+                data: (users) => users.length.toString(),
+                loading: () => '-',
+                error: (_, __) => '0',
+              ),
               color: const Color(0xFF10B981),
               onTap: () {},
             ),
