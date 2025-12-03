@@ -8,11 +8,26 @@ class CreateAdminScript {
   static const String adminEmail = 'superadmin@cje.ro';
   static const String adminPassword = 'SuperAdmin@2024';
   static const String adminName = 'Super Admin';
+  static bool _hasRun = false; // Prevent multiple runs per session
 
   static Future<bool> createDefaultAdmin() async {
+    // Only run once per app session
+    if (_hasRun) {
+      debugPrint('ℹ️ Admin creation script already ran this session');
+      return true;
+    }
+    _hasRun = true;
+
     try {
       final auth = FirebaseAuth.instance;
       final firestore = FirebaseFirestore.instance;
+
+      // If a user is already signed in, don't run the script
+      // This prevents signing out the current user
+      if (auth.currentUser != null) {
+        debugPrint('ℹ️ User already signed in, skipping admin creation');
+        return true;
+      }
 
       debugPrint('🔄 Creating admin user...');
 

@@ -27,32 +27,30 @@ class MeetingRepository {
     int limit = 20,
   }) async {
     try {
-      Query<Map<String, dynamic>> query = _collection;
+      // Simple query to avoid composite index requirement
+      final snapshot = await _collection
+          .orderBy('dateTime', descending: true)
+          .limit(limit * 3) // Fetch more to account for filtering
+          .get();
 
-      if (type != null) {
-        query = query.where('type', isEqualTo: type.toFirestore());
-      }
-
-      if (schoolId != null) {
-        query = query.where('schoolId', isEqualTo: schoolId);
-      }
-
-      if (department != null) {
-        query = query.where('department', isEqualTo: department.toFirestore());
-      }
-
-      if (upcomingOnly) {
-        query = query
-            .where('dateTime', isGreaterThanOrEqualTo: Timestamp.now())
-            .orderBy('dateTime');
-      } else {
-        query = query.orderBy('dateTime', descending: true);
-      }
-
-      final snapshot = await query.limit(limit).get();
-      return snapshot.docs
+      final now = DateTime.now();
+      List<MeetingModel> meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
+          .where((m) {
+            if (type != null && m.type != type) return false;
+            if (schoolId != null && m.type == MeetingType.school && m.schoolId != schoolId) return false;
+            if (department != null && m.department != department) return false;
+            if (upcomingOnly && m.dateTime.isBefore(now)) return false;
+            return true;
+          })
           .toList();
+
+      // Re-sort if upcoming only (ascending)
+      if (upcomingOnly) {
+        meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      }
+
+      return meetings.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting meetings: $e');
       return [];

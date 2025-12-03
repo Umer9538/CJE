@@ -22,22 +22,28 @@ class AnnouncementRepository {
     int limit = 20,
   }) async {
     try {
-      Query<Map<String, dynamic>> query = _collection
-          .where('isPublished', isEqualTo: true)
-          .orderBy('publishedAt', descending: true);
+      // Simple query to avoid composite index requirement
+      final snapshot = await _collection
+          .orderBy('createdAt', descending: true)
+          .limit(limit * 3) // Fetch more to account for filtering
+          .get();
 
-      if (type != null) {
-        query = query.where('type', isEqualTo: type.toFirestore());
-      }
-
-      if (schoolId != null && type == AnnouncementType.school) {
-        query = query.where('schoolId', isEqualTo: schoolId);
-      }
-
-      final snapshot = await query.limit(limit).get();
-      return snapshot.docs
+      List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))
+          .where((a) => a.isPublished)
+          .where((a) {
+            if (type != null && a.type != type) return false;
+            if (type == AnnouncementType.school && schoolId != null) {
+              return a.schoolId == schoolId;
+            }
+            return true;
+          })
           .toList();
+
+      // Sort by publishedAt and limit
+      results.sort((a, b) => (b.publishedAt ?? b.createdAt)
+          .compareTo(a.publishedAt ?? a.createdAt));
+      return results.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting announcements: $e');
       return [];

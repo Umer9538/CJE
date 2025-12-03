@@ -1,9 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/core.dart';
-import '../../../core/services/create_admin.dart';
 
 /// Splash Screen
 /// Initial screen shown when app launches
@@ -55,21 +53,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // Wait for animations and minimum splash time
     await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
-
-    // Create default admin user (only in debug mode, runs once)
-    if (kDebugMode) {
-      await CreateAdminScript.createDefaultAdmin();
-    }
-
-    // TODO: Check auth state and navigate accordingly
-    // For now, just show splash screen
-    // Once auth is implemented:
-    // - If user is logged in -> go to home
-    // - If user is not logged in -> go to login
-
-    // Uncomment when login screen is ready:
-    // context.go(RouteNames.login);
+    // Navigation is handled by GoRouter's redirect logic based on auth state
+    // No manual navigation needed here
   }
 
   @override

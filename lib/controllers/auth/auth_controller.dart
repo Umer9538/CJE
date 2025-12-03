@@ -143,6 +143,7 @@ class AuthController extends StateNotifier<AuthStateData> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
+  AuthState? _lastEmittedState; // Track last emitted state to prevent duplicates
 
   AuthController(this._ref) : super(AuthStateData.initial()) {
     _init();
@@ -169,6 +170,17 @@ class AuthController extends StateNotifier<AuthStateData> {
     await _loadUserProfile(firebaseUser);
   }
 
+  /// Helper to set state only if it's different from last emitted state
+  void _setStateIfChanged(AuthStateData newState) {
+    if (_lastEmittedState != newState.state) {
+      _lastEmittedState = newState.state;
+      state = newState;
+    } else if (newState.user != state.user) {
+      // Also update if user data changed (but same state type)
+      state = newState;
+    }
+  }
+
   /// Load user profile from Firestore
   Future<void> _loadUserProfile(User firebaseUser) async {
     state = AuthStateData.loading();
@@ -189,10 +201,10 @@ class AuthController extends StateNotifier<AuthStateData> {
           // Check user status
           switch (user.status) {
             case UserStatus.pending:
-              state = AuthStateData.pendingApproval(user);
+              _setStateIfChanged(AuthStateData.pendingApproval(user));
               break;
             case UserStatus.suspended:
-              state = AuthStateData.suspended(user);
+              _setStateIfChanged(AuthStateData.suspended(user));
               break;
             case UserStatus.active:
               // Check email verification for email/password users
@@ -203,12 +215,12 @@ class AuthController extends StateNotifier<AuthStateData> {
                                             user.role == UserRole.bex;
 
               if (isEmailUser && !firebaseUser.emailVerified && !skipEmailVerification) {
-                state = AuthStateData.emailNotVerified(user);
+                _setStateIfChanged(AuthStateData.emailNotVerified(user));
               } else {
-                state = AuthStateData.authenticated(
+                _setStateIfChanged(AuthStateData.authenticated(
                   user,
                   isEmailVerified: firebaseUser.emailVerified || skipEmailVerification,
-                );
+                ));
                 // Update last login
                 _userRepository.updateLastLogin(user.id);
               }
@@ -216,13 +228,13 @@ class AuthController extends StateNotifier<AuthStateData> {
           }
         } else {
           // User exists in Firebase Auth but not in Firestore
-          state = AuthStateData.needsProfile();
+          _setStateIfChanged(AuthStateData.needsProfile());
         }
       }, onError: (error) {
-        state = AuthStateData.error('Eroare la încărcarea profilului');
+        _setStateIfChanged(AuthStateData.error('Eroare la încărcarea profilului'));
       });
     } catch (e) {
-      state = AuthStateData.error('Eroare la încărcarea profilului');
+      _setStateIfChanged(AuthStateData.error('Eroare la încărcarea profilului'));
     }
   }
 
@@ -469,6 +481,7 @@ class AuthController extends StateNotifier<AuthStateData> {
   /// Sign out
   Future<void> signOut() async {
     _userSubscription?.cancel();
+    _lastEmittedState = null; // Reset state tracking
     await _authService.signOut();
     state = AuthStateData.unauthenticated();
   }

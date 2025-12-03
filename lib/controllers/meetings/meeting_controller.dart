@@ -14,13 +14,20 @@ final meetingRepositoryProvider = Provider<MeetingRepository>((ref) {
 final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter>((ref, filter) async {
   final repository = ref.watch(meetingRepositoryProvider);
 
-  return repository.getMeetings(
-    type: filter.type,
-    schoolId: filter.schoolId,
-    department: filter.department,
-    upcomingOnly: filter.upcomingOnly,
-    limit: filter.limit,
-  );
+  try {
+    return await repository.getMeetings(
+      type: filter.type,
+      schoolId: filter.schoolId,
+      department: filter.department,
+      upcomingOnly: filter.upcomingOnly,
+      limit: filter.limit,
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => <MeetingModel>[],
+    );
+  } catch (e) {
+    return <MeetingModel>[];
+  }
 });
 
 /// Meetings stream provider

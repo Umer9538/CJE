@@ -15,11 +15,18 @@ final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, Ann
   final repository = ref.watch(announcementRepositoryProvider);
   final user = ref.watch(currentUserProvider);
 
-  return repository.getAnnouncements(
-    type: filter.type,
-    schoolId: filter.type == AnnouncementType.school ? user?.schoolId : null,
-    limit: filter.limit,
-  );
+  try {
+    return await repository.getAnnouncements(
+      type: filter.type,
+      schoolId: filter.type == AnnouncementType.school ? user?.schoolId : null,
+      limit: filter.limit,
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => <AnnouncementModel>[],
+    );
+  } catch (e) {
+    return <AnnouncementModel>[];
+  }
 });
 
 /// Announcements stream provider

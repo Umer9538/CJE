@@ -313,9 +313,12 @@ class _AuthStateNotifier extends ChangeNotifier {
       // Only notify if the auth state type actually changed
       // This prevents multiple rebuilds during loading transitions
       if (previous?.state != next.state) {
-        // Don't trigger refresh for loading state to prevent jitter
-        if (next.state != AuthState.loading) {
-          notifyListeners();
+        // Don't trigger refresh for loading or initial state to prevent jitter
+        if (next.state != AuthState.loading && next.state != AuthState.initial) {
+          // Debounce to prevent rapid successive navigations
+          Future.delayed(const Duration(milliseconds: 100), () {
+            notifyListeners();
+          });
         }
       }
     });
