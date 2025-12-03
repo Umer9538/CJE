@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "317912008960",
+    "project_id": "cjeapp-9f94a",
+    "storage_bucket": "cjeapp-9f94a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:317912008960:android:f05a3d86d938a268220be5",
+        "android_client_info": {
+          "package_name": "com.chawla.cje"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "317912008960-7qkg0r60gs4na0aic0nbqs9dc6i9guq2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chawla.cje",
+            "certificate_hash": "bd8accb5dd5c72e31bf943937e51040e7f283f1c"
+          }
+        },
+        {
+          "client_id": "317912008960-3gp92dvqr869gmgo0tr9rdhlifdseta2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhoA98z-PJdJ6ULVn2t02OfbIFadI6Cww"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "317912008960-3gp92dvqr869gmgo0tr9rdhlifdseta2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "317912008960-cjb36u6jg36pivd3psh4flas7tigbunp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.chawla.cje"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
