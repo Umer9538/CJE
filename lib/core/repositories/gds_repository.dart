@@ -28,11 +28,15 @@ class GDSRepository {
   /// Get active GDS groups
   Future<List<GDSModel>> getActiveGDS() async {
     try {
-      final snapshot = await _gdsCollection
-          .where('isActive', isEqualTo: true)
-          .orderBy('name')
-          .get();
-      return snapshot.docs.map((doc) => GDSModel.fromFirestore(doc)).toList();
+      // Get all GDS and filter in memory to avoid composite index requirement
+      final snapshot = await _gdsCollection.get();
+      final gdsList = snapshot.docs
+          .map((doc) => GDSModel.fromFirestore(doc))
+          .where((gds) => gds.isActive)
+          .toList();
+      // Sort by name in memory
+      gdsList.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return gdsList;
     } catch (e) {
       debugPrint('Error getting active GDS: $e');
       return [];
@@ -198,11 +202,14 @@ class GDSRepository {
   /// Get GDS groups for a specific user
   Future<List<GDSModel>> getGDSForUser(String userId) async {
     try {
-      final snapshot = await _gdsCollection
-          .where('memberIds', arrayContains: userId)
-          .where('isActive', isEqualTo: true)
-          .get();
-      return snapshot.docs.map((doc) => GDSModel.fromFirestore(doc)).toList();
+      // Get all GDS and filter in memory to avoid composite index requirement
+      final snapshot = await _gdsCollection.get();
+      final gdsList = snapshot.docs
+          .map((doc) => GDSModel.fromFirestore(doc))
+          .where((gds) => gds.isActive && gds.memberIds.contains(userId))
+          .toList();
+      gdsList.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return gdsList;
     } catch (e) {
       debugPrint('Error getting GDS for user: $e');
       return [];
@@ -212,11 +219,14 @@ class GDSRepository {
   /// Get GDS groups led by a specific user
   Future<List<GDSModel>> getGDSLedByUser(String userId) async {
     try {
-      final snapshot = await _gdsCollection
-          .where('leaderId', isEqualTo: userId)
-          .where('isActive', isEqualTo: true)
-          .get();
-      return snapshot.docs.map((doc) => GDSModel.fromFirestore(doc)).toList();
+      // Get all GDS and filter in memory to avoid composite index requirement
+      final snapshot = await _gdsCollection.get();
+      final gdsList = snapshot.docs
+          .map((doc) => GDSModel.fromFirestore(doc))
+          .where((gds) => gds.isActive && gds.leaderId == userId)
+          .toList();
+      gdsList.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return gdsList;
     } catch (e) {
       debugPrint('Error getting GDS led by user: $e');
       return [];

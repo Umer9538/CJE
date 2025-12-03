@@ -44,13 +44,27 @@ final gdsStreamProvider = StreamProvider<List<GDSModel>>((ref) {
 /// Single GDS provider
 final gdsProvider = FutureProvider.family<GDSModel?, String>((ref, gdsId) async {
   final repository = ref.watch(gdsRepositoryProvider);
-  return repository.getGDSById(gdsId);
+  try {
+    return await repository.getGDSById(gdsId).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => null,
+    );
+  } catch (e) {
+    return null;
+  }
 });
 
 /// User's GDS groups provider
 final userGDSProvider = FutureProvider.family<List<GDSModel>, String>((ref, userId) async {
   final repository = ref.watch(gdsRepositoryProvider);
-  return repository.getGDSForUser(userId);
+  try {
+    return await repository.getGDSForUser(userId).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () => <GDSModel>[],
+    );
+  } catch (e) {
+    return <GDSModel>[];
+  }
 });
 
 /// GDS Controller for managing support groups

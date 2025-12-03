@@ -17,11 +17,15 @@ class SchoolRepository {
   /// Get all active schools
   Future<List<SchoolModel>> getActiveSchools() async {
     try {
-      final query = await _schoolsCollection
-          .where('isActive', isEqualTo: true)
-          .orderBy('name')
-          .get();
-      return query.docs.map((doc) => SchoolModel.fromFirestore(doc)).toList();
+      // Get all schools and filter in memory to avoid composite index requirement
+      final query = await _schoolsCollection.get();
+      final schools = query.docs
+          .map((doc) => SchoolModel.fromFirestore(doc))
+          .where((school) => school.isActive)
+          .toList();
+      // Sort by name in memory
+      schools.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return schools;
     } catch (e) {
       debugPrint('Error getting schools: $e');
       return [];
@@ -159,14 +163,17 @@ class SchoolRepository {
   Future<List<SchoolModel>> searchSchools(String query) async {
     try {
       final queryLower = query.toLowerCase();
-      final snapshot = await _schoolsCollection
-          .where('isActive', isEqualTo: true)
-          .orderBy('name')
-          .startAt([queryLower])
-          .endAt(['$queryLower\uf8ff'])
-          .limit(20)
-          .get();
-      return snapshot.docs.map((doc) => SchoolModel.fromFirestore(doc)).toList();
+      // Get all schools and filter in memory to avoid composite index requirement
+      final snapshot = await _schoolsCollection.get();
+      final schools = snapshot.docs
+          .map((doc) => SchoolModel.fromFirestore(doc))
+          .where((school) => school.isActive)
+          .where((school) => school.name.toLowerCase().contains(queryLower) ||
+              school.shortName.toLowerCase().contains(queryLower))
+          .take(20)
+          .toList();
+      schools.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return schools;
     } catch (e) {
       debugPrint('Error searching schools: $e');
       return [];
@@ -176,12 +183,15 @@ class SchoolRepository {
   /// Get schools by city
   Future<List<SchoolModel>> getSchoolsByCity(String city) async {
     try {
-      final query = await _schoolsCollection
-          .where('city', isEqualTo: city)
-          .where('isActive', isEqualTo: true)
-          .orderBy('name')
-          .get();
-      return query.docs.map((doc) => SchoolModel.fromFirestore(doc)).toList();
+      // Get all schools and filter in memory to avoid composite index requirement
+      final snapshot = await _schoolsCollection.get();
+      final schools = snapshot.docs
+          .map((doc) => SchoolModel.fromFirestore(doc))
+          .where((school) => school.isActive)
+          .where((school) => school.city?.toLowerCase() == city.toLowerCase())
+          .toList();
+      schools.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return schools;
     } catch (e) {
       debugPrint('Error getting schools by city: $e');
       return [];

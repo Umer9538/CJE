@@ -129,6 +129,7 @@ class _AdminSchoolsScreenState extends ConsumerState<AdminSchoolsScreen> {
       ),
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
+              heroTag: 'fab_admin_schools',
               onPressed: () => _showCreateSchool(context),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,

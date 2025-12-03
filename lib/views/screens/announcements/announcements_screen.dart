@@ -90,6 +90,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
       ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab_announcements',
               onPressed: () => _navigateToCreate(context),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,

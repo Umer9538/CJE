@@ -91,6 +91,7 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
       ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab_polls',
               onPressed: () => _showCreatePollInfo(context),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,

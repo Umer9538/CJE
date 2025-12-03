@@ -97,6 +97,7 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
       ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab_initiatives',
               onPressed: () => _navigateToCreate(context),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,

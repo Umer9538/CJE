@@ -101,6 +101,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
       ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab_meetings',
               onPressed: () => _navigateToCreate(context),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,

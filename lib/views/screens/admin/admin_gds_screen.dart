@@ -130,6 +130,7 @@ class _AdminGDSScreenState extends ConsumerState<AdminGDSScreen> {
       ),
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
+              heroTag: 'fab_admin_gds',
               onPressed: () => _showCreateGDS(context),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,

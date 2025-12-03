@@ -93,6 +93,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
       ),
       floatingActionButton: canUpload
           ? FloatingActionButton.extended(
+              heroTag: 'fab_documents',
               onPressed: () => _showUploadInfo(context),
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,
