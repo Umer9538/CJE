@@ -23,18 +23,17 @@ class PollRepository {
     int limit = 20,
   }) async {
     try {
-      Query<Map<String, dynamic>> query = _collection
-          .orderBy('createdAt', descending: true);
-
-      if (type != null) {
-        query = query.where('type', isEqualTo: type.toFirestore());
-      }
-
-      final snapshot = await query.limit(limit).get();
+      // Get all polls and filter in memory to avoid composite index requirement
+      final snapshot = await _collection.get();
 
       List<PollModel> polls = snapshot.docs
           .map((doc) => PollModel.fromFirestore(doc))
           .toList();
+
+      // Filter by type if needed
+      if (type != null) {
+        polls = polls.where((p) => p.type == type).toList();
+      }
 
       // Filter active polls if needed
       if (activeOnly) {
@@ -47,7 +46,10 @@ class PollRepository {
             p.type == PollType.county || p.schoolId == schoolId).toList();
       }
 
-      return polls;
+      // Sort by createdAt descending
+      polls.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return polls.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting polls: $e');
       return [];
@@ -59,15 +61,22 @@ class PollRepository {
     PollType? type,
     int limit = 20,
   }) {
-    Query<Map<String, dynamic>> query = _collection
-        .orderBy('createdAt', descending: true);
+    // Simple stream without composite queries
+    return _collection.snapshots().map((snapshot) {
+      List<PollModel> polls = snapshot.docs
+          .map((doc) => PollModel.fromFirestore(doc))
+          .toList();
 
-    if (type != null) {
-      query = query.where('type', isEqualTo: type.toFirestore());
-    }
+      // Filter by type if needed
+      if (type != null) {
+        polls = polls.where((p) => p.type == type).toList();
+      }
 
-    return query.limit(limit).snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => PollModel.fromFirestore(doc)).toList());
+      // Sort by createdAt descending
+      polls.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return polls.take(limit).toList();
+    });
   }
 
   /// Get poll by ID
@@ -186,10 +195,8 @@ class PollRepository {
     int limit = 5,
   }) async {
     try {
-      final snapshot = await _collection
-          .orderBy('endDate', descending: false)
-          .limit(limit * 2)
-          .get();
+      // Get all polls and filter in memory to avoid composite index requirement
+      final snapshot = await _collection.get();
 
       List<PollModel> polls = snapshot.docs
           .map((doc) => PollModel.fromFirestore(doc))
@@ -201,6 +208,9 @@ class PollRepository {
         polls = polls.where((p) =>
             p.type == PollType.county || p.schoolId == schoolId).toList();
       }
+
+      // Sort by endDate ascending (soonest ending first)
+      polls.sort((a, b) => a.endDate.compareTo(b.endDate));
 
       return polls.take(limit).toList();
     } catch (e) {

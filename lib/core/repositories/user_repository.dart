@@ -152,12 +152,14 @@ class UserRepository {
   /// Get users by school
   Future<List<UserModel>> getUsersBySchool(String schoolId) async {
     try {
-      final query = await _usersCollection
-          .where('schoolId', isEqualTo: schoolId)
-          .where('status', isEqualTo: 'active')
-          .orderBy('fullName')
-          .get();
-      return query.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+      // Get all users and filter in memory to avoid composite index requirement
+      final snapshot = await _usersCollection.get();
+      final users = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .where((user) => user.schoolId == schoolId && user.status == UserStatus.active)
+          .toList();
+      users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
+      return users;
     } catch (e) {
       debugPrint('Error getting users by school: $e');
       return [];
@@ -167,12 +169,14 @@ class UserRepository {
   /// Get users by role
   Future<List<UserModel>> getUsersByRole(UserRole role) async {
     try {
-      final query = await _usersCollection
-          .where('role', isEqualTo: role.toFirestore())
-          .where('status', isEqualTo: 'active')
-          .orderBy('fullName')
-          .get();
-      return query.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+      // Get all users and filter in memory to avoid composite index requirement
+      final snapshot = await _usersCollection.get();
+      final users = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .where((user) => user.role == role && user.status == UserStatus.active)
+          .toList();
+      users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
+      return users;
     } catch (e) {
       debugPrint('Error getting users by role: $e');
       return [];
@@ -196,15 +200,20 @@ class UserRepository {
   /// Get pending users (for admin approval)
   Future<List<UserModel>> getPendingUsers({String? schoolId}) async {
     try {
-      Query<Map<String, dynamic>> query = _usersCollection
-          .where('status', isEqualTo: 'pending');
+      // Get all users and filter in memory to avoid composite index requirement
+      final snapshot = await _usersCollection.get();
+      var users = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .where((user) => user.status == UserStatus.pending)
+          .toList();
 
       if (schoolId != null) {
-        query = query.where('schoolId', isEqualTo: schoolId);
+        users = users.where((user) => user.schoolId == schoolId).toList();
       }
 
-      final result = await query.orderBy('createdAt', descending: true).get();
-      return result.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+      // Sort by createdAt descending
+      users.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return users;
     } catch (e) {
       debugPrint('Error getting pending users: $e');
       return [];
@@ -229,16 +238,18 @@ class UserRepository {
   /// Search users by name
   Future<List<UserModel>> searchUsers(String query) async {
     try {
-      // Firestore doesn't support full-text search, so we do a prefix search
+      // Get all users and search in memory to avoid composite index requirement
       final queryLower = query.toLowerCase();
-      final snapshot = await _usersCollection
-          .where('status', isEqualTo: 'active')
-          .orderBy('fullName')
-          .startAt([queryLower])
-          .endAt(['$queryLower\uf8ff'])
-          .limit(20)
-          .get();
-      return snapshot.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+      final snapshot = await _usersCollection.get();
+      final users = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .where((user) => user.status == UserStatus.active)
+          .where((user) => user.fullName.toLowerCase().contains(queryLower) ||
+              user.email.toLowerCase().contains(queryLower))
+          .take(20)
+          .toList();
+      users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
+      return users;
     } catch (e) {
       debugPrint('Error searching users: $e');
       return [];
@@ -258,13 +269,17 @@ class UserRepository {
   /// Get department members
   Future<List<UserModel>> getDepartmentMembers(DepartmentType department) async {
     try {
-      final query = await _usersCollection
-          .where('role', isEqualTo: UserRole.department.toFirestore())
-          .where('department', isEqualTo: department.toFirestore())
-          .where('status', isEqualTo: 'active')
-          .orderBy('fullName')
-          .get();
-      return query.docs.map((doc) => UserModel.fromFirestore(doc)).toList();
+      // Get all users and filter in memory to avoid composite index requirement
+      final snapshot = await _usersCollection.get();
+      final users = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .where((user) =>
+              user.role == UserRole.department &&
+              user.department == department &&
+              user.status == UserStatus.active)
+          .toList();
+      users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
+      return users;
     } catch (e) {
       debugPrint('Error getting department members: $e');
       return [];
