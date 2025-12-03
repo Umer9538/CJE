@@ -27,11 +27,8 @@ class MeetingRepository {
     int limit = 20,
   }) async {
     try {
-      // Simple query to avoid composite index requirement
-      final snapshot = await _collection
-          .orderBy('dateTime', descending: true)
-          .limit(limit * 3) // Fetch more to account for filtering
-          .get();
+      // Simple query without orderBy to avoid index requirement
+      final snapshot = await _collection.get();
 
       final now = DateTime.now();
       List<MeetingModel> meetings = snapshot.docs
@@ -45,9 +42,11 @@ class MeetingRepository {
           })
           .toList();
 
-      // Re-sort if upcoming only (ascending)
+      // Sort in memory
       if (upcomingOnly) {
         meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      } else {
+        meetings.sort((a, b) => b.dateTime.compareTo(a.dateTime));
       }
 
       return meetings.take(limit).toList();
@@ -64,22 +63,28 @@ class MeetingRepository {
     bool upcomingOnly = false,
     int limit = 20,
   }) {
-    Query<Map<String, dynamic>> query = _collection;
+    // Simple stream without composite queries
+    return _collection.snapshots().map((snapshot) {
+      final now = DateTime.now();
+      List<MeetingModel> meetings = snapshot.docs
+          .map((doc) => MeetingModel.fromFirestore(doc))
+          .where((m) {
+            if (type != null && m.type != type) return false;
+            if (schoolId != null && m.type == MeetingType.school && m.schoolId != schoolId) return false;
+            if (upcomingOnly && m.dateTime.isBefore(now)) return false;
+            return true;
+          })
+          .toList();
 
-    if (type != null) {
-      query = query.where('type', isEqualTo: type.toFirestore());
-    }
+      // Sort in memory
+      if (upcomingOnly) {
+        meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+      } else {
+        meetings.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+      }
 
-    if (upcomingOnly) {
-      query = query
-          .where('dateTime', isGreaterThanOrEqualTo: Timestamp.now())
-          .orderBy('dateTime');
-    } else {
-      query = query.orderBy('dateTime', descending: true);
-    }
-
-    return query.limit(limit).snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => MeetingModel.fromFirestore(doc)).toList());
+      return meetings.take(limit).toList();
+    });
   }
 
   /// Get meeting by ID
@@ -158,11 +163,8 @@ class MeetingRepository {
     int limit = 5,
   }) async {
     try {
-      // Simple query - filter upcoming meetings in memory to avoid index issues
-      final snapshot = await _collection
-          .orderBy('dateTime', descending: false)
-          .limit(limit * 3) // Fetch more to account for filtering
-          .get();
+      // Simple query without orderBy to avoid index requirement
+      final snapshot = await _collection.get();
 
       final now = DateTime.now();
       List<MeetingModel> meetings = snapshot.docs
@@ -175,6 +177,9 @@ class MeetingRepository {
         meetings = meetings.where((m) =>
             m.type != MeetingType.school || m.schoolId == schoolId).toList();
       }
+
+      // Sort by dateTime ascending (soonest first)
+      meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
       return meetings.take(limit).toList();
     } catch (e) {
@@ -238,15 +243,20 @@ class MeetingRepository {
       final startOfDay = DateTime(date.year, date.month, date.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
 
-      final snapshot = await _collection
-          .where('dateTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .where('dateTime', isLessThan: Timestamp.fromDate(endOfDay))
-          .orderBy('dateTime')
-          .get();
+      // Get all meetings and filter in memory to avoid composite index requirement
+      final snapshot = await _collection.get();
 
-      return snapshot.docs
+      final meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
+          .where((m) =>
+              m.dateTime.isAfter(startOfDay.subtract(const Duration(seconds: 1))) &&
+              m.dateTime.isBefore(endOfDay))
           .toList();
+
+      // Sort by dateTime
+      meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+      return meetings;
     } catch (e) {
       debugPrint('Error getting meetings by date: $e');
       return [];

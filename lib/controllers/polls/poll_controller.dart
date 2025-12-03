@@ -12,13 +12,17 @@ final pollRepositoryProvider = Provider<PollRepository>((ref) {
 
 /// Polls list provider
 final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, filter) async {
-  final repository = ref.watch(pollRepositoryProvider);
   final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <PollModel>[];
+  }
+
+  final repository = ref.read(pollRepositoryProvider);
 
   try {
     return await repository.getPolls(
       type: filter.type,
-      schoolId: user?.schoolId,
+      schoolId: user.schoolId,
       activeOnly: filter.activeOnly,
       limit: filter.limit,
     ).timeout(
@@ -48,12 +52,16 @@ final pollProvider = FutureProvider.family<PollModel?, String>((ref, id) async {
 
 /// Active polls for home screen
 final activePollsProvider = FutureProvider<List<PollModel>>((ref) async {
-  final repository = ref.watch(pollRepositoryProvider);
   final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <PollModel>[];
+  }
+
+  final repository = ref.read(pollRepositoryProvider);
 
   try {
     return await repository.getActivePolls(
-      schoolId: user?.schoolId,
+      schoolId: user.schoolId,
       limit: 5,
     ).timeout(
       const Duration(seconds: 10),

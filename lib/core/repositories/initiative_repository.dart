@@ -26,25 +26,23 @@ class InitiativeRepository {
     int limit = 20,
   }) async {
     try {
-      Query<Map<String, dynamic>> query = _collection
-          .orderBy('createdAt', descending: true);
+      // Get all initiatives and filter in memory to avoid composite index requirement
+      final snapshot = await _collection.get();
 
-      if (status != null) {
-        query = query.where('status', isEqualTo: status.toFirestore());
-      }
-
-      if (schoolId != null) {
-        query = query.where('schoolId', isEqualTo: schoolId);
-      }
-
-      if (authorId != null) {
-        query = query.where('authorId', isEqualTo: authorId);
-      }
-
-      final snapshot = await query.limit(limit).get();
-      return snapshot.docs
+      List<InitiativeModel> initiatives = snapshot.docs
           .map((doc) => InitiativeModel.fromFirestore(doc))
+          .where((i) {
+            if (status != null && i.status != status) return false;
+            if (schoolId != null && i.schoolId != schoolId) return false;
+            if (authorId != null && i.authorId != authorId) return false;
+            return true;
+          })
           .toList();
+
+      // Sort by createdAt descending
+      initiatives.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return initiatives.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting initiatives: $e');
       return [];
@@ -57,15 +55,22 @@ class InitiativeRepository {
     String? schoolId,
     int limit = 20,
   }) {
-    Query<Map<String, dynamic>> query = _collection
-        .orderBy('createdAt', descending: true);
+    // Simple stream without composite queries
+    return _collection.snapshots().map((snapshot) {
+      List<InitiativeModel> initiatives = snapshot.docs
+          .map((doc) => InitiativeModel.fromFirestore(doc))
+          .where((i) {
+            if (status != null && i.status != status) return false;
+            if (schoolId != null && i.schoolId != schoolId) return false;
+            return true;
+          })
+          .toList();
 
-    if (status != null) {
-      query = query.where('status', isEqualTo: status.toFirestore());
-    }
+      // Sort by createdAt descending
+      initiatives.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    return query.limit(limit).snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => InitiativeModel.fromFirestore(doc)).toList());
+      return initiatives.take(limit).toList();
+    });
   }
 
   /// Get initiative by ID
@@ -239,25 +244,25 @@ class InitiativeRepository {
     int limit = 5,
   }) async {
     try {
-      // Simple query without whereIn to avoid composite index requirement
-      // Filter statuses in memory instead
-      final snapshot = await _collection
-          .orderBy('createdAt', descending: true)
-          .limit(limit * 3) // Fetch more to account for filtering
-          .get();
+      // Get all initiatives and filter in memory to avoid composite index requirement
+      final snapshot = await _collection.get();
 
       final validStatuses = {
-        InitiativeStatus.submitted.toFirestore(),
-        InitiativeStatus.review.toFirestore(),
-        InitiativeStatus.debate.toFirestore(),
-        InitiativeStatus.voting.toFirestore(),
+        InitiativeStatus.submitted,
+        InitiativeStatus.review,
+        InitiativeStatus.debate,
+        InitiativeStatus.voting,
       };
 
-      return snapshot.docs
+      List<InitiativeModel> initiatives = snapshot.docs
           .map((doc) => InitiativeModel.fromFirestore(doc))
-          .where((initiative) => validStatuses.contains(initiative.status.toFirestore()))
-          .take(limit)
+          .where((initiative) => validStatuses.contains(initiative.status))
           .toList();
+
+      // Sort by createdAt descending
+      initiatives.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return initiatives.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting recent initiatives: $e');
       return [];
@@ -278,13 +283,16 @@ class InitiativeRepository {
   /// Get comments for initiative
   Future<List<InitiativeComment>> getComments(String initiativeId) async {
     try {
-      final snapshot = await _commentsCollection
-          .where('initiativeId', isEqualTo: initiativeId)
-          .orderBy('createdAt', descending: false)
-          .get();
-      return snapshot.docs
+      // Get all comments and filter in memory to avoid composite index requirement
+      final snapshot = await _commentsCollection.get();
+      final comments = snapshot.docs
           .map((doc) => InitiativeComment.fromFirestore(doc))
+          .where((c) => c.initiativeId == initiativeId)
           .toList();
+
+      // Sort by createdAt ascending
+      comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return comments;
     } catch (e) {
       debugPrint('Error getting comments: $e');
       return [];
@@ -293,13 +301,17 @@ class InitiativeRepository {
 
   /// Get comments stream
   Stream<List<InitiativeComment>> getCommentsStream(String initiativeId) {
-    return _commentsCollection
-        .where('initiativeId', isEqualTo: initiativeId)
-        .orderBy('createdAt', descending: false)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => InitiativeComment.fromFirestore(doc))
-            .toList());
+    // Simple stream without composite queries
+    return _commentsCollection.snapshots().map((snapshot) {
+      final comments = snapshot.docs
+          .map((doc) => InitiativeComment.fromFirestore(doc))
+          .where((c) => c.initiativeId == initiativeId)
+          .toList();
+
+      // Sort by createdAt ascending
+      comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      return comments;
+    });
   }
 
   /// Delete comment

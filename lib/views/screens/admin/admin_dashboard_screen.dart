@@ -29,6 +29,16 @@ class AdminDashboardScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final l10n = AppLocalizations.of(context);
 
+    // Show loading if user is not yet loaded
+    if (user == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF5F7FA),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       body: SafeArea(
@@ -62,7 +72,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, UserModel? user, AppLocalizations l10n) {
+  Widget _buildHeader(BuildContext context, UserModel user, AppLocalizations l10n) {
     final greeting = _getGreeting();
 
     return Row(
@@ -80,7 +90,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                user?.fullName ?? 'Admin',
+                user.fullName.isNotEmpty ? user.fullName : 'Admin',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -119,8 +129,8 @@ class AdminDashboardScreen extends ConsumerWidget {
             ),
             child: Center(
               child: Text(
-                user?.fullName.isNotEmpty == true
-                    ? user!.fullName[0].toUpperCase()
+                user.fullName.isNotEmpty
+                    ? user.fullName[0].toUpperCase()
                     : 'A',
                 style: const TextStyle(
                   fontSize: 20,

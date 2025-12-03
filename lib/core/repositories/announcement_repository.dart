@@ -22,11 +22,8 @@ class AnnouncementRepository {
     int limit = 20,
   }) async {
     try {
-      // Simple query to avoid composite index requirement
-      final snapshot = await _collection
-          .orderBy('createdAt', descending: true)
-          .limit(limit * 3) // Fetch more to account for filtering
-          .get();
+      // Simple query without orderBy to avoid index requirement
+      final snapshot = await _collection.get();
 
       List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))
@@ -40,7 +37,7 @@ class AnnouncementRepository {
           })
           .toList();
 
-      // Sort by publishedAt and limit
+      // Sort by publishedAt in memory and limit
       results.sort((a, b) => (b.publishedAt ?? b.createdAt)
           .compareTo(a.publishedAt ?? a.createdAt));
       return results.take(limit).toList();
@@ -56,16 +53,25 @@ class AnnouncementRepository {
     String? schoolId,
     int limit = 20,
   }) {
-    Query<Map<String, dynamic>> query = _collection
-        .where('isPublished', isEqualTo: true)
-        .orderBy('publishedAt', descending: true);
+    // Simple stream without composite queries
+    return _collection.snapshots().map((snapshot) {
+      List<AnnouncementModel> results = snapshot.docs
+          .map((doc) => AnnouncementModel.fromFirestore(doc))
+          .where((a) => a.isPublished)
+          .where((a) {
+            if (type != null && a.type != type) return false;
+            if (type == AnnouncementType.school && schoolId != null) {
+              return a.schoolId == schoolId;
+            }
+            return true;
+          })
+          .toList();
 
-    if (type != null) {
-      query = query.where('type', isEqualTo: type.toFirestore());
-    }
-
-    return query.limit(limit).snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => AnnouncementModel.fromFirestore(doc)).toList());
+      // Sort by publishedAt in memory
+      results.sort((a, b) => (b.publishedAt ?? b.createdAt)
+          .compareTo(a.publishedAt ?? a.createdAt));
+      return results.take(limit).toList();
+    });
   }
 
   /// Get announcement by ID
@@ -177,12 +183,8 @@ class AnnouncementRepository {
     int limit = 5,
   }) async {
     try {
-      // Simple query to avoid composite index requirement
-      // Filter in memory instead of using multiple where clauses
-      final snapshot = await _collection
-          .orderBy('createdAt', descending: true)
-          .limit(limit * 3) // Fetch more to account for filtering
-          .get();
+      // Get all announcements and filter in memory to avoid composite index requirement
+      final snapshot = await _collection.get();
 
       List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))

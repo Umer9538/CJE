@@ -11,7 +11,12 @@ final gdsRepositoryProvider = Provider<GDSRepository>((ref) {
 
 /// All GDS groups provider
 final allGDSProvider = FutureProvider<List<GDSModel>>((ref) async {
-  final repository = ref.watch(gdsRepositoryProvider);
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <GDSModel>[];
+  }
+
+  final repository = ref.read(gdsRepositoryProvider);
   try {
     return await repository.getAllGDS().timeout(
       const Duration(seconds: 15),
@@ -24,7 +29,12 @@ final allGDSProvider = FutureProvider<List<GDSModel>>((ref) async {
 
 /// Active GDS groups provider
 final activeGDSProvider = FutureProvider<List<GDSModel>>((ref) async {
-  final repository = ref.watch(gdsRepositoryProvider);
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <GDSModel>[];
+  }
+
+  final repository = ref.read(gdsRepositoryProvider);
   try {
     return await repository.getActiveGDS().timeout(
       const Duration(seconds: 15),

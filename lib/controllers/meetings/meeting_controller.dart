@@ -12,7 +12,12 @@ final meetingRepositoryProvider = Provider<MeetingRepository>((ref) {
 
 /// Meetings list provider
 final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter>((ref, filter) async {
-  final repository = ref.watch(meetingRepositoryProvider);
+  final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <MeetingModel>[];
+  }
+
+  final repository = ref.read(meetingRepositoryProvider);
 
   try {
     return await repository.getMeetings(
@@ -50,11 +55,15 @@ final meetingProvider = FutureProvider.family<MeetingModel?, String>((ref, id) a
 
 /// Upcoming meetings for home screen
 final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async {
-  final repository = ref.watch(meetingRepositoryProvider);
   final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <MeetingModel>[];
+  }
+
+  final repository = ref.read(meetingRepositoryProvider);
   try {
     return await repository.getUpcomingMeetings(
-      schoolId: user?.schoolId,
+      schoolId: user.schoolId,
       limit: 5,
     ).timeout(
       const Duration(seconds: 10),
@@ -67,9 +76,13 @@ final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async 
 
 /// Next meeting provider
 final nextMeetingProvider = FutureProvider<MeetingModel?>((ref) async {
-  final repository = ref.watch(meetingRepositoryProvider);
   final user = ref.watch(currentUserProvider);
-  return repository.getNextMeeting(schoolId: user?.schoolId);
+  if (user == null) {
+    return null;
+  }
+
+  final repository = ref.read(meetingRepositoryProvider);
+  return repository.getNextMeeting(schoolId: user.schoolId);
 });
 
 /// Meeting attendance provider

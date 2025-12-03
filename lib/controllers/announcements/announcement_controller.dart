@@ -12,13 +12,17 @@ final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
 
 /// Announcements list provider
 final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, AnnouncementFilter>((ref, filter) async {
-  final repository = ref.watch(announcementRepositoryProvider);
   final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <AnnouncementModel>[];
+  }
+
+  final repository = ref.read(announcementRepositoryProvider);
 
   try {
     return await repository.getAnnouncements(
       type: filter.type,
-      schoolId: filter.type == AnnouncementType.school ? user?.schoolId : null,
+      schoolId: filter.type == AnnouncementType.school ? user.schoolId : null,
       limit: filter.limit,
     ).timeout(
       const Duration(seconds: 15),
@@ -49,11 +53,15 @@ final announcementProvider = FutureProvider.family<AnnouncementModel?, String>((
 
 /// Recent announcements for home screen
 final recentAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((ref) async {
-  final repository = ref.watch(announcementRepositoryProvider);
   final user = ref.watch(currentUserProvider);
+  if (user == null) {
+    return <AnnouncementModel>[];
+  }
+
+  final repository = ref.read(announcementRepositoryProvider);
   try {
     return await repository.getRecentAnnouncements(
-      schoolId: user?.schoolId,
+      schoolId: user.schoolId,
       limit: 5,
     ).timeout(
       const Duration(seconds: 10),

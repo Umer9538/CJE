@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
@@ -16,20 +17,31 @@ final adminUserRepositoryProvider = Provider<UserRepository>((ref) {
 
 /// All users provider
 final allUsersProvider = FutureProvider<List<UserModel>>((ref) async {
-  final repository = ref.watch(adminUserRepositoryProvider);
+  final currentUser = ref.watch(currentUserProvider);
+  if (currentUser == null) {
+    return <UserModel>[];
+  }
+
+  final repository = ref.read(adminUserRepositoryProvider);
   try {
     return await repository.getAllUsers().timeout(
       const Duration(seconds: 15),
       onTimeout: () => <UserModel>[],
     );
   } catch (e) {
+    debugPrint('allUsersProvider: error $e');
     return <UserModel>[];
   }
 });
 
 /// Users by role provider
 final usersByRoleProvider = FutureProvider.family<List<UserModel>, UserRole>((ref, role) async {
-  final repository = ref.watch(adminUserRepositoryProvider);
+  final currentUser = ref.watch(currentUserProvider);
+  if (currentUser == null) {
+    return <UserModel>[];
+  }
+
+  final repository = ref.read(adminUserRepositoryProvider);
   try {
     return await repository.getUsersByRole(role).timeout(
       const Duration(seconds: 15),
@@ -42,11 +54,15 @@ final usersByRoleProvider = FutureProvider.family<List<UserModel>, UserRole>((re
 
 /// Pending users provider
 final pendingUsersProvider = FutureProvider<List<UserModel>>((ref) async {
-  final repository = ref.watch(adminUserRepositoryProvider);
   final currentUser = ref.watch(currentUserProvider);
+  if (currentUser == null) {
+    return <UserModel>[];
+  }
+
+  final repository = ref.read(adminUserRepositoryProvider);
   try {
     return await repository.getPendingUsers(
-      schoolId: currentUser?.role == UserRole.schoolRep ? currentUser?.schoolId : null,
+      schoolId: currentUser.role == UserRole.schoolRep ? currentUser.schoolId : null,
     ).timeout(
       const Duration(seconds: 15),
       onTimeout: () => <UserModel>[],
@@ -58,14 +74,23 @@ final pendingUsersProvider = FutureProvider<List<UserModel>>((ref) async {
 
 /// Single user provider
 final adminUserProvider = FutureProvider.family<UserModel?, String>((ref, userId) async {
-  final repository = ref.watch(adminUserRepositoryProvider);
+  final currentUser = ref.watch(currentUserProvider);
+  if (currentUser == null) {
+    return null;
+  }
+
+  final repository = ref.read(adminUserRepositoryProvider);
   return repository.getUserById(userId);
 });
 
 /// Filtered users provider
 final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>((ref, filter) async {
-  final repository = ref.watch(adminUserRepositoryProvider);
   final currentUser = ref.watch(currentUserProvider);
+  if (currentUser == null) {
+    return <UserModel>[];
+  }
+
+  final repository = ref.read(adminUserRepositoryProvider);
 
   try {
     List<UserModel> users;
@@ -74,7 +99,7 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
       users = await repository.getUsersByRole(filter.role!);
     } else if (filter.status == UserStatus.pending) {
       users = await repository.getPendingUsers(
-        schoolId: currentUser?.role == UserRole.schoolRep ? currentUser?.schoolId : null,
+        schoolId: currentUser.role == UserRole.schoolRep ? currentUser.schoolId : null,
       );
     } else {
       users = await repository.getAllUsers();
@@ -513,7 +538,12 @@ final canChangeRolesProvider = Provider<bool>((ref) {
 
 /// Users by school provider
 final usersBySchoolProvider = FutureProvider.family<List<UserModel>, String>((ref, schoolId) async {
-  final repository = ref.watch(adminUserRepositoryProvider);
+  final currentUser = ref.watch(currentUserProvider);
+  if (currentUser == null) {
+    return <UserModel>[];
+  }
+
+  final repository = ref.read(adminUserRepositoryProvider);
   try {
     return await repository.getUsersBySchool(schoolId).timeout(
       const Duration(seconds: 15),
