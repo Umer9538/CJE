@@ -12,7 +12,7 @@ final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
 
 /// Announcements list provider
 final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, AnnouncementFilter>((ref, filter) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     return <AnnouncementModel>[];
   }
@@ -35,8 +35,8 @@ final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, Ann
 
 /// Announcements stream provider
 final announcementsStreamProvider = StreamProvider.family<List<AnnouncementModel>, AnnouncementFilter>((ref, filter) {
-  final repository = ref.watch(announcementRepositoryProvider);
-  final user = ref.watch(currentUserProvider);
+  final repository = ref.read(announcementRepositoryProvider);
+  final user = ref.read(currentUserProvider);
 
   return repository.getAnnouncementsStream(
     type: filter.type,
@@ -53,7 +53,7 @@ final announcementProvider = FutureProvider.family<AnnouncementModel?, String>((
 
 /// Recent announcements for home screen
 final recentAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((ref) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     return <AnnouncementModel>[];
   }

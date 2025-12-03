@@ -12,7 +12,7 @@ final meetingRepositoryProvider = Provider<MeetingRepository>((ref) {
 
 /// Meetings list provider
 final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter>((ref, filter) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     return <MeetingModel>[];
   }
@@ -55,7 +55,7 @@ final meetingProvider = FutureProvider.family<MeetingModel?, String>((ref, id) a
 
 /// Upcoming meetings for home screen
 final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     return <MeetingModel>[];
   }
@@ -76,7 +76,7 @@ final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async 
 
 /// Next meeting provider
 final nextMeetingProvider = FutureProvider<MeetingModel?>((ref) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     return null;
   }

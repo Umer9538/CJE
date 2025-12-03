@@ -41,8 +41,8 @@ final initiativeProvider = FutureProvider.family<InitiativeModel?, String>((ref,
 
 /// Recent initiatives for home screen
 final recentInitiativesProvider = FutureProvider<List<InitiativeModel>>((ref) async {
-  final repository = ref.watch(initiativeRepositoryProvider);
-  final user = ref.watch(currentUserProvider);
+  final repository = ref.read(initiativeRepositoryProvider);
+  final user = ref.read(currentUserProvider);
   try {
     return await repository.getRecentInitiatives(
       schoolId: user?.schoolId,
@@ -70,8 +70,8 @@ final initiativeCommentsStreamProvider = StreamProvider.family<List<InitiativeCo
 
 /// Check if current user supports initiative
 final isSupportingProvider = FutureProvider.family<bool, String>((ref, initiativeId) async {
-  final repository = ref.watch(initiativeRepositoryProvider);
-  final user = ref.watch(currentUserProvider);
+  final repository = ref.read(initiativeRepositoryProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) return false;
   return repository.isSupporting(initiativeId, user.id);
 });

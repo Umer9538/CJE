@@ -12,7 +12,7 @@ final pollRepositoryProvider = Provider<PollRepository>((ref) {
 
 /// Polls list provider
 final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, filter) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     return <PollModel>[];
   }
@@ -52,7 +52,7 @@ final pollProvider = FutureProvider.family<PollModel?, String>((ref, id) async {
 
 /// Active polls for home screen
 final activePollsProvider = FutureProvider<List<PollModel>>((ref) async {
-  final user = ref.watch(currentUserProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) {
     return <PollModel>[];
   }
@@ -74,8 +74,8 @@ final activePollsProvider = FutureProvider<List<PollModel>>((ref) async {
 
 /// Check if user has voted on a poll
 final hasVotedProvider = FutureProvider.family<bool, String>((ref, pollId) async {
-  final repository = ref.watch(pollRepositoryProvider);
-  final user = ref.watch(currentUserProvider);
+  final repository = ref.read(pollRepositoryProvider);
+  final user = ref.read(currentUserProvider);
   if (user == null) return false;
   return repository.hasUserVoted(pollId, user.id);
 });
