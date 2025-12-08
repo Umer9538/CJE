@@ -17,6 +17,8 @@ final documentsProvider = FutureProvider.family<List<DocumentModel>, DocumentFil
   try {
     return await repository.getDocuments(
       category: filter.category,
+      schoolId: filter.schoolId,
+      includeCountyDocs: filter.includeCountyDocs,
       publicOnly: filter.publicOnly,
       limit: filter.limit,
     ).timeout(
@@ -47,11 +49,15 @@ final documentProvider = FutureProvider.family<DocumentModel?, String>((ref, id)
 /// Filter model for documents
 class DocumentFilter {
   final DocumentCategory? category;
+  final String? schoolId; // Filter by school (null = county-level documents)
+  final bool includeCountyDocs; // Whether to include county-level documents
   final bool publicOnly;
   final int limit;
 
   const DocumentFilter({
     this.category,
+    this.schoolId,
+    this.includeCountyDocs = true,
     this.publicOnly = true,
     this.limit = 50,
   });
@@ -62,11 +68,18 @@ class DocumentFilter {
       other is DocumentFilter &&
           runtimeType == other.runtimeType &&
           category == other.category &&
+          schoolId == other.schoolId &&
+          includeCountyDocs == other.includeCountyDocs &&
           publicOnly == other.publicOnly &&
           limit == other.limit;
 
   @override
-  int get hashCode => category.hashCode ^ publicOnly.hashCode ^ limit.hashCode;
+  int get hashCode =>
+      category.hashCode ^
+      schoolId.hashCode ^
+      includeCountyDocs.hashCode ^
+      publicOnly.hashCode ^
+      limit.hashCode;
 }
 
 /// Document controller for CRUD operations

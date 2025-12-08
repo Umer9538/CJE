@@ -60,8 +60,17 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final currentUser = ref.watch(currentUserProvider);
+
+    // Filter documents by user's school
+    // - County-level documents (schoolId == null) are visible to all
+    // - School-specific documents are only visible to users of that school
     final documentsAsync = ref.watch(
-      documentsProvider(DocumentFilter(category: _selectedCategory)),
+      documentsProvider(DocumentFilter(
+        category: _selectedCategory,
+        schoolId: currentUser?.schoolId,
+        includeCountyDocs: true, // Always show county-level documents
+      )),
     );
 
     // SchoolRep can upload school documents, BEX/Superadmin can upload any

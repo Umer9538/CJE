@@ -16,8 +16,13 @@ class DocumentRepository {
       _firestore.collection('documents');
 
   /// Get all documents
+  /// - If schoolId is provided, returns documents from that school
+  /// - If includeCountyDocs is true, also includes county-level documents (schoolId == null)
+  /// - County-level documents are visible to all users in the county
   Future<List<DocumentModel>> getDocuments({
     DocumentCategory? category,
+    String? schoolId,
+    bool includeCountyDocs = true,
     bool publicOnly = true,
     int limit = 50,
   }) async {
@@ -29,18 +34,32 @@ class DocumentRepository {
         query = query.where('category', isEqualTo: category.toFirestore());
       }
 
-      final snapshot = await query.limit(limit).get();
+      final snapshot = await query.limit(limit * 2).get(); // Fetch more to account for filtering
 
       List<DocumentModel> documents = snapshot.docs
           .map((doc) => DocumentModel.fromFirestore(doc))
           .toList();
+
+      // Filter by school
+      // - County-level docs (schoolId == null) are visible if includeCountyDocs is true
+      // - School-specific docs are only visible to users of that school
+      if (schoolId != null) {
+        documents = documents.where((d) {
+          // County-level document
+          if (d.schoolId == null) {
+            return includeCountyDocs;
+          }
+          // School-specific document - only show if it's the user's school
+          return d.schoolId == schoolId;
+        }).toList();
+      }
 
       // Filter public documents if needed
       if (publicOnly) {
         documents = documents.where((d) => d.isPublic).toList();
       }
 
-      return documents;
+      return documents.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting documents: $e');
       return [];

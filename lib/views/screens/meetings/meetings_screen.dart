@@ -57,9 +57,18 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final currentUser = ref.watch(currentUserProvider);
+
+    // For school meetings tab, filter by user's school
+    // County AG and BEX meetings are visible to all in the county
+    final schoolIdFilter = _selectedType == MeetingType.school
+        ? currentUser?.schoolId
+        : null;
+
     final meetingsAsync = ref.watch(
       meetingsProvider(MeetingFilter(
         type: _selectedType,
+        schoolId: schoolIdFilter,
         upcomingOnly: _upcomingOnly,
       )),
     );

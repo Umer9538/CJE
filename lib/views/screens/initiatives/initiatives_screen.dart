@@ -22,6 +22,8 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
   InitiativeStatus? _selectedStatus;
   bool _showOnlyMine = false;
   String? _selectedSchoolId;
+  bool _showAllSchools = false; // Toggle to see all schools' initiatives
+  bool _initialized = false;
 
   @override
   void initState() {
@@ -60,17 +62,33 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final currentUser = ref.watch(currentUserProvider);
+
+    // Auto-set school filter on first build for school-level users
+    // Students, classReps, and schoolReps see their school's initiatives by default
+    if (!_initialized && currentUser != null) {
+      _initialized = true;
+      if (currentUser.schoolId != null &&
+          currentUser.role != UserRole.bex &&
+          currentUser.role != UserRole.superadmin &&
+          currentUser.role != UserRole.department) {
+        _selectedSchoolId = currentUser.schoolId;
+      }
+    }
+
+    // Determine the effective school filter
+    final effectiveSchoolId = _showAllSchools ? null : _selectedSchoolId;
+
     final initiativesAsync = ref.watch(
       initiativesProvider(InitiativeFilter(
         status: _selectedStatus,
         authorId: _showOnlyMine ? currentUser?.id : null,
-        schoolId: _selectedSchoolId,
+        schoolId: effectiveSchoolId,
       )),
     );
 
     // Use the provider for permission check
     final canCreate = ref.watch(canDraftInitiativesProvider);
-    final hasActiveFilters = _showOnlyMine || _selectedSchoolId != null;
+    final hasActiveFilters = _showOnlyMine || (_selectedSchoolId != null && !_showAllSchools);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -215,12 +233,12 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
                     color: AppColors.navy,
                   ),
                 ),
-                if (_showOnlyMine || _selectedSchoolId != null)
+                if (_showOnlyMine || (_selectedSchoolId != null && !_showAllSchools))
                   TextButton(
                     onPressed: () {
                       setState(() {
                         _showOnlyMine = false;
-                        _selectedSchoolId = null;
+                        _showAllSchools = true;
                       });
                       Navigator.pop(ctx);
                     },
@@ -256,13 +274,38 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
                   icon: Icons.school_outlined,
                   title: l10n.translate('my_school'),
                   subtitle: user?.schoolName ?? l10n.translate('show_school_initiatives'),
-                  isSelected: _selectedSchoolId == user?.schoolId,
+                  isSelected: _selectedSchoolId == user?.schoolId && !_showAllSchools,
                   onTap: () {
                     setState(() {
-                      _selectedSchoolId = _selectedSchoolId == user?.schoolId
-                          ? null
-                          : user?.schoolId;
+                      if (_selectedSchoolId == user?.schoolId && !_showAllSchools) {
+                        // If already filtered by my school, show all
+                        _showAllSchools = true;
+                      } else {
+                        // Filter by my school
+                        _selectedSchoolId = user?.schoolId;
+                        _showAllSchools = false;
+                      }
                     });
+                    Navigator.pop(ctx);
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Show all schools option (only if user has school filter applied)
+            Consumer(
+              builder: (context, ref, _) {
+                final user = ref.watch(currentUserProvider);
+                if (user?.schoolId == null) return const SizedBox.shrink();
+
+                return _FilterOption(
+                  icon: Icons.public_rounded,
+                  title: l10n.translate('all_schools'),
+                  subtitle: l10n.translate('show_all_initiatives'),
+                  isSelected: _showAllSchools,
+                  onTap: () {
+                    setState(() => _showAllSchools = !_showAllSchools);
                     Navigator.pop(ctx);
                   },
                 );
