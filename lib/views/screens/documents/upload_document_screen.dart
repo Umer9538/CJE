@@ -9,7 +9,14 @@ import '../../../core/core.dart';
 
 /// Screen to upload a new document
 class UploadDocumentScreen extends ConsumerStatefulWidget {
-  const UploadDocumentScreen({super.key});
+  final bool isSchoolDocument;
+  final bool isDepartmentDocument;
+
+  const UploadDocumentScreen({
+    super.key,
+    this.isSchoolDocument = false,
+    this.isDepartmentDocument = false,
+  });
 
   @override
   ConsumerState<UploadDocumentScreen> createState() => _UploadDocumentScreenState();
@@ -23,6 +30,8 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
 
   DocumentCategory _selectedCategory = DocumentCategory.regulamente;
   bool _isPublic = true;
+  late bool _isSchoolDocument;
+  late bool _isDepartmentDocument;
   bool _isLoading = false;
   bool _isUploading = false;
   double _uploadProgress = 0;
@@ -30,6 +39,13 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
   PlatformFile? _selectedFile;
   String? _uploadedFileUrl;
   final List<String> _tags = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _isSchoolDocument = widget.isSchoolDocument;
+    _isDepartmentDocument = widget.isDepartmentDocument;
+  }
 
   @override
   void dispose() {
@@ -482,6 +498,46 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 contentPadding: EdgeInsets.zero,
               ),
             ),
+            const SizedBox(height: 16),
+
+            // School document toggle (for schoolRep or shown for all to specify)
+            Builder(
+              builder: (context) {
+                final user = ref.watch(currentUserProvider);
+                final isSchoolRep = user?.role == UserRole.schoolRep;
+                final canUploadCounty = ref.watch(canUploadCountyDocumentsProvider);
+
+                // If schoolRep, always mark as school document
+                if (isSchoolRep && !_isSchoolDocument) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    setState(() => _isSchoolDocument = true);
+                  });
+                }
+
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: SwitchListTile(
+                    title: Text(l10n.translate('school_document')),
+                    subtitle: Text(
+                      isSchoolRep
+                          ? l10n.translate('school_document_required')
+                          : l10n.translate('school_document_desc'),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                    value: _isSchoolDocument,
+                    onChanged: isSchoolRep
+                        ? null // SchoolRep can't toggle - always school document
+                        : (value) => setState(() => _isSchoolDocument = value),
+                    activeColor: AppColors.gold,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 32),
 
             // Upload button
@@ -604,6 +660,8 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
       fileUrl: fileUrl,
       fileSizeBytes: _selectedFile!.size,
       isPublic: _isPublic,
+      isSchoolDocument: _isSchoolDocument,
+      isDepartmentDocument: _isDepartmentDocument,
       tags: _tags.isEmpty ? null : _tags,
     );
 

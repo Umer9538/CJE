@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/constants/enums.dart';
 import '../../core/repositories/user_repository.dart';
+import '../../core/repositories/activity_repository.dart';
 import '../../core/services/csv_import_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
@@ -15,9 +16,9 @@ final adminUserRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository();
 });
 
-/// All users provider
+/// All users provider - use sparingly, fetches ALL users
 final allUsersProvider = FutureProvider<List<UserModel>>((ref) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider); // Use read to avoid rebuilds
   if (currentUser == null) {
     return <UserModel>[];
   }
@@ -34,9 +35,26 @@ final allUsersProvider = FutureProvider<List<UserModel>>((ref) async {
   }
 });
 
+/// User count provider - lightweight, only fetches count
+final userCountProvider = FutureProvider<int>((ref) async {
+  final currentUser = ref.read(currentUserProvider);
+  if (currentUser == null) return 0;
+
+  final repository = ref.read(adminUserRepositoryProvider);
+  try {
+    return await repository.getUserCount().timeout(
+      const Duration(seconds: 5),
+      onTimeout: () => 0,
+    );
+  } catch (e) {
+    debugPrint('userCountProvider: error $e');
+    return 0;
+  }
+});
+
 /// Users by role provider
 final usersByRoleProvider = FutureProvider.family<List<UserModel>, UserRole>((ref, role) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
@@ -54,7 +72,7 @@ final usersByRoleProvider = FutureProvider.family<List<UserModel>, UserRole>((re
 
 /// Pending users provider
 final pendingUsersProvider = FutureProvider<List<UserModel>>((ref) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
@@ -74,7 +92,7 @@ final pendingUsersProvider = FutureProvider<List<UserModel>>((ref) async {
 
 /// Single user provider
 final adminUserProvider = FutureProvider.family<UserModel?, String>((ref, userId) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return null;
   }
@@ -85,7 +103,7 @@ final adminUserProvider = FutureProvider.family<UserModel?, String>((ref, userId
 
 /// Filtered users provider
 final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>((ref, filter) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
@@ -186,12 +204,12 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   AdminController(this._repository, this._ref) : super(const AsyncValue.data(null));
 
   /// Check if current user can manage users
+  /// Only BEX and Superadmin can manage accounts
   bool get canManageUsers {
     final user = _ref.read(currentUserProvider);
     if (user == null) return false;
     return user.role == UserRole.bex ||
-           user.role == UserRole.superadmin ||
-           user.role == UserRole.schoolRep;
+           user.role == UserRole.superadmin;
   }
 
   /// Check if current user can change roles (only bex and superadmin)
@@ -203,17 +221,25 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
   /// Change user role
   Future<bool> changeUserRole(String userId, UserRole newRole) async {
-    if (!canChangeRoles) return false;
+    debugPrint('AdminController.changeUserRole: canChangeRoles=$canChangeRoles');
+    if (!canChangeRoles) {
+      debugPrint('AdminController.changeUserRole: Permission denied');
+      return false;
+    }
 
     state = const AsyncValue.loading();
 
+    debugPrint('AdminController.changeUserRole: Calling repository...');
     final success = await _repository.changeUserRole(userId, newRole);
+    debugPrint('AdminController.changeUserRole: Repository returned $success');
 
     if (success) {
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
+      debugPrint('AdminController.changeUserRole: Providers invalidated');
     } else {
       state = AsyncValue.error('Failed to change role', StackTrace.current);
+      debugPrint('AdminController.changeUserRole: Failed to change role');
     }
 
     return success;
@@ -225,11 +251,26 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
     state = const AsyncValue.loading();
 
+    // Get user details before approving for logging
+    final userToApprove = await _repository.getUserById(userId);
+
     final success = await _repository.approveUser(userId);
 
     if (success) {
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
+
+      // Log the activity
+      if (userToApprove != null) {
+        final activityRepo = _ref.read(activityRepositoryProvider);
+        final currentUser = _ref.read(currentUserProvider);
+        await activityRepo.logUserApproved(
+          userId: userId,
+          userName: userToApprove.fullName,
+          approvedBy: currentUser?.fullName,
+        );
+        _ref.invalidate(recentActivitiesProvider);
+      }
     } else {
       state = AsyncValue.error('Failed to approve user', StackTrace.current);
     }
@@ -521,11 +562,11 @@ final adminControllerProvider =
 });
 
 /// Check if current user has admin access
+/// Only BEX and Superadmin can access admin panel
 final hasAdminAccessProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
-  return user.role == UserRole.schoolRep ||
-         user.role == UserRole.bex ||
+  return user.role == UserRole.bex ||
          user.role == UserRole.superadmin;
 });
 
@@ -538,7 +579,7 @@ final canChangeRolesProvider = Provider<bool>((ref) {
 
 /// Users by school provider
 final usersBySchoolProvider = FutureProvider.family<List<UserModel>, String>((ref, schoolId) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
@@ -552,4 +593,36 @@ final usersBySchoolProvider = FutureProvider.family<List<UserModel>, String>((re
   } catch (e) {
     return <UserModel>[];
   }
+});
+
+// ==================== ACTIVITY PROVIDERS ====================
+
+/// Activity repository provider
+final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
+  return ActivityRepository();
+});
+
+/// Recent activities provider
+final recentActivitiesProvider = FutureProvider<List<ActivityModel>>((ref) async {
+  final currentUser = ref.read(currentUserProvider);
+  if (currentUser == null) {
+    return <ActivityModel>[];
+  }
+
+  final repository = ref.read(activityRepositoryProvider);
+  try {
+    return await repository.getRecentActivities(limit: 10).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => <ActivityModel>[],
+    );
+  } catch (e) {
+    debugPrint('recentActivitiesProvider: error $e');
+    return <ActivityModel>[];
+  }
+});
+
+/// Recent activities stream provider
+final recentActivitiesStreamProvider = StreamProvider<List<ActivityModel>>((ref) {
+  final repository = ref.watch(activityRepositoryProvider);
+  return repository.getActivitiesStream(limit: 10);
 });

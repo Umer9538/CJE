@@ -102,63 +102,68 @@ class ThemeSettingsTile extends ConsumerWidget {
   void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true, // Show above bottom navigation bar
+      isScrollControlled: true, // Allow custom sizing
       builder: (bottomSheetContext) {
         return Consumer(
           builder: (context, ref, child) {
             final themeMode = ref.watch(themeModeProvider);
 
             return SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(AppSizes.paddingMD),
-                    child: Text(
-                      'Selectează aspectul',
-                      style: Theme.of(context).textTheme.titleLarge,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 100), // Space for floating nav bar
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(AppSizes.paddingMD),
+                      child: Text(
+                        'Selectează aspectul',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                     ),
-                  ),
-                  _buildThemeOption(
-                    context: context,
-                    ref: ref,
-                    title: 'Sistem',
-                    subtitle: 'Urmează setările dispozitivului',
-                    icon: Icons.settings_suggest_rounded,
-                    mode: ThemeMode.system,
-                    currentMode: themeMode,
-                    onTap: () {
-                      ref.read(themeModeProvider.notifier).setSystemTheme();
-                      Navigator.pop(bottomSheetContext);
-                    },
-                  ),
-                  _buildThemeOption(
-                    context: context,
-                    ref: ref,
-                    title: 'Temă deschisă',
-                    subtitle: 'Aspect luminos',
-                    icon: Icons.light_mode_rounded,
-                    mode: ThemeMode.light,
-                    currentMode: themeMode,
-                    onTap: () {
-                      ref.read(themeModeProvider.notifier).setLightTheme();
-                      Navigator.pop(bottomSheetContext);
-                    },
-                  ),
-                  _buildThemeOption(
-                    context: context,
-                    ref: ref,
-                    title: 'Temă întunecată',
-                    subtitle: 'Aspect întunecat',
-                    icon: Icons.dark_mode_rounded,
-                    mode: ThemeMode.dark,
-                    currentMode: themeMode,
-                    onTap: () {
-                      ref.read(themeModeProvider.notifier).setDarkTheme();
-                      Navigator.pop(bottomSheetContext);
-                    },
-                  ),
-                  const SizedBox(height: AppSizes.spacing16),
-                ],
+                    _buildThemeOption(
+                      context: context,
+                      ref: ref,
+                      title: 'Sistem',
+                      subtitle: 'Urmează setările dispozitivului',
+                      icon: Icons.settings_suggest_rounded,
+                      mode: ThemeMode.system,
+                      currentMode: themeMode,
+                      onTap: () {
+                        ref.read(themeModeProvider.notifier).setSystemTheme();
+                        Navigator.pop(bottomSheetContext);
+                      },
+                    ),
+                    _buildThemeOption(
+                      context: context,
+                      ref: ref,
+                      title: 'Temă deschisă',
+                      subtitle: 'Aspect luminos',
+                      icon: Icons.light_mode_rounded,
+                      mode: ThemeMode.light,
+                      currentMode: themeMode,
+                      onTap: () {
+                        ref.read(themeModeProvider.notifier).setLightTheme();
+                        Navigator.pop(bottomSheetContext);
+                      },
+                    ),
+                    _buildThemeOption(
+                      context: context,
+                      ref: ref,
+                      title: 'Temă întunecată',
+                      subtitle: 'Aspect întunecat',
+                      icon: Icons.dark_mode_rounded,
+                      mode: ThemeMode.dark,
+                      currentMode: themeMode,
+                      onTap: () {
+                        ref.read(themeModeProvider.notifier).setDarkTheme();
+                        Navigator.pop(bottomSheetContext);
+                      },
+                    ),
+                    const SizedBox(height: AppSizes.spacing16),
+                  ],
+                ),
               ),
             );
           },

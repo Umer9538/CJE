@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../../routes/route_names.dart';
+import 'upload_document_screen.dart';
 
 /// Main documents list screen
 /// Students can VIEW documents but CANNOT upload
@@ -56,14 +60,12 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
     final documentsAsync = ref.watch(
       documentsProvider(DocumentFilter(category: _selectedCategory)),
     );
 
-    // Only bex and superadmin can upload documents
-    final canUpload = user != null &&
-        (user.role == UserRole.bex || user.role == UserRole.superadmin);
+    // SchoolRep can upload school documents, BEX/Superadmin can upload any
+    final canUpload = ref.watch(canUploadDocumentsProvider);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -92,13 +94,16 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
         ),
       ),
       floatingActionButton: canUpload
-          ? FloatingActionButton.extended(
-              heroTag: 'fab_documents',
-              onPressed: () => _showUploadInfo(context),
-              backgroundColor: AppColors.gold,
-              foregroundColor: AppColors.navy,
-              icon: const Icon(Icons.upload_rounded),
-              label: Text(l10n.translate('upload')),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 70),
+              child: FloatingActionButton.extended(
+                heroTag: 'fab_documents',
+                onPressed: () => _showUploadInfo(context),
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.navy,
+                icon: const Icon(Icons.upload_rounded),
+                label: Text(l10n.translate('upload')),
+              ),
             )
           : null,
     );
@@ -109,6 +114,27 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
+          // Back button - navigate to home
+          GestureDetector(
+            onTap: () => context.go(RouteNames.home),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.arrow_back_rounded, color: AppColors.navy, size: 22),
+            ),
+          ),
+          const SizedBox(width: 16),
           Text(
             l10n.translate('documents'),
             style: const TextStyle(
@@ -271,9 +297,49 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
           document: document,
           onTap: () => _openDocument(document),
           onDownload: () => _downloadDocument(document),
+          onDelete: () => _deleteDocument(document),
         );
       },
     );
+  }
+
+  Future<void> _deleteDocument(DocumentModel document) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.translate('delete_document')),
+        content: Text(l10n.translate('delete_document_confirm')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.translate('cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(l10n.translate('delete')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await ref
+          .read(documentControllerProvider.notifier)
+          .deleteDocument(document.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(success
+                ? l10n.translate('document_deleted')
+                : l10n.translate('error_deleting_document')),
+            backgroundColor: success ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _openDocument(DocumentModel document) async {
@@ -296,26 +362,33 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
   }
 
   void _showUploadInfo(BuildContext context) {
-    // TODO: Implement file upload with Firebase Storage
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Document upload coming soon')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const UploadDocumentScreen()),
     );
   }
 }
 
-class _DocumentCard extends StatelessWidget {
+class _DocumentCard extends ConsumerWidget {
   final DocumentModel document;
   final VoidCallback onTap;
   final VoidCallback onDownload;
+  final VoidCallback onDelete;
 
   const _DocumentCard({
     required this.document,
     required this.onTap,
     required this.onDownload,
+    required this.onDelete,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    final canDelete = user != null &&
+        (user.role == UserRole.bex || user.role == UserRole.superadmin);
+    final yearFormat = DateFormat('yyyy');
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -366,7 +439,10 @@ class _DocumentCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  // Category, Type, Size, Year row
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -386,64 +462,87 @@ class _DocumentCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Text(
                         document.fileType.displayName,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[500],
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                       ),
-                      const SizedBox(width: 8),
                       Text(
                         document.fileSizeFormatted,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[500],
-                        ),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                      Text(
+                        yearFormat.format(document.createdAt),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                       ),
                     ],
                   ),
-                  if (document.downloadCount > 0) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.download_rounded,
-                          size: 12,
-                          color: Colors.grey[400],
+                  const SizedBox(height: 4),
+                  // Issuer row
+                  Row(
+                    children: [
+                      Icon(Icons.person_outline_rounded, size: 12, color: Colors.grey[400]),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          document.uploadedByName,
+                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 4),
+                      ),
+                      if (document.downloadCount > 0) ...[
+                        Icon(Icons.download_rounded, size: 12, color: Colors.grey[400]),
+                        const SizedBox(width: 2),
                         Text(
-                          '${document.downloadCount} downloads',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[400],
-                          ),
+                          '${document.downloadCount}',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                         ),
                       ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ],
               ),
             ),
 
-            // Download button
-            IconButton(
-              onPressed: onDownload,
-              icon: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+            // Actions column
+            Column(
+              children: [
+                // Download button
+                IconButton(
+                  onPressed: onDownload,
+                  icon: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.download_rounded,
+                      color: AppColors.gold,
+                      size: 18,
+                    ),
+                  ),
                 ),
-                child: const Icon(
-                  Icons.download_rounded,
-                  color: AppColors.gold,
-                  size: 20,
-                ),
-              ),
+                // Delete button (only for BEX/admin)
+                if (canDelete)
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.delete_outline_rounded,
+                        color: Colors.red,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ],
         ),

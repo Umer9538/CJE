@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/core.dart';
@@ -137,6 +138,69 @@ final isLoggedInProvider = Provider<bool>((ref) {
   return ref.watch(authControllerProvider).isAuthenticated;
 });
 
+/// User statistics model
+class UserStats {
+  final int totalVotes;
+  final int initiativesCount;
+  final int meetingsAttended;
+
+  const UserStats({
+    this.totalVotes = 0,
+    this.initiativesCount = 0,
+    this.meetingsAttended = 0,
+  });
+}
+
+/// User statistics provider - fetches real counts for the current user
+/// Uses efficient queries to avoid loading all documents
+final userStatsProvider = FutureProvider<UserStats>((ref) async {
+  final user = ref.read(currentUserProvider); // Use read to avoid rebuilds
+  if (user == null) return const UserStats();
+
+  final firestore = FirebaseFirestore.instance;
+
+  try {
+    // Use parallel futures for efficiency
+    final results = await Future.wait([
+      // Count votes - use array-contains query instead of scanning all polls
+      firestore
+          .collection('polls')
+          .where('voterIds', arrayContains: user.id)
+          .count()
+          .get()
+          .then((q) => q.count ?? 0)
+          .timeout(const Duration(seconds: 5), onTimeout: () => 0),
+
+      // Count initiatives created by user
+      firestore
+          .collection('initiatives')
+          .where('authorId', isEqualTo: user.id)
+          .count()
+          .get()
+          .then((q) => q.count ?? 0)
+          .timeout(const Duration(seconds: 5), onTimeout: () => 0),
+
+      // Count meetings attended by user
+      firestore
+          .collection('meetings')
+          .where('attendeeIds', arrayContains: user.id)
+          .count()
+          .get()
+          .then((q) => q.count ?? 0)
+          .timeout(const Duration(seconds: 5), onTimeout: () => 0),
+    ]);
+
+    return UserStats(
+      totalVotes: results[0],
+      initiativesCount: results[1],
+      meetingsAttended: results[2],
+    );
+  } catch (e) {
+    debugPrint('userStatsProvider error: $e');
+    return const UserStats();
+  }
+});
+
 /// Auth controller
 class AuthController extends StateNotifier<AuthStateData> {
   final Ref _ref;
@@ -144,6 +208,7 @@ class AuthController extends StateNotifier<AuthStateData> {
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
   AuthState? _lastEmittedState; // Track last emitted state to prevent duplicates
+  bool _hasUpdatedLastLogin = false; // Prevent multiple lastLogin updates per session
 
   AuthController(this._ref) : super(AuthStateData.initial()) {
     _init();
@@ -175,10 +240,11 @@ class AuthController extends StateNotifier<AuthStateData> {
     if (_lastEmittedState != newState.state) {
       _lastEmittedState = newState.state;
       state = newState;
-    } else if (newState.user != state.user) {
-      // Also update if user data changed (but same state type)
+    } else if (state.user?.id != newState.user?.id) {
+      // Only update if user ID changed (different user), not for minor field updates
       state = newState;
     }
+    // Don't update state for minor user data changes like lastLogin
   }
 
   /// Load user profile from Firestore
@@ -221,8 +287,11 @@ class AuthController extends StateNotifier<AuthStateData> {
                   user,
                   isEmailVerified: firebaseUser.emailVerified || skipEmailVerification,
                 ));
-                // Update last login
-                _userRepository.updateLastLogin(user.id);
+                // Update last login only once per session to prevent infinite loop
+                if (!_hasUpdatedLastLogin) {
+                  _hasUpdatedLastLogin = true;
+                  _userRepository.updateLastLogin(user.id);
+                }
               }
               break;
           }
@@ -306,7 +375,7 @@ class AuthController extends StateNotifier<AuthStateData> {
         phoneNumber: phoneNumber,
         city: city,
         role: UserRole.student,
-        status: UserStatus.active, // Auto-approve for now (change to pending when admin panel is ready)
+        status: UserStatus.pending, // Requires admin/BEX approval
         schoolId: schoolId,
         schoolName: school?.name,
         className: className,
@@ -314,10 +383,23 @@ class AuthController extends StateNotifier<AuthStateData> {
         updatedAt: DateTime.now(),
       );
 
-      final success = await _userRepository.createUser(userModel);
+      // Create user in Firestore with retry
+      bool success = await _userRepository.createUser(userModel);
+
+      // Retry once if failed
+      if (!success) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        success = await _userRepository.createUser(userModel);
+      }
+
       if (!success) {
         // If Firestore fails, delete the Firebase Auth account
-        await result.user?.delete();
+        debugPrint('Failed to create user in Firestore, deleting Firebase Auth account');
+        try {
+          await result.user?.delete();
+        } catch (deleteError) {
+          debugPrint('Error deleting Firebase Auth account: $deleteError');
+        }
         state = AuthStateData.error('Eroare la salvarea profilului');
         return AuthResult.failure('Eroare la salvarea profilului');
       }
@@ -332,14 +414,19 @@ class AuthController extends StateNotifier<AuthStateData> {
 
       return result;
     } catch (e) {
+      debugPrint('Error creating user profile: $e');
       // If Firestore fails, delete the Firebase Auth account
-      await result.user?.delete();
+      try {
+        await result.user?.delete();
+      } catch (deleteError) {
+        debugPrint('Error deleting Firebase Auth account: $deleteError');
+      }
       state = AuthStateData.error('Eroare la salvarea profilului');
       return AuthResult.failure('Eroare la salvarea profilului');
     }
   }
 
-  /// Create profile for Google sign-in user
+  /// Create profile for Google sign-in user (also works for email users without Firestore profile)
   Future<bool> createGoogleUserProfile({
     required String fullName,
     required String schoolId,
@@ -348,7 +435,10 @@ class AuthController extends StateNotifier<AuthStateData> {
     String? className,
   }) async {
     final firebaseUser = _authService.currentUser;
-    if (firebaseUser == null) return false;
+    if (firebaseUser == null) {
+      debugPrint('createGoogleUserProfile: No Firebase user');
+      return false;
+    }
 
     try {
       final school = await _schoolRepository.getSchoolById(schoolId);
@@ -361,7 +451,7 @@ class AuthController extends StateNotifier<AuthStateData> {
         phoneNumber: phoneNumber,
         city: city,
         role: UserRole.student,
-        status: UserStatus.active, // Auto-approve for now
+        status: UserStatus.pending, // Requires admin/BEX approval
         schoolId: schoolId,
         schoolName: school?.name,
         className: className,
@@ -369,8 +459,22 @@ class AuthController extends StateNotifier<AuthStateData> {
         updatedAt: DateTime.now(),
       );
 
-      final success = await _userRepository.createUser(userModel);
-      if (!success) return false;
+      // Create user in Firestore with retry
+      bool success = await _userRepository.createUser(userModel);
+
+      // Retry once if failed
+      if (!success) {
+        debugPrint('createGoogleUserProfile: First attempt failed, retrying...');
+        await Future.delayed(const Duration(milliseconds: 500));
+        success = await _userRepository.createUser(userModel);
+      }
+
+      if (!success) {
+        debugPrint('createGoogleUserProfile: Failed to create user in Firestore');
+        return false;
+      }
+
+      debugPrint('createGoogleUserProfile: User created successfully');
 
       // Increment school student count
       if (schoolId.isNotEmpty) {
@@ -381,6 +485,7 @@ class AuthController extends StateNotifier<AuthStateData> {
       await _loadUserProfile(firebaseUser);
       return true;
     } catch (e) {
+      debugPrint('createGoogleUserProfile error: $e');
       return false;
     }
   }
@@ -482,6 +587,7 @@ class AuthController extends StateNotifier<AuthStateData> {
   Future<void> signOut() async {
     _userSubscription?.cancel();
     _lastEmittedState = null; // Reset state tracking
+    _hasUpdatedLastLogin = false; // Reset last login flag for next session
     await _authService.signOut();
     state = AuthStateData.unauthenticated();
   }
@@ -524,6 +630,33 @@ class AuthController extends StateNotifier<AuthStateData> {
   /// Update password
   Future<AuthResult> updatePassword(String newPassword) async {
     return await _authService.updatePassword(newPassword);
+  }
+
+  /// Change password (reauthenticate + update)
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = state.user;
+    if (user == null || user.email == null) {
+      throw Exception('Nu există utilizator autentificat');
+    }
+
+    // First reauthenticate
+    final reauthResult = await _authService.reauthenticate(
+      email: user.email!,
+      password: currentPassword,
+    );
+
+    if (!reauthResult.success) {
+      throw Exception('Parola curentă este incorectă');
+    }
+
+    // Then update password
+    final updateResult = await _authService.updatePassword(newPassword);
+    if (!updateResult.success) {
+      throw Exception(updateResult.errorMessage ?? 'Eroare la schimbarea parolei');
+    }
   }
 
   @override

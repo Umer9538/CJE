@@ -21,7 +21,8 @@ class MeetingModel extends Equatable {
   final String createdByName;
   final List<String> agendaItems;
   final List<String> attendeeIds; // Invited users
-  final String? minutesDocumentUrl; // Meeting minutes PDF
+  final List<MeetingDocument> documents; // Meeting documents
+  final String? minutesDocumentUrl; // Meeting minutes PDF (legacy)
   final bool isCompleted;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -43,6 +44,7 @@ class MeetingModel extends Equatable {
     required this.createdByName,
     this.agendaItems = const [],
     this.attendeeIds = const [],
+    this.documents = const [],
     this.minutesDocumentUrl,
     this.isCompleted = false,
     required this.createdAt,
@@ -108,6 +110,9 @@ class MeetingModel extends Equatable {
       createdByName: data['createdByName'] as String? ?? '',
       agendaItems: List<String>.from(data['agendaItems'] ?? []),
       attendeeIds: List<String>.from(data['attendeeIds'] ?? []),
+      documents: (data['documents'] as List<dynamic>?)
+          ?.map((d) => MeetingDocument.fromMap(d as Map<String, dynamic>))
+          .toList() ?? [],
       minutesDocumentUrl: data['minutesDocumentUrl'] as String?,
       isCompleted: data['isCompleted'] as bool? ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -133,6 +138,7 @@ class MeetingModel extends Equatable {
       'createdByName': createdByName,
       'agendaItems': agendaItems,
       'attendeeIds': attendeeIds,
+      'documents': documents.map((d) => d.toMap()).toList(),
       'minutesDocumentUrl': minutesDocumentUrl,
       'isCompleted': isCompleted,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -158,6 +164,7 @@ class MeetingModel extends Equatable {
     String? createdByName,
     List<String>? agendaItems,
     List<String>? attendeeIds,
+    List<MeetingDocument>? documents,
     String? minutesDocumentUrl,
     bool? isCompleted,
     DateTime? createdAt,
@@ -180,6 +187,7 @@ class MeetingModel extends Equatable {
       createdByName: createdByName ?? this.createdByName,
       agendaItems: agendaItems ?? this.agendaItems,
       attendeeIds: attendeeIds ?? this.attendeeIds,
+      documents: documents ?? this.documents,
       minutesDocumentUrl: minutesDocumentUrl ?? this.minutesDocumentUrl,
       isCompleted: isCompleted ?? this.isCompleted,
       createdAt: createdAt ?? this.createdAt,
@@ -205,6 +213,7 @@ class MeetingModel extends Equatable {
         createdByName,
         agendaItems,
         attendeeIds,
+        documents,
         minutesDocumentUrl,
         isCompleted,
         createdAt,
@@ -258,4 +267,46 @@ class MeetingAttendance extends Equatable {
 
   @override
   List<Object?> get props => [id, meetingId, userId, userName, status, checkInTime, notes];
+}
+
+/// Meeting document model
+class MeetingDocument extends Equatable {
+  final String id;
+  final String name;
+  final String url;
+  final String? fileType; // pdf, docx, etc.
+  final DateTime uploadedAt;
+
+  const MeetingDocument({
+    required this.id,
+    required this.name,
+    required this.url,
+    this.fileType,
+    required this.uploadedAt,
+  });
+
+  factory MeetingDocument.fromMap(Map<String, dynamic> data) {
+    return MeetingDocument(
+      id: data['id'] as String? ?? '',
+      name: data['name'] as String? ?? '',
+      url: data['url'] as String? ?? '',
+      fileType: data['fileType'] as String?,
+      uploadedAt: data['uploadedAt'] is Timestamp
+          ? (data['uploadedAt'] as Timestamp).toDate()
+          : DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'url': url,
+      'fileType': fileType,
+      'uploadedAt': Timestamp.fromDate(uploadedAt),
+    };
+  }
+
+  @override
+  List<Object?> get props => [id, name, url, fileType, uploadedAt];
 }

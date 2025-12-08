@@ -419,47 +419,52 @@ class TranslationSettingsTile extends ConsumerWidget {
   void _showProviderDialog(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true, // Show above bottom navigation bar
+      isScrollControlled: true, // Allow custom sizing
       builder: (bottomSheetContext) {
         return Consumer(
           builder: (context, ref, child) {
             final settings = ref.watch(translationSettingsProvider);
 
             return SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(AppSizes.paddingMD),
-                    child: Text(
-                      'Selectează furnizorul',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  ...TranslationProvider.values.map((provider) {
-                    final isSelected = provider == settings.provider;
-                    return ListTile(
-                      leading: Icon(
-                        provider == TranslationProvider.google
-                            ? Icons.g_mobiledata
-                            : provider == TranslationProvider.deepL
-                                ? Icons.translate
-                                : provider == TranslationProvider.libre
-                                    ? Icons.public
-                                    : Icons.block,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 100), // Space for floating nav bar
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(AppSizes.paddingMD),
+                      child: Text(
+                        'Selectează furnizorul',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      title: Text(_getProviderName(provider)),
-                      trailing: isSelected
-                          ? Icon(Icons.check_circle,
-                              color: Theme.of(context).colorScheme.primary)
-                          : const Icon(Icons.circle_outlined),
-                      onTap: () {
-                        ref.read(translationSettingsProvider.notifier).setProvider(provider);
-                        Navigator.pop(bottomSheetContext);
-                      },
-                    );
-                  }),
-                  const SizedBox(height: AppSizes.spacing16),
-                ],
+                    ),
+                    ...TranslationProvider.values.map((provider) {
+                      final isSelected = provider == settings.provider;
+                      return ListTile(
+                        leading: Icon(
+                          provider == TranslationProvider.google
+                              ? Icons.g_mobiledata
+                              : provider == TranslationProvider.deepL
+                                  ? Icons.translate
+                                  : provider == TranslationProvider.libre
+                                      ? Icons.public
+                                      : Icons.block,
+                        ),
+                        title: Text(_getProviderName(provider)),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary)
+                            : const Icon(Icons.circle_outlined),
+                        onTap: () {
+                          ref.read(translationSettingsProvider.notifier).setProvider(provider);
+                          Navigator.pop(bottomSheetContext);
+                        },
+                      );
+                    }),
+                    const SizedBox(height: AppSizes.spacing16),
+                  ],
+                ),
               ),
             );
           },

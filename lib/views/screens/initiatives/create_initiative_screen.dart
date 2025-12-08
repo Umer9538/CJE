@@ -76,7 +76,7 @@ class _CreateInitiativeScreenState
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
           children: [
             // Info card
             Container(

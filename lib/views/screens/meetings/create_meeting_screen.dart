@@ -7,7 +7,12 @@ import '../../../core/core.dart';
 
 /// Screen for creating a new meeting
 class CreateMeetingScreen extends ConsumerStatefulWidget {
-  const CreateMeetingScreen({super.key});
+  final MeetingType? preselectedType;
+
+  const CreateMeetingScreen({
+    super.key,
+    this.preselectedType,
+  });
 
   @override
   ConsumerState<CreateMeetingScreen> createState() =>
@@ -21,7 +26,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
   final _locationController = TextEditingController();
   final _onlineLinkController = TextEditingController();
 
-  MeetingType _selectedType = MeetingType.school;
+  late MeetingType _selectedType;
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   TimeOfDay _selectedTime = const TimeOfDay(hour: 10, minute: 0);
   int _duration = 60;
@@ -30,6 +35,12 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
 
   final List<String> _agendaItems = [];
   final _agendaController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedType = widget.preselectedType ?? MeetingType.school;
+  }
 
   @override
   void dispose() {

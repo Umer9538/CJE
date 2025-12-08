@@ -4,6 +4,7 @@ import '../../core/repositories/poll_repository.dart';
 import '../../core/constants/enums.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
+import '../admin/admin_controller.dart';
 
 /// Poll repository provider
 final pollRepositoryProvider = Provider<PollRepository>((ref) {
@@ -19,10 +20,14 @@ final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, f
 
   final repository = ref.read(pollRepositoryProvider);
 
+  // For superadmin and bex, show all polls without schoolId filter
+  // For regular users, filter by their schoolId (county polls are always visible)
+  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+
   try {
     return await repository.getPolls(
       type: filter.type,
-      schoolId: user.schoolId,
+      schoolId: shouldFilterBySchool ? user.schoolId : null,
       activeOnly: filter.activeOnly,
       limit: filter.limit,
     ).timeout(
@@ -52,16 +57,20 @@ final pollProvider = FutureProvider.family<PollModel?, String>((ref, id) async {
 
 /// Active polls for home screen
 final activePollsProvider = FutureProvider<List<PollModel>>((ref) async {
-  final user = ref.read(currentUserProvider);
+  final user = ref.read(currentUserProvider); // Use read to avoid rebuilds
   if (user == null) {
     return <PollModel>[];
   }
 
   final repository = ref.read(pollRepositoryProvider);
 
+  // For superadmin and bex, show all active polls without schoolId filter
+  // For regular users, filter by their schoolId (county polls are always visible)
+  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+
   try {
     return await repository.getActivePolls(
-      schoolId: user.schoolId,
+      schoolId: shouldFilterBySchool ? user.schoolId : null,
       limit: 5,
     ).timeout(
       const Duration(seconds: 10),
@@ -171,6 +180,15 @@ class PollController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       _ref.invalidate(pollsProvider);
       _ref.invalidate(activePollsProvider);
+
+      // Log activity
+      final activityRepo = _ref.read(activityRepositoryProvider);
+      await activityRepo.logPollCreated(
+        pollId: id,
+        pollQuestion: question,
+        createdBy: user.fullName,
+      );
+      _ref.invalidate(recentActivitiesProvider);
     } else {
       state = AsyncValue.error('Failed to create poll', StackTrace.current);
     }
@@ -227,4 +245,27 @@ final pollControllerProvider =
     ref.watch(pollRepositoryProvider),
     ref,
   );
+});
+
+/// Check if current user can create polls
+/// SchoolRep can create school polls, BEX/Superadmin can create any
+final canCreatePollsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.schoolRep ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can create county-level polls (BEX only)
+final canCreateCountyPollsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.bex || user.role == UserRole.superadmin;
+});
+
+/// Check if current user can vote on polls (all authenticated users can vote)
+final canVoteOnPollsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  return user != null;
 });

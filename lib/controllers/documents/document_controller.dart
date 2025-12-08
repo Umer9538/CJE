@@ -76,7 +76,10 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
 
   DocumentController(this._repository, this._ref) : super(const AsyncValue.data(null));
 
-  /// Create new document (only bex, superadmin can upload)
+  /// Create new document
+  /// - BEX and Superadmin can upload any document (county-level)
+  /// - SchoolRep can upload school-level documents only
+  /// - Department can upload department-level documents only
   Future<String?> createDocument({
     required String title,
     String? description,
@@ -85,6 +88,8 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
     required String fileUrl,
     int fileSizeBytes = 0,
     bool isPublic = true,
+    bool isSchoolDocument = false,
+    bool isDepartmentDocument = false,
     List<String>? tags,
   }) async {
     state = const AsyncValue.loading();
@@ -95,8 +100,21 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
-    // Permission check - only bex and superadmin can upload documents
-    if (user.role != UserRole.bex && user.role != UserRole.superadmin) {
+    // Permission check
+    // - BEX and Superadmin can upload any document
+    // - SchoolRep can only upload school-level documents
+    // - Department can only upload department-level documents
+    if (user.role == UserRole.schoolRep) {
+      if (!isSchoolDocument) {
+        state = AsyncValue.error('School representatives can only upload school documents', StackTrace.current);
+        return null;
+      }
+    } else if (user.role == UserRole.department) {
+      if (!isDepartmentDocument) {
+        state = AsyncValue.error('Department members can only upload department documents', StackTrace.current);
+        return null;
+      }
+    } else if (user.role != UserRole.bex && user.role != UserRole.superadmin) {
       state = AsyncValue.error('Permission denied', StackTrace.current);
       return null;
     }
@@ -111,8 +129,10 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
       fileSizeBytes: fileSizeBytes,
       uploadedById: user.id,
       uploadedByName: user.fullName,
+      schoolId: isSchoolDocument ? user.schoolId : null,
+      schoolName: isSchoolDocument ? user.schoolName : null,
       isPublic: isPublic,
-      tags: tags ?? [],
+      tags: isDepartmentDocument ? [...(tags ?? []), 'department:${user.department?.name ?? 'unknown'}'] : tags ?? [],
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -175,4 +195,32 @@ final documentControllerProvider =
     ref.watch(documentRepositoryProvider),
     ref,
   );
+});
+
+/// Check if current user can upload documents
+/// SchoolRep can upload school documents, Department can upload department documents
+/// BEX/Superadmin can upload any
+final canUploadDocumentsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.schoolRep ||
+         user.role == UserRole.department ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can upload county-level documents (not school-specific)
+final canUploadCountyDocumentsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.bex || user.role == UserRole.superadmin;
+});
+
+/// Check if current user can upload department-level documents
+final canUploadDepartmentDocumentsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.department ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
 });

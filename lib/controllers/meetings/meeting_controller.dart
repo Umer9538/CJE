@@ -55,7 +55,7 @@ final meetingProvider = FutureProvider.family<MeetingModel?, String>((ref, id) a
 
 /// Upcoming meetings for home screen
 final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async {
-  final user = ref.read(currentUserProvider);
+  final user = ref.read(currentUserProvider); // Use read instead of watch to avoid rebuilds
   if (user == null) {
     return <MeetingModel>[];
   }
@@ -130,7 +130,30 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
 
   MeetingController(this._repository, this._ref) : super(const AsyncValue.data(null));
 
+  /// Check if user can create/edit a specific meeting type
+  bool _canManageMeetingType(UserRole role, MeetingType type) {
+    // County AG and BEX meetings can only be managed by BEX and Superadmin
+    if (type == MeetingType.countyAG || type == MeetingType.bex) {
+      return role == UserRole.bex || role == UserRole.superadmin;
+    }
+    // School meetings can be managed by schoolRep, bex, superadmin (NOT department)
+    if (type == MeetingType.school) {
+      return role == UserRole.schoolRep ||
+             role == UserRole.bex ||
+             role == UserRole.superadmin;
+    }
+    // Department meetings can be managed by department, bex, superadmin
+    if (type == MeetingType.department) {
+      return role == UserRole.department ||
+             role == UserRole.bex ||
+             role == UserRole.superadmin;
+    }
+    return false;
+  }
+
   /// Create new meeting
+  /// - SchoolRep can create school and department meetings only
+  /// - BEX and Superadmin can create any meeting type
   Future<String?> createMeeting({
     required String title,
     required MeetingType type,
@@ -148,6 +171,12 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     final user = _ref.read(currentUserProvider);
     if (user == null) {
       state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return null;
+    }
+
+    // Permission check
+    if (!_canManageMeetingType(user.role, type)) {
+      state = AsyncValue.error('Permission denied: Cannot create ${type.displayName} meetings', StackTrace.current);
       return null;
     }
 
@@ -187,8 +216,22 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Update meeting
+  /// - SchoolRep can only update school and department meetings
+  /// - Cannot edit county AG or BEX meetings
   Future<bool> updateMeeting(MeetingModel meeting) async {
     state = const AsyncValue.loading();
+
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return false;
+    }
+
+    // Permission check - cannot edit county AG or BEX meetings unless BEX/Superadmin
+    if (!_canManageMeetingType(user.role, meeting.type)) {
+      state = AsyncValue.error('Permission denied: Cannot edit ${meeting.type.displayName} meetings', StackTrace.current);
+      return false;
+    }
 
     final success = await _repository.updateMeeting(meeting);
 
@@ -272,4 +315,31 @@ final meetingControllerProvider =
     ref.watch(meetingRepositoryProvider),
     ref,
   );
+});
+
+/// Check if current user can create meetings
+/// - BEX and Superadmin can create any meeting type
+/// - SchoolRep can create school meetings
+/// - Department can create department meetings
+final canCreateMeetingsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.schoolRep ||
+         user.role == UserRole.department ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can create county AG meetings (BEX only)
+final canCreateCountyMeetingsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.bex || user.role == UserRole.superadmin;
+});
+
+/// Check if current user can manage attendance (BEX only)
+final canManageAttendanceProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.bex || user.role == UserRole.superadmin;
 });

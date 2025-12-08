@@ -41,9 +41,12 @@ class PollRepository {
       }
 
       // Filter by school if needed
+      // Show: county polls, school polls with matching schoolId, or school polls with null schoolId (all schools)
       if (schoolId != null) {
         polls = polls.where((p) =>
-            p.type == PollType.county || p.schoolId == schoolId).toList();
+            p.type == PollType.county ||
+            p.schoolId == schoolId ||
+            p.schoolId == null).toList();
       }
 
       // Sort by createdAt descending
@@ -96,7 +99,12 @@ class PollRepository {
   /// Create poll
   Future<String?> createPoll(PollModel poll) async {
     try {
-      final docRef = await _collection.add(poll.toFirestore());
+      final docRef = await _collection.add(poll.toFirestore()).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw Exception('Timeout creating poll - Firestore may be unavailable');
+        },
+      );
       return docRef.id;
     } catch (e) {
       debugPrint('Error creating poll: $e');
@@ -204,9 +212,12 @@ class PollRepository {
           .toList();
 
       // Filter by school if needed
+      // Show: county polls, school polls with matching schoolId, or school polls with null schoolId (all schools)
       if (schoolId != null) {
         polls = polls.where((p) =>
-            p.type == PollType.county || p.schoolId == schoolId).toList();
+            p.type == PollType.county ||
+            p.schoolId == schoolId ||
+            p.schoolId == null).toList();
       }
 
       // Sort by endDate ascending (soonest ending first)

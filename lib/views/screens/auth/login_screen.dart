@@ -1,11 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
-import '../../../core/services/create_admin.dart';
 import '../../../routes/route_names.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -28,29 +26,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   String? _errorMessage;
   int _titleTapCount = 0;
-  bool _adminCreated = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _createAdminIfNeeded();
-  }
-
-  Future<void> _createAdminIfNeeded() async {
-    if (kDebugMode && !_adminCreated) {
-      _adminCreated = true;
-      final success = await CreateAdminScript.createDefaultAdmin();
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Admin: superadmin@cje.ro / SuperAdmin@2024'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 5),
-          ),
-        );
-      }
-    }
-  }
 
   @override
   void dispose() {

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../../routes/route_names.dart';
 import 'meeting_detail_screen.dart';
 import 'create_meeting_screen.dart';
 
@@ -55,7 +57,6 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
     final meetingsAsync = ref.watch(
       meetingsProvider(MeetingFilter(
         type: _selectedType,
@@ -63,12 +64,8 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
       )),
     );
 
-    // Check if user can create meetings
-    final canCreate = user != null &&
-        (user.role == UserRole.schoolRep ||
-            user.role == UserRole.department ||
-            user.role == UserRole.bex ||
-            user.role == UserRole.superadmin);
+    // Use the provider for permission check
+    final canCreate = ref.watch(canCreateMeetingsProvider);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -100,13 +97,16 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
         ),
       ),
       floatingActionButton: canCreate
-          ? FloatingActionButton.extended(
-              heroTag: 'fab_meetings',
-              onPressed: () => _navigateToCreate(context),
-              backgroundColor: AppColors.gold,
-              foregroundColor: AppColors.navy,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(l10n.translate('create')),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 70),
+              child: FloatingActionButton.extended(
+                heroTag: 'fab_meetings',
+                onPressed: () => _navigateToCreate(context),
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.navy,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l10n.translate('create')),
+              ),
             )
           : null,
     );
@@ -117,6 +117,27 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
+          // Back button
+          GestureDetector(
+            onTap: () => context.go(RouteNames.home),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.arrow_back_rounded, color: AppColors.navy, size: 22),
+            ),
+          ),
+          const SizedBox(width: 16),
           Text(
             l10n.translate('meetings'),
             style: const TextStyle(
@@ -129,7 +150,8 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
           _buildIconButton(
             icon: Icons.calendar_month_rounded,
             onTap: () {
-              // TODO: Implement calendar view
+              // Navigate to calendar
+              context.push(RouteNames.calendar);
             },
           ),
         ],
@@ -209,9 +231,9 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
         tabAlignment: TabAlignment.start,
         tabs: [
           Tab(text: l10n.translate('all')),
-          const Tab(text: 'Plenară'),
-          Tab(text: l10n.translate('department')),
-          Tab(text: l10n.translate('school')),
+          Tab(text: l10n.translate('meeting_type_county_ag')),
+          Tab(text: l10n.translate('meeting_type_department')),
+          Tab(text: l10n.translate('meeting_type_school')),
         ],
       ),
     );
@@ -477,27 +499,6 @@ class _MeetingCard extends StatelessWidget {
                             color: Colors.green[600],
                           ),
                         ],
-                        if (meeting.isCompleted) ...[
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Completed',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.green,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -580,28 +581,21 @@ class _MeetingCard extends StatelessWidget {
   }
 
   Color _getTypeColor(MeetingType type) {
+    // Colors based on CJE_Platform_Color_Guide.pdf - Meeting Type Colors
     switch (type) {
       case MeetingType.countyAG:
-        return AppColors.gold;
-      case MeetingType.department:
-        return Colors.purple;
-      case MeetingType.school:
-        return AppColors.navy;
+        return AppColors.meetingCountyAG;
       case MeetingType.bex:
-        return Colors.orange;
+        return AppColors.meetingBEX;
+      case MeetingType.department:
+        return AppColors.meetingDepartment;
+      case MeetingType.school:
+        return AppColors.meetingSchool;
     }
   }
 
   String _getTypeLabel(MeetingType type) {
-    switch (type) {
-      case MeetingType.countyAG:
-        return 'AG Județean';
-      case MeetingType.department:
-        return 'Departament';
-      case MeetingType.school:
-        return 'Școală';
-      case MeetingType.bex:
-        return 'BEx';
-    }
+    // Use displayName which is already defined in the enum
+    return type.displayName;
   }
 }

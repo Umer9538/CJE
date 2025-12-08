@@ -10,3 +10,5 @@ export 'poll_model.dart';
 export 'document_model.dart';
 export 'notification_model.dart';
 export 'gds_model.dart';
+export 'activity_model.dart';
+export 'warning_model.dart';

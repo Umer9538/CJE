@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/core.dart';
-import '../announcements/announcements_screen.dart';
-import '../meetings/meetings_screen.dart';
-import '../polls/polls_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_users_screen.dart';
+import 'admin_schools_screen.dart';
+import 'admin_gds_screen.dart';
 
-/// Admin Shell - Main navigation for superadmin users
+/// Admin Shell - Main navigation for admin users (superadmin and BEX)
+/// Navigation sections as per requirements:
+/// - Dashboard (overview with quick actions)
+/// - Users (list with name, school, role, status - click for absences/warnings)
+/// - Schools (list of all schools - click to view members)
+/// - GDS (list of all GDS groups - view-only for MVP)
 class AdminShell extends ConsumerStatefulWidget {
   const AdminShell({super.key});
 
@@ -22,9 +26,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   final List<Widget> _screens = const [
     AdminDashboardScreen(),
     AdminUsersScreen(),
-    AnnouncementsScreen(),
-    MeetingsScreen(),
-    PollsScreen(),
+    AdminSchoolsScreen(),
+    AdminGDSScreen(),
   ];
 
   @override
@@ -66,22 +69,16 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
                 _NavItem(
-                  icon: Icons.campaign_rounded,
-                  label: l10n.translate('announcements'),
+                  icon: Icons.school_rounded,
+                  label: l10n.translate('schools'),
                   isSelected: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
                 ),
                 _NavItem(
-                  icon: Icons.event_rounded,
-                  label: l10n.translate('meetings'),
+                  icon: Icons.groups_rounded,
+                  label: 'GDS',
                   isSelected: _currentIndex == 3,
                   onTap: () => setState(() => _currentIndex = 3),
-                ),
-                _NavItem(
-                  icon: Icons.poll_rounded,
-                  label: l10n.translate('polls'),
-                  isSelected: _currentIndex == 4,
-                  onTap: () => setState(() => _currentIndex = 4),
                 ),
               ],
             ),

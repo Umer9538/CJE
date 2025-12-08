@@ -142,4 +142,28 @@ class DocumentRepository {
       return [];
     }
   }
+
+  /// Get documents by department (filtered by tag)
+  Future<List<DocumentModel>> getDocumentsByDepartment(DepartmentType department, {int limit = 50}) async {
+    try {
+      final departmentTag = 'department:${department.name}';
+
+      // Get all documents and filter by tag in memory
+      // Firestore array-contains with orderBy requires composite index
+      final snapshot = await _collection.get();
+
+      List<DocumentModel> documents = snapshot.docs
+          .map((doc) => DocumentModel.fromFirestore(doc))
+          .where((d) => d.tags.contains(departmentTag))
+          .toList();
+
+      // Sort by createdAt descending
+      documents.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return documents.take(limit).toList();
+    } catch (e) {
+      debugPrint('Error getting documents by department: $e');
+      return [];
+    }
+  }
 }

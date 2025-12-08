@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../controllers/admin/admin_controller.dart';
 import '../../../core/core.dart';
 import '../admin/admin_users_screen.dart';
 import 'edit_profile_screen.dart';
+import 'privacy_security_screen.dart';
+import 'help_support_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -18,6 +21,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
+  String _getRoleTranslationKey(UserRole? role) {
+    switch (role) {
+      case UserRole.student:
+        return 'role_student';
+      case UserRole.classRep:
+        return 'role_class_rep';
+      case UserRole.schoolRep:
+        return 'role_school_rep';
+      case UserRole.department:
+        return 'role_department';
+      case UserRole.bex:
+        return 'role_bex';
+      case UserRole.superadmin:
+        return 'role_superadmin';
+      default:
+        return 'member';
+    }
+  }
 
   @override
   void initState() {
@@ -104,7 +126,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
                   // Stats
                   SliverToBoxAdapter(
-                    child: _buildStats(context, l10n),
+                    child: _buildStats(context, l10n, ref),
                   ),
 
                   // Achievement badges
@@ -153,7 +175,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             children: [
               _buildHeaderButton(
                 icon: Icons.share_rounded,
-                onTap: () {},
+                onTap: () => _shareApp(context),
               ),
               const SizedBox(width: 12),
               _buildHeaderButton(
@@ -312,7 +334,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                               const Icon(Icons.verified_rounded, color: AppColors.navy, size: 14),
                               const SizedBox(width: 4),
                               Text(
-                                user?.role?.displayName ?? 'Member',
+                                l10n.translate(_getRoleTranslationKey(user?.role)),
                                 style: const TextStyle(
                                   color: AppColors.navy,
                                   fontSize: 11,
@@ -369,17 +391,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
-  Widget _buildStats(BuildContext context, AppLocalizations l10n) {
+  Widget _buildStats(BuildContext context, AppLocalizations l10n, WidgetRef ref) {
+    final statsAsync = ref.watch(userStatsProvider);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-      child: Row(
-        children: [
-          Expanded(child: _StatCard(value: '156', label: 'Total Votes', icon: Icons.how_to_vote_rounded, color: const Color(0xFF8B5CF6))),
-          const SizedBox(width: 12),
-          Expanded(child: _StatCard(value: '23', label: 'Initiatives', icon: Icons.lightbulb_rounded, color: AppColors.gold)),
-          const SizedBox(width: 12),
-          Expanded(child: _StatCard(value: '48', label: 'Meetings', icon: Icons.groups_rounded, color: const Color(0xFF10B981))),
-        ],
+      child: statsAsync.when(
+        data: (stats) => Row(
+          children: [
+            Expanded(child: _StatCard(value: '${stats.totalVotes}', label: l10n.translate('total_votes'), icon: Icons.how_to_vote_rounded, color: const Color(0xFF8B5CF6))),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(value: '${stats.initiativesCount}', label: l10n.translate('initiatives'), icon: Icons.lightbulb_rounded, color: AppColors.gold)),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(value: '${stats.meetingsAttended}', label: l10n.translate('meetings'), icon: Icons.groups_rounded, color: const Color(0xFF10B981))),
+          ],
+        ),
+        loading: () => Row(
+          children: [
+            Expanded(child: _StatCard(value: '-', label: l10n.translate('total_votes'), icon: Icons.how_to_vote_rounded, color: const Color(0xFF8B5CF6))),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(value: '-', label: l10n.translate('initiatives'), icon: Icons.lightbulb_rounded, color: AppColors.gold)),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(value: '-', label: l10n.translate('meetings'), icon: Icons.groups_rounded, color: const Color(0xFF10B981))),
+          ],
+        ),
+        error: (_, __) => Row(
+          children: [
+            Expanded(child: _StatCard(value: '0', label: l10n.translate('total_votes'), icon: Icons.how_to_vote_rounded, color: const Color(0xFF8B5CF6))),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(value: '0', label: l10n.translate('initiatives'), icon: Icons.lightbulb_rounded, color: AppColors.gold)),
+            const SizedBox(width: 12),
+            Expanded(child: _StatCard(value: '0', label: l10n.translate('meetings'), icon: Icons.groups_rounded, color: const Color(0xFF10B981))),
+          ],
+        ),
       ),
     );
   }
@@ -496,9 +540,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 _SettingsTile(
                   icon: Icons.notifications_rounded,
                   iconColor: const Color(0xFFEF4444),
-                  title: 'Notifications',
-                  subtitle: 'Push, email, SMS',
-                  trailing: _buildToggle(true),
+                  title: l10n.translate('notifications'),
+                  subtitle: l10n.translate('notifications_subtitle'),
+                  trailing: _buildToggle(
+                    ref.watch(notificationsEnabledProvider),
+                    onChanged: (value) {
+                      ref.read(notificationsEnabledProvider.notifier).setEnabled(value);
+                    },
+                  ),
                   onTap: () {},
                 ),
                 _buildDivider(),
@@ -528,17 +577,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 _SettingsTile(
                   icon: Icons.security_rounded,
                   iconColor: const Color(0xFF10B981),
-                  title: 'Privacy & Security',
-                  subtitle: 'Password, 2FA',
-                  onTap: () {},
+                  title: l10n.translate('privacy_security'),
+                  subtitle: l10n.translate('privacy_security_subtitle'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PrivacySecurityScreen(),
+                      ),
+                    );
+                  },
                 ),
                 _buildDivider(),
                 _SettingsTile(
                   icon: Icons.help_rounded,
                   iconColor: AppColors.gold,
-                  title: 'Help & Support',
-                  subtitle: 'FAQ, Contact us',
-                  onTap: () {},
+                  title: l10n.translate('help_support'),
+                  subtitle: l10n.translate('help_support_subtitle'),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HelpSupportScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -623,39 +686,148 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
+  void _shareApp(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final shareText = l10n.translate('share_app_message');
+    SharePlus.instance.share(ShareParams(text: shareText));
+  }
+
   void _showSettingsSheet(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      useRootNavigator: true,
+      isScrollControlled: true,
+      builder: (context) => Consumer(
+        builder: (context, ref, _) {
+          final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
+          final currentLocale = ref.watch(languageProvider);
+
+          return Container(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  'Quick Settings',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Dark Mode Toggle
+                _buildQuickSettingTile(
+                  icon: isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  iconColor: isDarkMode ? Colors.indigo : Colors.amber,
+                  title: l10n.translate('dark_mode'),
+                  trailing: Switch.adaptive(
+                    value: isDarkMode,
+                    activeColor: AppColors.gold,
+                    onChanged: (value) {
+                      if (value) {
+                        ref.read(themeModeProvider.notifier).setDarkTheme();
+                      } else {
+                        ref.read(themeModeProvider.notifier).setLightTheme();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Language Selection
+                _buildQuickSettingTile(
+                  icon: Icons.language_rounded,
+                  iconColor: Colors.blue,
+                  title: l10n.translate('language'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.navy.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      currentLocale == 'ro' ? 'Română' : 'English',
+                      style: const TextStyle(
+                        color: AppColors.navy,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showLanguageSheet(context, ref, l10n);
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildQuickSettingTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required Widget trailing,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
+                color: iconColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.navy,
+                ),
               ),
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Quick Settings',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.navy,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Add quick settings here
-            const SizedBox(height: 16),
+            trailing,
           ],
         ),
       ),
@@ -668,8 +840,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
+      useRootNavigator: true,
+      isScrollControlled: true,
       builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).padding.bottom + 24,
+        ),
         decoration: const BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),

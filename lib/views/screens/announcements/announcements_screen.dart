@@ -89,13 +89,16 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
         ),
       ),
       floatingActionButton: canCreate
-          ? FloatingActionButton.extended(
-              heroTag: 'fab_announcements',
-              onPressed: () => _navigateToCreate(context),
-              backgroundColor: AppColors.gold,
-              foregroundColor: AppColors.navy,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(l10n.translate('create')),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 80),
+              child: FloatingActionButton.extended(
+                heroTag: 'fab_announcements',
+                onPressed: () => _navigateToCreate(context),
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.navy,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l10n.translate('create')),
+              ),
             )
           : null,
     );
@@ -175,7 +178,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
         labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         tabs: [
           Tab(text: l10n.translate('all')),
-          const Tab(text: 'CJE'),
+          Tab(text: l10n.translate('county')),
           Tab(text: l10n.translate('school')),
         ],
       ),
@@ -189,7 +192,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
       },
       color: AppColors.gold,
       child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: announcements.length,
         itemBuilder: (context, index) {
@@ -300,6 +303,7 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final dateFormat = DateFormat('MMM d, yyyy');
     final isCounty = announcement.type == AnnouncementType.county;
 
@@ -357,7 +361,7 @@ class _AnnouncementCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          isCounty ? 'CJE' : announcement.schoolName ?? 'School',
+                          isCounty ? l10n.translate('county') : announcement.schoolName ?? l10n.translate('school'),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,

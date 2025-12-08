@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import 'edit_announcement_screen.dart';
 
 /// Detail screen for viewing a single announcement
 class AnnouncementDetailScreen extends ConsumerWidget {
@@ -412,9 +413,11 @@ class AnnouncementDetailScreen extends ConsumerWidget {
   }
 
   void _handleEdit(BuildContext context) {
-    // TODO: Navigate to edit screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Edit functionality coming soon')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EditAnnouncementScreen(announcement: announcement),
+      ),
     );
   }
 

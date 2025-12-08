@@ -23,7 +23,12 @@ import '../views/screens/splash/splash_screen.dart';
 import '../views/screens/admin/admin_users_screen.dart';
 import '../views/screens/admin/admin_setup_screen.dart';
 import '../views/screens/admin/admin_shell.dart';
+import '../views/screens/bex/bex_shell.dart';
+import '../views/screens/department/department_shell.dart';
 import '../views/screens/admin/user_detail_screen.dart';
+import '../views/screens/search/search_screen.dart';
+import '../views/screens/notifications/notifications_screen.dart';
+import '../views/screens/calendar/calendar_screen.dart';
 import '../core/constants/enums.dart';
 import 'route_names.dart';
 
@@ -105,27 +110,52 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return RouteNames.suspended;
       }
 
-      // Check if user is superadmin
-      final isSuperAdmin = authState.user?.role == UserRole.superadmin;
+      // Check user role
+      final userRole = authState.user?.role;
+      final isSuperadmin = userRole == UserRole.superadmin;
+      final isBexUser = userRole == UserRole.bex;
+      final isDepartmentUser = userRole == UserRole.department;
       final isAdminPath = currentPath == RouteNames.adminDashboard ||
           currentPath.startsWith('/admin');
+      final isBexPath = currentPath == RouteNames.bexDashboard ||
+          currentPath.startsWith('/bex');
+      final isDepartmentPath = currentPath == RouteNames.departmentDashboard ||
+          currentPath.startsWith('/department');
 
       // If authenticated and on auth/splash pages, redirect based on role
       if (authState.isAuthenticated && (isAuthPath || isSplash || isSpecialAuthPath)) {
         // Superadmin goes to admin dashboard
-        if (isSuperAdmin) {
+        if (isSuperadmin) {
           return RouteNames.adminDashboard;
+        }
+        // BEX goes to BEX dashboard
+        if (isBexUser) {
+          return RouteNames.bexDashboard;
+        }
+        // Department goes to Department dashboard
+        if (isDepartmentUser) {
+          return RouteNames.departmentDashboard;
         }
         return RouteNames.home;
       }
 
       // If superadmin trying to access regular user home, redirect to admin
-      if (authState.isAuthenticated && isSuperAdmin && isMainAppPath && !isAdminPath) {
+      if (authState.isAuthenticated && isSuperadmin && isMainAppPath && !isAdminPath) {
         return RouteNames.adminDashboard;
       }
 
-      // If authenticated and already on main app path or admin path, don't redirect
-      if (authState.isAuthenticated && (isMainAppPath || isAdminPath)) {
+      // If BEX user trying to access regular user home or admin, redirect to BEX
+      if (authState.isAuthenticated && isBexUser && (isMainAppPath || isAdminPath) && !isBexPath) {
+        return RouteNames.bexDashboard;
+      }
+
+      // If Department user trying to access regular user home, admin, or BEX, redirect to Department
+      if (authState.isAuthenticated && isDepartmentUser && (isMainAppPath || isAdminPath || isBexPath) && !isDepartmentPath) {
+        return RouteNames.departmentDashboard;
+      }
+
+      // If authenticated and already on appropriate path, don't redirect
+      if (authState.isAuthenticated && (isMainAppPath || isAdminPath || isBexPath || isDepartmentPath)) {
         return null;
       }
 
@@ -272,6 +302,43 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final userId = state.pathParameters['id']!;
           return UserDetailScreen(userId: userId);
         },
+      ),
+
+      // ============================================
+      // BEX ROUTES (County Executive Bureau)
+      // ============================================
+      GoRoute(
+        path: RouteNames.bexDashboard,
+        name: 'bexDashboard',
+        builder: (context, state) => const BexShell(),
+      ),
+
+      // ============================================
+      // DEPARTMENT ROUTES
+      // ============================================
+      GoRoute(
+        path: RouteNames.departmentDashboard,
+        name: 'departmentDashboard',
+        builder: (context, state) => const DepartmentShell(),
+      ),
+
+      // ============================================
+      // GLOBAL ROUTES (Search, Notifications, Calendar)
+      // ============================================
+      GoRoute(
+        path: RouteNames.search,
+        name: 'search',
+        builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.notifications,
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.calendar,
+        name: 'calendar',
+        builder: (context, state) => const CalendarScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

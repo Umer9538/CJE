@@ -52,7 +52,7 @@ class RouteNames {
   static const String settings = '/settings';
 
   // ============================================
-  // ADMIN ROUTES
+  // ADMIN ROUTES (Superadmin only)
   // ============================================
 
   static const String admin = '/admin';
@@ -64,6 +64,20 @@ class RouteNames {
   static const String adminSchoolDetail = '/admin/schools/:id';
   static const String adminGds = '/admin/gds';
   static const String adminGdsDetail = '/admin/gds/:id';
+
+  // ============================================
+  // BEX ROUTES (County Executive Bureau)
+  // ============================================
+
+  static const String bex = '/bex';
+  static const String bexDashboard = '/bex/dashboard';
+
+  // ============================================
+  // DEPARTMENT ROUTES
+  // ============================================
+
+  static const String department = '/department';
+  static const String departmentDashboard = '/department/dashboard';
 
   // ============================================
   // GLOBAL ROUTES

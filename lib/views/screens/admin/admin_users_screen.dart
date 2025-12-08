@@ -156,7 +156,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
               child: Row(
                 children: [
                   Chip(
-                    label: Text(_selectedRole!.displayName),
+                    label: Text(l10n.translate(_selectedRole!.translationKey)),
                     deleteIcon: const Icon(Icons.close, size: 18),
                     onDeleted: () => setState(() => _selectedRole = null),
                     backgroundColor: _selectedRole!.badgeBackgroundColor,
@@ -303,7 +303,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
               children: UserRole.values.map((role) {
                 final isSelected = _selectedRole == role;
                 return FilterChip(
-                  label: Text(role.displayName),
+                  label: Text(l10n.translate(role.translationKey)),
                   selected: isSelected,
                   onSelected: (selected) {
                     setState(() {
@@ -807,6 +807,8 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -878,7 +880,7 @@ class _UserCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          user.role.displayName,
+                          l10n.translate(user.role.translationKey),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,

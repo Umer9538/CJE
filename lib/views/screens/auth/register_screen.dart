@@ -123,7 +123,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     'Oradea': 'BH2024',
   };
 
-  // Cities list
+  // Cities list (Romanian names with proper diacritics)
   final List<String> _cities = [
     'București',
     'Cluj-Napoca',

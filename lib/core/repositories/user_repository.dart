@@ -197,6 +197,17 @@ class UserRepository {
     }
   }
 
+  /// Get total user count (lightweight - uses aggregation)
+  Future<int> getUserCount() async {
+    try {
+      final countQuery = await _usersCollection.count().get();
+      return countQuery.count ?? 0;
+    } catch (e) {
+      debugPrint('Error getting user count: $e');
+      return 0;
+    }
+  }
+
   /// Get pending users (for admin approval)
   Future<List<UserModel>> getPendingUsers({String? schoolId}) async {
     try {
@@ -232,7 +243,15 @@ class UserRepository {
 
   /// Change user role
   Future<bool> changeUserRole(String userId, UserRole newRole) async {
-    return updateUserFields(userId, {'role': newRole.toFirestore()});
+    try {
+      debugPrint('changeUserRole: userId=$userId, newRole=${newRole.toFirestore()}');
+      final result = await updateUserFields(userId, {'role': newRole.toFirestore()});
+      debugPrint('changeUserRole: result=$result');
+      return result;
+    } catch (e) {
+      debugPrint('changeUserRole: error=$e');
+      return false;
+    }
   }
 
   /// Search users by name

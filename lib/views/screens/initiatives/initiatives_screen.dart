@@ -20,6 +20,8 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   InitiativeStatus? _selectedStatus;
+  bool _showOnlyMine = false;
+  String? _selectedSchoolId;
 
   @override
   void initState() {
@@ -57,17 +59,18 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
+    final currentUser = ref.watch(currentUserProvider);
     final initiativesAsync = ref.watch(
-      initiativesProvider(InitiativeFilter(status: _selectedStatus)),
+      initiativesProvider(InitiativeFilter(
+        status: _selectedStatus,
+        authorId: _showOnlyMine ? currentUser?.id : null,
+        schoolId: _selectedSchoolId,
+      )),
     );
 
-    // Only schoolRep, department, bex, superadmin can create initiatives
-    final canCreate = user != null &&
-        (user.role == UserRole.schoolRep ||
-            user.role == UserRole.department ||
-            user.role == UserRole.bex ||
-            user.role == UserRole.superadmin);
+    // Use the provider for permission check
+    final canCreate = ref.watch(canDraftInitiativesProvider);
+    final hasActiveFilters = _showOnlyMine || _selectedSchoolId != null;
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -75,7 +78,7 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
         child: Column(
           children: [
             // Header
-            _buildHeader(context, l10n),
+            _buildHeader(context, l10n, hasActiveFilters),
 
             // Tabs
             _buildTabs(context, l10n),
@@ -96,19 +99,22 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
         ),
       ),
       floatingActionButton: canCreate
-          ? FloatingActionButton.extended(
-              heroTag: 'fab_initiatives',
-              onPressed: () => _navigateToCreate(context),
-              backgroundColor: AppColors.gold,
-              foregroundColor: AppColors.navy,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(l10n.translate('create')),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 80),
+              child: FloatingActionButton.extended(
+                heroTag: 'fab_initiatives',
+                onPressed: () => _navigateToCreate(context),
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.navy,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l10n.translate('create')),
+              ),
             )
           : null,
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n, bool hasActiveFilters) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
@@ -122,35 +128,150 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
             ),
           ),
           const Spacer(),
-          _buildIconButton(
-            icon: Icons.filter_list_rounded,
-            onTap: () {
-              // TODO: Implement advanced filter
-            },
-          ),
+          _buildFilterButton(hasActiveFilters),
         ],
       ),
     );
   }
 
-  Widget _buildIconButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildFilterButton(bool hasActiveFilters) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+      onTap: _showFilterBottomSheet,
+      child: Stack(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
+            child: const Icon(Icons.filter_list_rounded, color: AppColors.navy, size: 22),
+          ),
+          if (hasActiveFilters)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                width: 12,
+                height: 12,
+                decoration: const BoxDecoration(
+                  color: AppColors.gold,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showFilterBottomSheet() {
+    final l10n = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.translate('filter'),
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.navy,
+                  ),
+                ),
+                if (_showOnlyMine || _selectedSchoolId != null)
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _showOnlyMine = false;
+                        _selectedSchoolId = null;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                    child: Text(
+                      l10n.translate('clear_all'),
+                      style: const TextStyle(color: AppColors.gold),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Show only my initiatives
+            _FilterOption(
+              icon: Icons.person_outline_rounded,
+              title: l10n.translate('my_initiatives'),
+              subtitle: l10n.translate('show_only_my_initiatives'),
+              isSelected: _showOnlyMine,
+              onTap: () {
+                setState(() => _showOnlyMine = !_showOnlyMine);
+                Navigator.pop(ctx);
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // My School filter (for users with schoolId)
+            Consumer(
+              builder: (context, ref, _) {
+                final user = ref.watch(currentUserProvider);
+                if (user?.schoolId == null) return const SizedBox.shrink();
+
+                return _FilterOption(
+                  icon: Icons.school_outlined,
+                  title: l10n.translate('my_school'),
+                  subtitle: user?.schoolName ?? l10n.translate('show_school_initiatives'),
+                  isSelected: _selectedSchoolId == user?.schoolId,
+                  onTap: () {
+                    setState(() {
+                      _selectedSchoolId = _selectedSchoolId == user?.schoolId
+                          ? null
+                          : user?.schoolId;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                );
+              },
+            ),
+
+            const SizedBox(height: 100),
           ],
         ),
-        child: Icon(icon, color: AppColors.navy, size: 22),
       ),
     );
   }
@@ -562,5 +683,89 @@ class _StatusBadge extends StatelessWidget {
       case InitiativeStatus.rejected:
         return 'Rejected';
     }
+  }
+}
+
+/// Filter option widget for bottom sheet
+class _FilterOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _FilterOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.gold.withValues(alpha: 0.1) : Colors.grey[50],
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.gold : Colors.grey[200]!,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.gold.withValues(alpha: 0.2)
+                    : Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColors.gold : Colors.grey[600],
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? AppColors.navy : Colors.grey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.gold,
+                size: 24,
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

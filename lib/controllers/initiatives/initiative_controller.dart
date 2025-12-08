@@ -42,7 +42,7 @@ final initiativeProvider = FutureProvider.family<InitiativeModel?, String>((ref,
 /// Recent initiatives for home screen
 final recentInitiativesProvider = FutureProvider<List<InitiativeModel>>((ref) async {
   final repository = ref.read(initiativeRepositoryProvider);
-  final user = ref.read(currentUserProvider);
+  final user = ref.read(currentUserProvider); // Use read to avoid rebuilds
   try {
     return await repository.getRecentInitiatives(
       schoolId: user?.schoolId,
@@ -271,12 +271,164 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     return success;
   }
 
-  /// Reject initiative with reason
-  Future<bool> rejectInitiative(String id, String reason) async {
-    final success = await _repository.rejectInitiative(id, reason);
+  /// Check if current user can approve/reject a specific initiative
+  bool _canApproveInitiative(InitiativeModel? initiative) {
+    final user = _ref.read(currentUserProvider);
+    if (user == null || initiative == null) return false;
+
+    // BEX and Superadmin can approve any initiative
+    if (user.role == UserRole.bex || user.role == UserRole.superadmin) {
+      return true;
+    }
+
+    // SchoolRep can only approve initiatives from their school
+    if (user.role == UserRole.schoolRep) {
+      return initiative.schoolId == user.schoolId;
+    }
+
+    return false;
+  }
+
+  /// Approve initiative - moves to review status
+  /// SchoolRep can approve initiatives from their school
+  /// BEX and Superadmin can approve all initiatives
+  Future<bool> approveInitiative(String id) async {
+    state = const AsyncValue.loading();
+
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return false;
+    }
+
+    // Get initiative to check permissions
+    final initiative = await _repository.getInitiativeById(id);
+    if (!_canApproveInitiative(initiative)) {
+      state = AsyncValue.error('Permission denied', StackTrace.current);
+      return false;
+    }
+
+    final success = await _repository.updateStatus(id, InitiativeStatus.review);
     if (success) {
+      state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
       _ref.invalidate(initiativeProvider(id));
+      _ref.invalidate(recentInitiativesProvider);
+    } else {
+      state = AsyncValue.error('Failed to approve initiative', StackTrace.current);
+    }
+    return success;
+  }
+
+  /// Move initiative to debate stage
+  Future<bool> moveToDebate(String id) async {
+    state = const AsyncValue.loading();
+
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return false;
+    }
+
+    final initiative = await _repository.getInitiativeById(id);
+    if (!_canApproveInitiative(initiative)) {
+      state = AsyncValue.error('Permission denied', StackTrace.current);
+      return false;
+    }
+
+    final success = await _repository.updateStatus(id, InitiativeStatus.debate);
+    if (success) {
+      state = const AsyncValue.data(null);
+      _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativeProvider(id));
+    } else {
+      state = AsyncValue.error('Failed to move to debate', StackTrace.current);
+    }
+    return success;
+  }
+
+  /// Move initiative to voting stage
+  Future<bool> moveToVoting(String id) async {
+    state = const AsyncValue.loading();
+
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return false;
+    }
+
+    final initiative = await _repository.getInitiativeById(id);
+    if (!_canApproveInitiative(initiative)) {
+      state = AsyncValue.error('Permission denied', StackTrace.current);
+      return false;
+    }
+
+    final success = await _repository.updateStatus(id, InitiativeStatus.voting);
+    if (success) {
+      state = const AsyncValue.data(null);
+      _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativeProvider(id));
+    } else {
+      state = AsyncValue.error('Failed to move to voting', StackTrace.current);
+    }
+    return success;
+  }
+
+  /// Adopt initiative (final approval)
+  Future<bool> adoptInitiative(String id) async {
+    state = const AsyncValue.loading();
+
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return false;
+    }
+
+    final initiative = await _repository.getInitiativeById(id);
+    if (!_canApproveInitiative(initiative)) {
+      state = AsyncValue.error('Permission denied', StackTrace.current);
+      return false;
+    }
+
+    final success = await _repository.updateStatus(id, InitiativeStatus.adopted);
+    if (success) {
+      state = const AsyncValue.data(null);
+      _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativeProvider(id));
+      _ref.invalidate(recentInitiativesProvider);
+    } else {
+      state = AsyncValue.error('Failed to adopt initiative', StackTrace.current);
+    }
+    return success;
+  }
+
+  /// Reject initiative with reason
+  /// SchoolRep can reject initiatives from their school
+  /// BEX and Superadmin can reject all initiatives
+  Future<bool> rejectInitiative(String id, String reason) async {
+    state = const AsyncValue.loading();
+
+    final user = _ref.read(currentUserProvider);
+    if (user == null) {
+      state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return false;
+    }
+
+    // Get initiative to check permissions
+    final initiative = await _repository.getInitiativeById(id);
+    if (!_canApproveInitiative(initiative)) {
+      state = AsyncValue.error('Permission denied', StackTrace.current);
+      return false;
+    }
+
+    final success = await _repository.rejectInitiative(id, reason);
+    if (success) {
+      state = const AsyncValue.data(null);
+      _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativeProvider(id));
+      _ref.invalidate(recentInitiativesProvider);
+    } else {
+      state = AsyncValue.error('Failed to reject initiative', StackTrace.current);
     }
     return success;
   }
@@ -289,4 +441,75 @@ final initiativeControllerProvider =
     ref.watch(initiativeRepositoryProvider),
     ref,
   );
+});
+
+/// Check if current user can approve/reject initiatives
+/// SchoolRep can approve initiatives from their school
+/// BEX and Superadmin can approve all initiatives
+final canApproveInitiativesProvider = Provider.family<bool, InitiativeModel?>((ref, initiative) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null || initiative == null) return false;
+
+  // BEX and Superadmin can approve any initiative
+  if (user.role == UserRole.bex || user.role == UserRole.superadmin) {
+    return true;
+  }
+
+  // SchoolRep can only approve initiatives from their school
+  if (user.role == UserRole.schoolRep) {
+    return initiative.schoolId == user.schoolId;
+  }
+
+  return false;
+});
+
+/// Provider to check if user can manage initiatives (approve/reject/change status)
+final canManageInitiativeProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.schoolRep ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can draft initiatives
+/// Class Reps and above can draft initiatives
+final canDraftInitiativesProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.classRep ||
+         user.role == UserRole.schoolRep ||
+         user.role == UserRole.department ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can vote on initiatives
+/// Class Reps and above can vote on initiatives
+final canVoteOnInitiativesProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.classRep ||
+         user.role == UserRole.schoolRep ||
+         user.role == UserRole.department ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can comment on initiatives
+/// Class Reps and above can comment on initiatives
+final canCommentOnInitiativesProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.classRep ||
+         user.role == UserRole.schoolRep ||
+         user.role == UserRole.department ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can support initiatives (everyone can support)
+final canSupportInitiativesProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  return user != null;
 });

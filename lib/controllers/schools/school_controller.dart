@@ -12,7 +12,7 @@ final schoolRepositoryProvider = Provider<SchoolRepository>((ref) {
 
 /// All schools provider
 final allSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <SchoolModel>[];
   }
@@ -23,7 +23,7 @@ final allSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
 
 /// Active schools provider
 final activeSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
-  final currentUser = ref.watch(currentUserProvider);
+  final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <SchoolModel>[];
   }

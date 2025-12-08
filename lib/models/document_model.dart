@@ -14,6 +14,8 @@ class DocumentModel extends Equatable {
   final int fileSizeBytes;
   final String uploadedById;
   final String uploadedByName;
+  final String? schoolId; // For school-specific documents
+  final String? schoolName;
   final int downloadCount;
   final bool isPublic; // Visible to all users or only council members
   final List<String> tags;
@@ -30,12 +32,17 @@ class DocumentModel extends Equatable {
     this.fileSizeBytes = 0,
     required this.uploadedById,
     required this.uploadedByName,
+    this.schoolId,
+    this.schoolName,
     this.downloadCount = 0,
     this.isPublic = true,
     this.tags = const [],
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Check if this is a school-level document
+  bool get isSchoolDocument => schoolId != null;
 
   /// Create empty document
   factory DocumentModel.empty() {
@@ -77,6 +84,8 @@ class DocumentModel extends Equatable {
       fileSizeBytes: data['fileSizeBytes'] as int? ?? 0,
       uploadedById: data['uploadedById'] as String? ?? '',
       uploadedByName: data['uploadedByName'] as String? ?? '',
+      schoolId: data['schoolId'] as String?,
+      schoolName: data['schoolName'] as String?,
       downloadCount: data['downloadCount'] as int? ?? 0,
       isPublic: data['isPublic'] as bool? ?? true,
       tags: List<String>.from(data['tags'] ?? []),
@@ -96,6 +105,8 @@ class DocumentModel extends Equatable {
       'fileSizeBytes': fileSizeBytes,
       'uploadedById': uploadedById,
       'uploadedByName': uploadedByName,
+      'schoolId': schoolId,
+      'schoolName': schoolName,
       'downloadCount': downloadCount,
       'isPublic': isPublic,
       'tags': tags,
@@ -115,6 +126,8 @@ class DocumentModel extends Equatable {
     int? fileSizeBytes,
     String? uploadedById,
     String? uploadedByName,
+    String? schoolId,
+    String? schoolName,
     int? downloadCount,
     bool? isPublic,
     List<String>? tags,
@@ -131,6 +144,8 @@ class DocumentModel extends Equatable {
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
       uploadedById: uploadedById ?? this.uploadedById,
       uploadedByName: uploadedByName ?? this.uploadedByName,
+      schoolId: schoolId ?? this.schoolId,
+      schoolName: schoolName ?? this.schoolName,
       downloadCount: downloadCount ?? this.downloadCount,
       isPublic: isPublic ?? this.isPublic,
       tags: tags ?? this.tags,
@@ -150,6 +165,8 @@ class DocumentModel extends Equatable {
         fileSizeBytes,
         uploadedById,
         uploadedByName,
+        schoolId,
+        schoolName,
         downloadCount,
         isPublic,
         tags,

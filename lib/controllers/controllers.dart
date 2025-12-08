@@ -14,3 +14,5 @@ export 'polls/poll_controller.dart';
 export 'schools/school_controller.dart';
 export 'gds/gds_controller.dart';
 export 'admin/admin_controller.dart';
+export 'notifications/notification_controller.dart';
+export 'warnings/warning_controller.dart';

@@ -15,7 +15,7 @@ class CJEApp extends ConsumerStatefulWidget {
   ConsumerState<CJEApp> createState() => _CJEAppState();
 }
 
-class _CJEAppState extends ConsumerState<CJEApp> {
+class _CJEAppState extends ConsumerState<CJEApp> with WidgetsBindingObserver {
   late final GoRouter _router;
 
   @override
@@ -23,6 +23,34 @@ class _CJEAppState extends ConsumerState<CJEApp> {
     super.initState();
     // Create router once and keep it stable
     _router = ref.read(appRouterProvider);
+    // Add lifecycle observer to handle app resume
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // When app resumes from background, reload user to ensure session is still valid
+    if (state == AppLifecycleState.resumed) {
+      _refreshAuthState();
+    }
+  }
+
+  /// Refresh auth state when app resumes
+  Future<void> _refreshAuthState() async {
+    try {
+      // Reload user to refresh token and check if still authenticated
+      await ref.read(authControllerProvider.notifier).reloadUser();
+    } catch (e) {
+      // If token refresh fails, the auth listener will handle logout
+      debugPrint('Error refreshing auth state: $e');
+    }
   }
 
   @override

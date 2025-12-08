@@ -14,7 +14,7 @@ enum UserRole {
   bex,
   superadmin;
 
-  /// Get display name in Romanian
+  /// Get display name in Romanian (legacy - prefer getLocalizedName for translations)
   String get displayName {
     switch (this) {
       case UserRole.student:
@@ -29,6 +29,24 @@ enum UserRole {
         return AppStrings.roleBEX;
       case UserRole.superadmin:
         return AppStrings.roleSuperadmin;
+    }
+  }
+
+  /// Get translation key for l10n
+  String get translationKey {
+    switch (this) {
+      case UserRole.student:
+        return 'student';
+      case UserRole.classRep:
+        return 'class_representative';
+      case UserRole.schoolRep:
+        return 'school_representative';
+      case UserRole.department:
+        return 'department';
+      case UserRole.bex:
+        return 'bex';
+      case UserRole.superadmin:
+        return 'super_admin';
     }
   }
 

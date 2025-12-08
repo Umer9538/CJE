@@ -58,7 +58,13 @@ class AppButton extends StatelessWidget {
                   Icon(icon, size: 20),
                   const SizedBox(width: AppSizes.spacing8),
                 ],
-                Text(text),
+                Flexible(
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
     );
@@ -118,7 +124,13 @@ class AppOutlinedButton extends StatelessWidget {
                   Icon(icon, size: 20),
                   const SizedBox(width: AppSizes.spacing8),
                 ],
-                Text(text),
+                Flexible(
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
     );
@@ -156,7 +168,13 @@ class AppTextButton extends StatelessWidget {
             Icon(icon, size: 18),
             const SizedBox(width: AppSizes.spacing4),
           ],
-          Text(text),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
@@ -209,7 +227,13 @@ class GoogleSignInButton extends StatelessWidget {
                   errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 24),
                 ),
                 const SizedBox(width: AppSizes.spacing12),
-                Text(l10n.translate('continue_with_google')),
+                Flexible(
+                  child: Text(
+                    l10n.translate('continue_with_google'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
     );

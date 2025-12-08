@@ -79,15 +79,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo Container
+                // Logo Image
                 Container(
-                  width: 120,
-                  height: 120,
+                  width: 150,
+                  height: 150,
                   decoration: BoxDecoration(
                     color: isDarkMode
                         ? AppColors.primaryDark
                         : AppColors.white,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusXL),
+                    shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.2),
@@ -96,16 +96,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       ),
                     ],
                   ),
-                  child: Center(
-                    child: Text(
-                      'CJE',
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode
-                            ? AppColors.textOnPrimaryDark
-                            : AppColors.primaryLight,
-                      ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo.jpeg',
+                      width: 150,
+                      height: 150,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../../routes/route_names.dart';
 import 'poll_detail_screen.dart';
+import 'create_poll_screen.dart';
 
 /// Main polls list screen
 /// Students can VIEW and VOTE on polls but CANNOT create them
@@ -49,16 +52,12 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
     final pollsAsync = ref.watch(
       pollsProvider(PollFilter(type: _selectedType, activeOnly: _activeOnly)),
     );
 
-    // Only schoolRep, bex, superadmin can create polls
-    final canCreate = user != null &&
-        (user.role == UserRole.schoolRep ||
-            user.role == UserRole.bex ||
-            user.role == UserRole.superadmin);
+    // Use the provider for permission check
+    final canCreate = ref.watch(canCreatePollsProvider);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -90,13 +89,16 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
         ),
       ),
       floatingActionButton: canCreate
-          ? FloatingActionButton.extended(
-              heroTag: 'fab_polls',
-              onPressed: () => _showCreatePollInfo(context),
-              backgroundColor: AppColors.gold,
-              foregroundColor: AppColors.navy,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(l10n.translate('create')),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 70),
+              child: FloatingActionButton.extended(
+                heroTag: 'fab_polls',
+                onPressed: () => _navigateToCreatePoll(context),
+                backgroundColor: AppColors.gold,
+                foregroundColor: AppColors.navy,
+                icon: const Icon(Icons.add_rounded),
+                label: Text(l10n.translate('create')),
+              ),
             )
           : null,
     );
@@ -107,6 +109,27 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
+          // Back button - navigate to home
+          GestureDetector(
+            onTap: () => context.go(RouteNames.home),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.arrow_back_rounded, color: AppColors.navy, size: 22),
+            ),
+          ),
+          const SizedBox(width: 16),
           Text(
             l10n.translate('polls'),
             style: const TextStyle(
@@ -269,10 +292,10 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
     );
   }
 
-  void _showCreatePollInfo(BuildContext context) {
-    // TODO: Implement poll creation screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Poll creation coming soon')),
+  void _navigateToCreatePoll(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CreatePollScreen()),
     );
   }
 }

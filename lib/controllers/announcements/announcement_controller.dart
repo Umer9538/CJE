@@ -4,6 +4,7 @@ import '../../core/repositories/repositories.dart';
 import '../../core/constants/enums.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
+import '../admin/admin_controller.dart';
 
 /// Announcement repository provider
 final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
@@ -19,10 +20,16 @@ final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, Ann
 
   final repository = ref.read(announcementRepositoryProvider);
 
+  // For superadmin and bex, show all school announcements without schoolId filter
+  // For regular users, filter by their schoolId
+  final shouldFilterBySchool = filter.type == AnnouncementType.school &&
+      user.role != UserRole.superadmin &&
+      user.role != UserRole.bex;
+
   try {
     return await repository.getAnnouncements(
       type: filter.type,
-      schoolId: filter.type == AnnouncementType.school ? user.schoolId : null,
+      schoolId: shouldFilterBySchool ? user.schoolId : null,
       limit: filter.limit,
     ).timeout(
       const Duration(seconds: 15),
@@ -38,9 +45,15 @@ final announcementsStreamProvider = StreamProvider.family<List<AnnouncementModel
   final repository = ref.read(announcementRepositoryProvider);
   final user = ref.read(currentUserProvider);
 
+  // For superadmin and bex, show all school announcements without schoolId filter
+  // For regular users, filter by their schoolId
+  final shouldFilterBySchool = filter.type == AnnouncementType.school &&
+      user?.role != UserRole.superadmin &&
+      user?.role != UserRole.bex;
+
   return repository.getAnnouncementsStream(
     type: filter.type,
-    schoolId: filter.type == AnnouncementType.school ? user?.schoolId : null,
+    schoolId: shouldFilterBySchool ? user?.schoolId : null,
     limit: filter.limit,
   );
 });
@@ -53,7 +66,7 @@ final announcementProvider = FutureProvider.family<AnnouncementModel?, String>((
 
 /// Recent announcements for home screen
 final recentAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((ref) async {
-  final user = ref.read(currentUserProvider);
+  final user = ref.read(currentUserProvider); // Use read to avoid rebuilds
   if (user == null) {
     return <AnnouncementModel>[];
   }
@@ -102,6 +115,9 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
   AnnouncementController(this._repository, this._ref) : super(const AsyncValue.data(null));
 
   /// Create new announcement
+  /// - BEX and Superadmin can create county and school announcements
+  /// - SchoolRep can only create school announcements
+  /// - Other roles cannot create announcements
   Future<String?> createAnnouncement({
     required String title,
     required String content,
@@ -118,6 +134,24 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
     if (user == null) {
       state = AsyncValue.error('User not authenticated', StackTrace.current);
       return null;
+    }
+
+    // Permission check
+    // - BEX and Superadmin can create any announcement
+    // - SchoolRep can only create school announcements
+    if (type == AnnouncementType.county) {
+      if (user.role != UserRole.bex && user.role != UserRole.superadmin) {
+        state = AsyncValue.error('Permission denied: Only BEX can create county announcements', StackTrace.current);
+        return null;
+      }
+    } else {
+      // School announcement
+      if (user.role != UserRole.schoolRep &&
+          user.role != UserRole.bex &&
+          user.role != UserRole.superadmin) {
+        state = AsyncValue.error('Permission denied', StackTrace.current);
+        return null;
+      }
     }
 
     final announcement = AnnouncementModel(
@@ -147,6 +181,17 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       // Invalidate cache
       _ref.invalidate(announcementsProvider);
       _ref.invalidate(recentAnnouncementsProvider);
+
+      // Log activity if published immediately
+      if (publishImmediately) {
+        final activityRepo = _ref.read(activityRepositoryProvider);
+        await activityRepo.logAnnouncementPublished(
+          announcementId: id,
+          announcementTitle: title,
+          publishedBy: user.fullName,
+        );
+        _ref.invalidate(recentActivitiesProvider);
+      }
     } else {
       state = AsyncValue.error('Failed to create announcement', StackTrace.current);
     }
@@ -190,10 +235,25 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
 
   /// Publish announcement
   Future<bool> publishAnnouncement(String id) async {
+    // Get announcement title before publishing for logging
+    final announcement = await _repository.getAnnouncementById(id);
+
     final success = await _repository.publishAnnouncement(id);
     if (success) {
       _ref.invalidate(announcementsProvider);
       _ref.invalidate(announcementProvider(id));
+
+      // Log activity
+      if (announcement != null) {
+        final activityRepo = _ref.read(activityRepositoryProvider);
+        final user = _ref.read(currentUserProvider);
+        await activityRepo.logAnnouncementPublished(
+          announcementId: id,
+          announcementTitle: announcement.title,
+          publishedBy: user?.fullName,
+        );
+        _ref.invalidate(recentActivitiesProvider);
+      }
     }
     return success;
   }
@@ -221,4 +281,31 @@ final announcementControllerProvider =
     ref.watch(announcementRepositoryProvider),
     ref,
   );
+});
+
+/// Check if current user can create/publish announcements
+/// - BEX and Superadmin can create county and school announcements
+/// - SchoolRep can only create school announcements
+final canCreateAnnouncementsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.schoolRep ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
+});
+
+/// Check if current user can create county-level announcements
+final canCreateCountyAnnouncementsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.bex || user.role == UserRole.superadmin;
+});
+
+/// Check if current user can create school-level announcements
+final canCreateSchoolAnnouncementsProvider = Provider<bool>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return false;
+  return user.role == UserRole.schoolRep ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin;
 });

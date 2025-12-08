@@ -34,7 +34,14 @@ class AuthService {
     FirebaseAuth? auth,
     GoogleSignIn? googleSignIn,
   })  : _auth = auth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn();
+        _googleSignIn = googleSignIn ?? GoogleSignIn() {
+    // Set persistence to LOCAL to keep the user logged in
+    // Note: setPersistence is only supported on web platforms
+    // On mobile (Android/iOS), persistence is LOCAL by default
+    if (kIsWeb) {
+      _auth.setPersistence(Persistence.LOCAL);
+    }
+  }
 
   /// Get current user
   User? get currentUser => _auth.currentUser;
@@ -45,8 +52,8 @@ class AuthService {
   /// Get current user ID
   String? get currentUserId => currentUser?.uid;
 
-  /// Stream of auth state changes
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  /// Stream of auth state changes - uses idTokenChanges for better token refresh handling
+  Stream<User?> get authStateChanges => _auth.idTokenChanges();
 
   /// Stream of user changes (includes token refresh)
   Stream<User?> get userChanges => _auth.userChanges();

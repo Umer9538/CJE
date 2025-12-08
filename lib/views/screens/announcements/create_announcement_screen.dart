@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
@@ -22,6 +26,12 @@ class _CreateAnnouncementScreenState
   AnnouncementType _selectedType = AnnouncementType.school;
   bool _isPinned = false;
   bool _isLoading = false;
+  bool _isUploading = false;
+  double _uploadProgress = 0;
+
+  // Image and attachments
+  File? _selectedImage;
+  final List<PlatformFile> _selectedAttachments = [];
 
   @override
   void dispose() {
@@ -289,30 +299,61 @@ class _CreateAnnouncementScreenState
             ),
             const SizedBox(height: 24),
 
-            // Add image button
-            _buildAddButton(
-              icon: Icons.image_rounded,
-              label: l10n.translate('add_image'),
-              onTap: () {
-                // TODO: Implement image picker
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Image upload coming soon')),
-                );
-              },
+            // Featured Image Section
+            Text(
+              l10n.translate('featured_image'),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
             ),
             const SizedBox(height: 12),
+            if (_selectedImage != null)
+              _buildImagePreview()
+            else
+              _buildAddButton(
+                icon: Icons.image_rounded,
+                label: l10n.translate('add_image'),
+                onTap: _pickImage,
+              ),
+            const SizedBox(height: 24),
 
-            // Add attachment button
+            // Attachments Section
+            Text(
+              l10n.translate('attachments'),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.navy,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (_selectedAttachments.isNotEmpty)
+              ..._selectedAttachments.asMap().entries.map(
+                (e) => _buildAttachmentItem(e.key, e.value),
+              ),
             _buildAddButton(
               icon: Icons.attach_file_rounded,
               label: l10n.translate('add_attachment'),
-              onTap: () {
-                // TODO: Implement file picker
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('File upload coming soon')),
-                );
-              },
+              onTap: _pickAttachment,
             ),
+
+            // Upload progress
+            if (_isUploading) ...[
+              const SizedBox(height: 16),
+              LinearProgressIndicator(
+                value: _uploadProgress,
+                backgroundColor: Colors.grey[200],
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.gold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '${(_uploadProgress * 100).toStringAsFixed(0)}% ${l10n.translate('uploading')}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: 32),
 
             // Publish button
@@ -382,7 +423,7 @@ class _CreateAnnouncementScreenState
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: _isUploading ? null : onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -396,14 +437,14 @@ class _CreateAnnouncementScreenState
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppColors.navy, size: 22),
+            Icon(icon, color: _isUploading ? Colors.grey : AppColors.navy, size: 22),
             const SizedBox(width: 12),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: _isUploading ? Colors.grey : AppColors.navy,
               ),
             ),
           ],
@@ -412,16 +453,267 @@ class _CreateAnnouncementScreenState
     );
   }
 
+  Widget _buildImagePreview() {
+    return Stack(
+      children: [
+        Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            image: DecorationImage(
+              image: FileImage(_selectedImage!),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedImage = null),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttachmentItem(int index, PlatformFile file) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.navy.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              _getFileIcon(file.extension ?? ''),
+              color: AppColors.navy,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  file.name,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.navy,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  _formatFileSize(file.size),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => setState(() => _selectedAttachments.removeAt(index)),
+            icon: const Icon(Icons.close, color: Colors.red, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getFileIcon(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.article;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart;
+      case 'ppt':
+      case 'pptx':
+        return Icons.slideshow;
+      default:
+        return Icons.attach_file;
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() => _selectedImage = File(pickedFile.path));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickAttachment() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'],
+        allowMultiple: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          for (final file in result.files) {
+            if (!_selectedAttachments.any((f) => f.name == file.name)) {
+              _selectedAttachments.add(file);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking file: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<String?> _uploadImage() async {
+    if (_selectedImage == null) return null;
+
+    try {
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_announcement.jpg';
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('announcements')
+          .child('images')
+          .child(fileName);
+
+      final uploadTask = storageRef.putFile(_selectedImage!);
+
+      uploadTask.snapshotEvents.listen((event) {
+        setState(() {
+          _uploadProgress = event.bytesTransferred / event.totalBytes * 0.5; // Image is 50% of progress
+        });
+      });
+
+      final snapshot = await uploadTask;
+      return await snapshot.ref.getDownloadURL();
+    } catch (e) {
+      debugPrint('Error uploading image: $e');
+      return null;
+    }
+  }
+
+  Future<List<String>> _uploadAttachments() async {
+    final urls = <String>[];
+    final totalFiles = _selectedAttachments.length;
+
+    for (var i = 0; i < _selectedAttachments.length; i++) {
+      final file = _selectedAttachments[i];
+      if (file.path == null) continue;
+
+      try {
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('announcements')
+            .child('attachments')
+            .child(fileName);
+
+        final uploadTask = storageRef.putFile(File(file.path!));
+
+        uploadTask.snapshotEvents.listen((event) {
+          setState(() {
+            // Attachments are the second 50% of progress
+            final fileProgress = event.bytesTransferred / event.totalBytes;
+            _uploadProgress = 0.5 + (0.5 * (i + fileProgress) / totalFiles);
+          });
+        });
+
+        final snapshot = await uploadTask;
+        final url = await snapshot.ref.getDownloadURL();
+        urls.add(url);
+      } catch (e) {
+        debugPrint('Error uploading attachment ${file.name}: $e');
+      }
+    }
+
+    return urls;
+  }
+
   Future<void> _handlePublish() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _isUploading = _selectedImage != null || _selectedAttachments.isNotEmpty;
+      _uploadProgress = 0;
+    });
+
+    // Upload image and attachments first
+    String? imageUrl;
+    List<String> attachmentUrls = [];
+
+    if (_selectedImage != null || _selectedAttachments.isNotEmpty) {
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImage();
+      }
+      if (_selectedAttachments.isNotEmpty) {
+        attachmentUrls = await _uploadAttachments();
+      }
+    }
+
+    setState(() => _isUploading = false);
 
     final controller = ref.read(announcementControllerProvider.notifier);
     final id = await controller.createAnnouncement(
       title: _titleController.text.trim(),
       content: _contentController.text.trim(),
       type: _selectedType,
+      imageUrl: imageUrl,
+      attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
       publishImmediately: true,
     );
 
@@ -461,13 +753,34 @@ class _CreateAnnouncementScreenState
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _isUploading = _selectedImage != null || _selectedAttachments.isNotEmpty;
+      _uploadProgress = 0;
+    });
+
+    // Upload image and attachments first
+    String? imageUrl;
+    List<String> attachmentUrls = [];
+
+    if (_selectedImage != null || _selectedAttachments.isNotEmpty) {
+      if (_selectedImage != null) {
+        imageUrl = await _uploadImage();
+      }
+      if (_selectedAttachments.isNotEmpty) {
+        attachmentUrls = await _uploadAttachments();
+      }
+    }
+
+    setState(() => _isUploading = false);
 
     final controller = ref.read(announcementControllerProvider.notifier);
     final id = await controller.createAnnouncement(
       title: _titleController.text.trim(),
       content: _contentController.text.trim(),
       type: _selectedType,
+      imageUrl: imageUrl,
+      attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
       publishImmediately: false,
     );
 

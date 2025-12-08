@@ -10,3 +10,6 @@ export 'initiative_repository.dart';
 export 'document_repository.dart';
 export 'poll_repository.dart';
 export 'gds_repository.dart';
+export 'activity_repository.dart';
+export 'notification_repository.dart';
+export 'warning_repository.dart';

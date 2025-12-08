@@ -87,6 +87,8 @@ class LanguageSettingsTile extends ConsumerWidget {
   void _showLanguageBottomSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true, // Show above bottom navigation bar
+      isScrollControlled: true, // Allow custom sizing
       builder: (bottomSheetContext) {
         return Consumer(
           builder: (context, ref, child) {
@@ -94,43 +96,46 @@ class LanguageSettingsTile extends ConsumerWidget {
             final l10n = AppLocalizations.of(context);
 
             return SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(AppSizes.paddingMD),
-                    child: Text(
-                      l10n.selectLanguage,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  ...AppLocales.supportedLocales.map((locale) {
-                    final isSelected = locale.languageCode == currentLocale.languageCode;
-                    final languageName = AppLocales.getLanguageName(locale);
-                    final nativeName = AppLocales.getNativeLanguageName(locale.languageCode);
-                    final flag = AppLocales.getFlagEmoji(locale);
-
-                    return ListTile(
-                      leading: Text(
-                        flag,
-                        style: const TextStyle(fontSize: 28),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 100), // Space for floating nav bar
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(AppSizes.paddingMD),
+                      child: Text(
+                        l10n.selectLanguage,
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      title: Text(languageName),
-                      subtitle: languageName != nativeName ? Text(nativeName) : null,
-                      trailing: isSelected
-                          ? Icon(
-                              Icons.check_circle,
-                              color: Theme.of(context).colorScheme.primary,
-                            )
-                          : const Icon(Icons.circle_outlined),
-                      onTap: () {
-                        ref.read(languageProvider.notifier).setLocale(locale);
-                        Navigator.pop(bottomSheetContext);
-                      },
-                    );
-                  }),
-                  const SizedBox(height: AppSizes.spacing16),
-                ],
+                    ),
+                    ...AppLocales.supportedLocales.map((locale) {
+                      final isSelected = locale.languageCode == currentLocale.languageCode;
+                      final languageName = AppLocales.getLanguageName(locale);
+                      final nativeName = AppLocales.getNativeLanguageName(locale.languageCode);
+                      final flag = AppLocales.getFlagEmoji(locale);
+
+                      return ListTile(
+                        leading: Text(
+                          flag,
+                          style: const TextStyle(fontSize: 28),
+                        ),
+                        title: Text(languageName),
+                        subtitle: languageName != nativeName ? Text(nativeName) : null,
+                        trailing: isSelected
+                            ? Icon(
+                                Icons.check_circle,
+                                color: Theme.of(context).colorScheme.primary,
+                              )
+                            : const Icon(Icons.circle_outlined),
+                        onTap: () {
+                          ref.read(languageProvider.notifier).setLocale(locale);
+                          Navigator.pop(bottomSheetContext);
+                        },
+                      );
+                    }),
+                    const SizedBox(height: AppSizes.spacing16),
+                  ],
+                ),
               ),
             );
           },

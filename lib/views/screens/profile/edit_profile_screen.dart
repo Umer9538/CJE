@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
@@ -14,9 +18,31 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _imagePicker = ImagePicker();
   late TextEditingController _fullNameController;
   late TextEditingController _phoneController;
   bool _isLoading = false;
+  bool _isUploadingPhoto = false;
+  File? _selectedImage;
+
+  String _getRoleTranslationKey(UserRole? role) {
+    switch (role) {
+      case UserRole.student:
+        return 'role_student';
+      case UserRole.classRep:
+        return 'role_class_rep';
+      case UserRole.schoolRep:
+        return 'role_school_rep';
+      case UserRole.department:
+        return 'role_department';
+      case UserRole.bex:
+        return 'role_bex';
+      case UserRole.superadmin:
+        return 'role_superadmin';
+      default:
+        return 'member';
+    }
+  }
 
   @override
   void initState() {
@@ -107,35 +133,39 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(33),
-                      child: user?.photoUrl != null
-                          ? Image.network(user!.photoUrl!, fit: BoxFit.cover)
-                          : Container(
+                      child: _isUploadingPhoto
+                          ? Container(
                               color: AppColors.navy,
-                              child: Center(
-                                child: Text(
-                                  user?.fullName.isNotEmpty == true
-                                      ? user!.fullName[0].toUpperCase()
-                                      : '?',
-                                  style: const TextStyle(
-                                    color: AppColors.gold,
-                                    fontSize: 48,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              child: const Center(
+                                child: CircularProgressIndicator(color: AppColors.gold),
                               ),
-                            ),
+                            )
+                          : _selectedImage != null
+                              ? Image.file(_selectedImage!, fit: BoxFit.cover)
+                              : user?.photoUrl != null
+                                  ? Image.network(user!.photoUrl!, fit: BoxFit.cover)
+                                  : Container(
+                                      color: AppColors.navy,
+                                      child: Center(
+                                        child: Text(
+                                          user?.fullName.isNotEmpty == true
+                                              ? user!.fullName[0].toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(
+                                            color: AppColors.gold,
+                                            fontSize: 48,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                     ),
                   ),
                   Positioned(
                     right: 0,
                     bottom: 0,
                     child: GestureDetector(
-                      onTap: () {
-                        // TODO: Implement photo picker
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Photo upload coming soon')),
-                        );
-                      },
+                      onTap: _isUploadingPhoto ? null : _showImagePickerOptions,
                       child: Container(
                         width: 40,
                         height: 40,
@@ -208,7 +238,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             _buildInfoTile(
               icon: Icons.badge_rounded,
               label: l10n.translate('role'),
-              value: user?.role.displayName ?? '',
+              value: l10n.translate(_getRoleTranslationKey(user?.role)),
             ),
             const SizedBox(height: 12),
 
@@ -467,5 +497,185 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ],
       ),
     );
+  }
+
+  void _showImagePickerOptions() {
+    final l10n = AppLocalizations.of(context);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                l10n.translate('choose_photo'),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navy,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildImagePickerOption(
+                      icon: Icons.camera_alt_rounded,
+                      label: l10n.translate('camera'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.camera);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildImagePickerOption(
+                      icon: Icons.photo_library_rounded,
+                      label: l10n.translate('gallery'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickImage(ImageSource.gallery);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePickerOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: AppColors.navy.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.navy, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final pickedFile = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+        await _uploadImage();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).translate('error_picking_image')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadImage() async {
+    if (_selectedImage == null) return;
+
+    setState(() => _isUploadingPhoto = true);
+
+    try {
+      final user = ref.read(authControllerProvider).user;
+      if (user == null) throw Exception('User not found');
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_photos')
+          .child('${user.id}.jpg');
+
+      await storageRef.putFile(_selectedImage!);
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      // Update user profile with new photo URL
+      final success = await ref
+          .read(authControllerProvider.notifier)
+          .updateUserPhoto(downloadUrl);
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context).translate('photo_updated')),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          throw Exception('Failed to update profile');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).translate('error_uploading_photo')),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          _selectedImage = null;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+      }
+    }
   }
 }

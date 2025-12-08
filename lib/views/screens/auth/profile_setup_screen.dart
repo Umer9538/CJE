@@ -30,29 +30,29 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   // Cities list
   final List<String> _cities = [
-    'București',
+    'Bucharest',
     'Cluj-Napoca',
-    'Timișoara',
-    'Iași',
-    'Constanța',
+    'Timisoara',
+    'Iasi',
+    'Constanta',
     'Craiova',
-    'Brașov',
-    'Galați',
-    'Ploiești',
+    'Brasov',
+    'Galati',
+    'Ploiesti',
     'Oradea',
   ];
 
   // City passwords for access control
   static const Map<String, String> _cityPasswords = {
-    'București': 'BUC2024',
+    'Bucharest': 'BUC2024',
     'Cluj-Napoca': 'CLJ2024',
-    'Timișoara': 'TIM2024',
-    'Iași': 'IAS2024',
-    'Constanța': 'CTA2024',
+    'Timisoara': 'TIM2024',
+    'Iasi': 'IAS2024',
+    'Constanta': 'CTA2024',
     'Craiova': 'CRA2024',
-    'Brașov': 'BV2024',
-    'Galați': 'GL2024',
-    'Ploiești': 'PH2024',
+    'Brasov': 'BV2024',
+    'Galati': 'GL2024',
+    'Ploiesti': 'PH2024',
     'Oradea': 'BH2024',
   };
 
