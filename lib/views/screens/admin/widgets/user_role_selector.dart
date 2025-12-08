@@ -64,7 +64,9 @@ class _UserRoleSelectorState extends ConsumerState<UserRoleSelector> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
+            // Exclude superadmin from available roles - only one superadmin allowed
             children: UserRole.values
+                .where((role) => role != UserRole.superadmin)
                 .map((role) => _RoleChip(
                       role: role,
                       isSelected: currentRole == role,

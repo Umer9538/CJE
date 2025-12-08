@@ -59,7 +59,7 @@ class CSVImportService {
   /// email,fullName,phoneNumber,city,role,schoolId,schoolName,className,department
   /// john@example.com,John Doe,0712345678,Cluj,student,school123,High School #1,12A,
   ///
-  /// Role values: student, classRep, schoolRep, department, bex, superadmin
+  /// Role values: student, classRep, schoolRep, department, bex (superadmin cannot be imported)
   /// Department values: prCommunications, volunteering, schoolInclusion
   CSVImportResult parseCSV(String csvContent) {
     final List<UserModel> successfulUsers = [];
@@ -241,7 +241,16 @@ class CSVImportService {
       if (parsedRole == null) {
         errors.add(CSVImportError(
           rowNumber: rowNumber,
-          message: 'Invalid role: $roleStr. Valid values: student, classRep, schoolRep, department, bex, superadmin',
+          message: 'Invalid role: $roleStr. Valid values: student, classRep, schoolRep, department, bex',
+          rowData: rowData,
+        ));
+        return null;
+      }
+      // Prevent importing superadmin users - only one superadmin allowed
+      if (parsedRole == UserRole.superadmin) {
+        errors.add(CSVImportError(
+          rowNumber: rowNumber,
+          message: 'Cannot import superadmin users. Only one superadmin is allowed in the system.',
           rowData: rowData,
         ));
         return null;

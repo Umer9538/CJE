@@ -165,6 +165,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     String? onlineLink,
     List<String>? agendaItems,
     List<String>? attendeeIds,
+    List<MeetingDocument>? documents,
   }) async {
     state = const AsyncValue.loading();
 
@@ -197,6 +198,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       createdByName: user.fullName,
       agendaItems: agendaItems ?? [],
       attendeeIds: attendeeIds ?? [],
+      documents: documents ?? [],
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );

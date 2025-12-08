@@ -291,6 +291,8 @@ class AuthController extends StateNotifier<AuthStateData> {
                 if (!_hasUpdatedLastLogin) {
                   _hasUpdatedLastLogin = true;
                   _userRepository.updateLastLogin(user.id);
+                  // Register FCM token for push notifications
+                  _registerFcmToken(user.id);
                 }
               }
               break;
@@ -583,11 +585,39 @@ class AuthController extends StateNotifier<AuthStateData> {
     await _userRepository.updateFcmToken(user.id, token);
   }
 
+  /// Register FCM token for push notifications
+  Future<void> _registerFcmToken(String userId) async {
+    try {
+      final fcmService = FCMService();
+      final token = await fcmService.getToken();
+      if (token != null) {
+        await _userRepository.updateFcmToken(userId, token);
+        debugPrint('FCM token registered for user: $userId');
+
+        // Listen for token refresh
+        fcmService.onTokenRefresh((newToken) async {
+          await _userRepository.updateFcmToken(userId, newToken);
+          debugPrint('FCM token refreshed for user: $userId');
+        });
+      }
+    } catch (e) {
+      debugPrint('Error registering FCM token: $e');
+    }
+  }
+
   /// Sign out
   Future<void> signOut() async {
     _userSubscription?.cancel();
     _lastEmittedState = null; // Reset state tracking
     _hasUpdatedLastLogin = false; // Reset last login flag for next session
+
+    // Delete FCM token on sign out
+    try {
+      await FCMService().deleteToken();
+    } catch (e) {
+      debugPrint('Error deleting FCM token: $e');
+    }
+
     await _authService.signOut();
     state = AuthStateData.unauthenticated();
   }

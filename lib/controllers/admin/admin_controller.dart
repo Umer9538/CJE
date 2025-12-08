@@ -220,10 +220,17 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Change user role
+  /// Note: Cannot promote users to superadmin - only one superadmin allowed
   Future<bool> changeUserRole(String userId, UserRole newRole) async {
     debugPrint('AdminController.changeUserRole: canChangeRoles=$canChangeRoles');
     if (!canChangeRoles) {
       debugPrint('AdminController.changeUserRole: Permission denied');
+      return false;
+    }
+
+    // Prevent creating additional superadmins - only one allowed
+    if (newRole == UserRole.superadmin) {
+      debugPrint('AdminController.changeUserRole: Cannot promote to superadmin');
       return false;
     }
 

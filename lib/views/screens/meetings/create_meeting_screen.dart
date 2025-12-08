@@ -1,9 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
+import '../../../models/models.dart';
 
 /// Screen for creating a new meeting
 class CreateMeetingScreen extends ConsumerStatefulWidget {
@@ -35,6 +40,9 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
 
   final List<String> _agendaItems = [];
   final _agendaController = TextEditingController();
+
+  // Documents
+  final List<PlatformFile> _pendingFiles = [];
 
   @override
   void initState() {
@@ -368,6 +376,31 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             ),
             const SizedBox(height: 12),
             _buildAgendaSection(l10n),
+            const SizedBox(height: 24),
+
+            // Documents Section
+            Row(
+              children: [
+                Text(
+                  l10n.translate('documents'),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.navy,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${_pendingFiles.length} ${l10n.translate('files')}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildDocumentsSection(l10n),
             const SizedBox(height: 32),
 
             // Create button
@@ -659,10 +692,229 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
     }
   }
 
+  Widget _buildDocumentsSection(AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          // Existing files
+          ..._pendingFiles.asMap().entries.map((entry) {
+            final index = entry.key;
+            final file = entry.value;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _getFileColor(file.extension).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      _getFileIcon(file.extension),
+                      color: _getFileColor(file.extension),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          file.name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[700],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          _formatFileSize(file.size),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                    onPressed: () {
+                      setState(() => _pendingFiles.removeAt(index));
+                    },
+                  ),
+                ],
+              ),
+            );
+          }),
+
+          // Add file button
+          GestureDetector(
+            onTap: _pickFiles,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.grey[300]!,
+                  style: BorderStyle.solid,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.add_circle_outline,
+                    color: AppColors.gold,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.translate('add_document'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.gold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickFiles() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'],
+        allowMultiple: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        setState(() {
+          _pendingFiles.addAll(result.files);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking files: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<List<MeetingDocument>> _uploadDocuments() async {
+    final List<MeetingDocument> uploadedDocs = [];
+    final uuid = const Uuid();
+
+    for (final file in _pendingFiles) {
+      if (file.path == null) continue;
+
+      try {
+        final fileObj = File(file.path!);
+        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('meetings')
+            .child('documents')
+            .child(fileName);
+
+        final uploadTask = await storageRef.putFile(fileObj);
+        final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+        uploadedDocs.add(MeetingDocument(
+          id: uuid.v4(),
+          name: file.name,
+          url: downloadUrl,
+          fileType: file.extension,
+          uploadedAt: DateTime.now(),
+        ));
+      } catch (e) {
+        debugPrint('Error uploading document: $e');
+      }
+    }
+
+    return uploadedDocs;
+  }
+
+  IconData _getFileIcon(String? extension) {
+    switch (extension?.toLowerCase()) {
+      case 'pdf':
+        return Icons.picture_as_pdf_rounded;
+      case 'doc':
+      case 'docx':
+        return Icons.description_rounded;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart_rounded;
+      case 'ppt':
+      case 'pptx':
+        return Icons.slideshow_rounded;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return Icons.image_rounded;
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
+  }
+
+  Color _getFileColor(String? extension) {
+    switch (extension?.toLowerCase()) {
+      case 'pdf':
+        return Colors.red;
+      case 'doc':
+      case 'docx':
+        return Colors.blue;
+      case 'xls':
+      case 'xlsx':
+        return Colors.green;
+      case 'ppt':
+      case 'pptx':
+        return Colors.orange;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
   Future<void> _handleCreate() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
+
+    // Upload documents first if any
+    List<MeetingDocument> uploadedDocuments = [];
+    if (_pendingFiles.isNotEmpty) {
+      uploadedDocuments = await _uploadDocuments();
+    }
 
     final dateTime = DateTime(
       _selectedDate.year,
@@ -683,6 +935,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       isOnline: _isOnline,
       onlineLink: _isOnline ? _onlineLinkController.text.trim() : null,
       agendaItems: _agendaItems.isEmpty ? null : _agendaItems,
+      documents: uploadedDocuments.isEmpty ? null : uploadedDocuments,
     );
 
     setState(() => _isLoading = false);
