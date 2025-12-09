@@ -88,9 +88,12 @@ class DepartmentMembersScreen extends ConsumerWidget {
     final memberCount = membersAsync.whenOrNull(data: (m) => m.length) ?? 0;
 
     return Container(
+      width: double.infinity,
       color: const Color(0xFF92400E),
       child: SafeArea(
         bottom: false,
+        left: false,
+        right: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
           child: Column(

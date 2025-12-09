@@ -104,9 +104,12 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n, UserModel? user) {
     return Container(
+      width: double.infinity,
       color: const Color(0xFF92400E),
       child: SafeArea(
         bottom: false,
+        left: false,
+        right: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
           child: Column(

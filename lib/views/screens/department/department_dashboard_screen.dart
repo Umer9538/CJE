@@ -61,9 +61,12 @@ class DepartmentDashboardScreen extends ConsumerWidget {
     final departmentName = user?.department?.displayName ?? l10n.translate('department');
 
     return Container(
+      width: double.infinity,
       color: const Color(0xFF92400E), // Amber-800
       child: SafeArea(
         bottom: false,
+        left: false,
+        right: false,
         child: Container(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Row(
