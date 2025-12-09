@@ -6,6 +6,7 @@ import 'department_dashboard_screen.dart';
 import 'department_meetings_screen.dart';
 import 'department_documents_screen.dart';
 import 'department_members_screen.dart';
+import 'department_more_screen.dart';
 
 /// Department Shell - Main navigation for Department users
 /// Department-specific features:
@@ -28,6 +29,7 @@ class _DepartmentShellState extends ConsumerState<DepartmentShell> {
     DepartmentMeetingsScreen(),
     DepartmentDocumentsScreen(),
     DepartmentMembersScreen(),
+    DepartmentMoreScreen(),
   ];
 
   @override
@@ -79,6 +81,12 @@ class _DepartmentShellState extends ConsumerState<DepartmentShell> {
                   label: l10n.translate('members'),
                   isSelected: _currentIndex == 3,
                   onTap: () => setState(() => _currentIndex = 3),
+                ),
+                _NavItem(
+                  icon: Icons.more_horiz_rounded,
+                  label: l10n.translate('more'),
+                  isSelected: _currentIndex == 4,
+                  onTap: () => setState(() => _currentIndex = 4),
                 ),
               ],
             ),
