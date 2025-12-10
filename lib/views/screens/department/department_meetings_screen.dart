@@ -8,7 +8,6 @@ import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../meetings/create_meeting_screen.dart';
 import '../meetings/meeting_detail_screen.dart';
-import 'department_dashboard_screen.dart';
 
 /// Department Meetings Screen - Shows all department meetings
 class DepartmentMeetingsScreen extends ConsumerStatefulWidget {

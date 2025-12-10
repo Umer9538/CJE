@@ -27,16 +27,24 @@ class MeetingRepository {
     int limit = 20,
   }) async {
     try {
+      debugPrint('getMeetings: type=$type, department=$department');
       // Simple query without orderBy to avoid index requirement
       final snapshot = await _collection.get();
+      debugPrint('getMeetings: fetched ${snapshot.docs.length} total docs from Firebase');
 
       final now = DateTime.now();
       List<MeetingModel> meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
           .where((m) {
-            if (type != null && m.type != type) return false;
+            if (type != null && m.type != type) {
+              debugPrint('getMeetings: filtering out ${m.title} - type mismatch: ${m.type} != $type');
+              return false;
+            }
             if (schoolId != null && m.type == MeetingType.school && m.schoolId != schoolId) return false;
-            if (department != null && m.department != department) return false;
+            if (department != null && m.department != department) {
+              debugPrint('getMeetings: filtering out ${m.title} - department mismatch: ${m.department} != $department');
+              return false;
+            }
             if (upcomingOnly && m.dateTime.isBefore(now)) return false;
             return true;
           })
@@ -104,10 +112,13 @@ class MeetingRepository {
   /// Create meeting
   Future<String?> createMeeting(MeetingModel meeting) async {
     try {
+      debugPrint('Creating meeting: ${meeting.title}, type: ${meeting.type}');
       final docRef = await _collection.add(meeting.toFirestore());
+      debugPrint('Meeting created with id: ${docRef.id}');
       return docRef.id;
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('Error creating meeting: $e');
+      debugPrint('Stack trace: $stackTrace');
       return null;
     }
   }

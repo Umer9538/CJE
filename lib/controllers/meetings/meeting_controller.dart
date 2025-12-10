@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/repositories/repositories.dart';
@@ -70,6 +71,36 @@ final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async 
       onTimeout: () => <MeetingModel>[],
     );
   } catch (e) {
+    return <MeetingModel>[];
+  }
+});
+
+/// Provider for department meetings (filtered by current user's department)
+final departmentMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async {
+  final user = ref.read(currentUserProvider);
+  debugPrint('departmentMeetingsProvider: user=${user?.fullName}, role=${user?.role}, department=${user?.department}');
+
+  if (user == null) {
+    debugPrint('departmentMeetingsProvider: user is null, returning empty list');
+    return <MeetingModel>[];
+  }
+
+  final repository = ref.read(meetingRepositoryProvider);
+  try {
+    // If user has a specific department assigned, filter by it
+    // Otherwise, show all department-type meetings for users with department role
+    final meetings = await repository.getMeetings(
+      type: MeetingType.department,
+      department: user.department, // null means show all department meetings
+      limit: 20,
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => <MeetingModel>[],
+    );
+    debugPrint('departmentMeetingsProvider: found ${meetings.length} meetings');
+    return meetings;
+  } catch (e) {
+    debugPrint('departmentMeetingsProvider: error $e');
     return <MeetingModel>[];
   }
 });
@@ -170,16 +201,22 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     final user = _ref.read(currentUserProvider);
+    debugPrint('createMeeting: user=${user?.fullName}, role=${user?.role}, type=$type');
+
     if (user == null) {
+      debugPrint('createMeeting: User is null');
       state = AsyncValue.error('User not authenticated', StackTrace.current);
       return null;
     }
 
     // Permission check
     if (!_canManageMeetingType(user.role, type)) {
+      debugPrint('createMeeting: Permission denied for role ${user.role} to create $type meetings');
       state = AsyncValue.error('Permission denied: Cannot create ${type.displayName} meetings', StackTrace.current);
       return null;
     }
+
+    debugPrint('createMeeting: Permission check passed');
 
     final meeting = MeetingModel(
       id: '',
@@ -210,6 +247,10 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(meetingsProvider);
       _ref.invalidate(upcomingMeetingsProvider);
       _ref.invalidate(nextMeetingProvider);
+      // Invalidate department meetings if it's a department meeting
+      if (type == MeetingType.department) {
+        _ref.invalidate(departmentMeetingsProvider);
+      }
     } else {
       state = AsyncValue.error('Failed to create meeting', StackTrace.current);
     }
@@ -242,6 +283,10 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(meetingsProvider);
       _ref.invalidate(meetingProvider(meeting.id));
       _ref.invalidate(upcomingMeetingsProvider);
+      // Invalidate department meetings if it's a department meeting
+      if (meeting.type == MeetingType.department) {
+        _ref.invalidate(departmentMeetingsProvider);
+      }
     } else {
       state = AsyncValue.error('Failed to update meeting', StackTrace.current);
     }
@@ -260,6 +305,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(meetingsProvider);
       _ref.invalidate(upcomingMeetingsProvider);
       _ref.invalidate(nextMeetingProvider);
+      _ref.invalidate(departmentMeetingsProvider);
     } else {
       state = AsyncValue.error('Failed to delete meeting', StackTrace.current);
     }

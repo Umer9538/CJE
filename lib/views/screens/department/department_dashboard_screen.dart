@@ -551,28 +551,6 @@ class _MeetingCard extends StatelessWidget {
   }
 }
 
-/// Provider for department meetings (filtered by current user's department)
-final departmentMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async {
-  final user = ref.read(currentUserProvider);
-  if (user == null || user.department == null) {
-    return <MeetingModel>[];
-  }
-
-  final repository = ref.read(meetingRepositoryProvider);
-  try {
-    return await repository.getMeetings(
-      type: MeetingType.department,
-      department: user.department,
-      limit: 20,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => <MeetingModel>[],
-    );
-  } catch (e) {
-    return <MeetingModel>[];
-  }
-});
-
 /// Provider for department members
 final departmentMembersProvider = FutureProvider<List<UserModel>>((ref) async {
   final user = ref.read(currentUserProvider);
