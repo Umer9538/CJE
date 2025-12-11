@@ -767,7 +767,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
-                      currentLocale == 'ro' ? 'Română' : 'English',
+                      currentLocale.languageCode == 'ro' ? 'Română' : 'English',
                       style: TextStyle(
                         color: context.textPrimary,
                         fontWeight: FontWeight.w500,

@@ -311,6 +311,7 @@ class _PollCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final dateFormat = DateFormat('MMM d, yyyy');
     final isActive = poll.isActive;
     final hasEnded = poll.hasEnded;
@@ -352,7 +353,7 @@ class _PollCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    isActive ? 'Active' : (hasEnded ? 'Ended' : 'Upcoming'),
+                    isActive ? l10n.translate('active') : (hasEnded ? l10n.translate('ended') : l10n.translate('upcoming')),
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

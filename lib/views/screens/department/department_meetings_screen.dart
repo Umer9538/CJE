@@ -269,6 +269,7 @@ class _MeetingListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isPast = meeting.dateTime.isBefore(DateTime.now());
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -361,8 +362,8 @@ class _MeetingListItem extends StatelessWidget {
                       Expanded(
                         child: Text(
                           meeting.isOnline
-                              ? 'Online'
-                              : (meeting.location ?? 'TBD'),
+                              ? l10n.translate('online')
+                              : (meeting.location ?? l10n.translate('to_be_determined')),
                           style: TextStyle(fontSize: 13, color: context.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -379,7 +380,7 @@ class _MeetingListItem extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        meeting.isCompleted ? 'Completed' : 'Past',
+                        meeting.isCompleted ? l10n.translate('completed') : l10n.translate('past'),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,

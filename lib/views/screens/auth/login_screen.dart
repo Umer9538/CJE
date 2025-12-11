@@ -109,7 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       }
                     },
                     child: Text(
-                      'Welcome back 👋',
+                      '${l10n.translate('welcome_back')} 👋',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -122,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Subtitle
                   Text(
-                    'Enter your email and password to\nget access your account',
+                    l10n.translate('login_subtitle'),
                     style: TextStyle(
                       fontSize: 14,
                       color: context.textSecondary,

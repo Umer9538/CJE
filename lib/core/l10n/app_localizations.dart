@@ -590,6 +590,7 @@ const Map<String, String> _roStrings = {
 
   // Authentication
   'login': 'Autentificare',
+  'login_subtitle': 'Introdu email-ul și parola pentru\na accesa contul tău',
   'logout': 'Deconectare',
   'register': 'Înregistrare',
   'sign_in': 'Conectare',
@@ -720,6 +721,7 @@ const Map<String, String> _roStrings = {
   'meeting_time': 'Ora ședinței',
   'meeting_location': 'Locație ședință',
   'meeting_type': 'Tip ședință',
+  'to_be_determined': 'De stabilit',
   'online': 'Online',
   'in_person': 'Fizic',
   'hybrid': 'Hibrid',
@@ -885,6 +887,8 @@ const Map<String, String> _roStrings = {
 
   // Status & States
   'active': 'Activ',
+  'ended': 'Încheiat',
+  'upcoming': 'Viitor',
   'inactive': 'Inactiv',
   'enabled': 'Activat',
   'disabled': 'Dezactivat',
@@ -1152,6 +1156,8 @@ const Map<String, String> _roStrings = {
   'error_approving_user': 'Eroare la aprobarea utilizatorului',
   'error_suspending_user': 'Eroare la suspendarea utilizatorului',
   'error_changing_role': 'Eroare la schimbarea rolului',
+  'select_department': 'Selectează departamentul',
+  'select_department_description': 'Alege departamentul pentru acest utilizator',
   'confirm_role_change': 'Confirmă schimbarea rolului',
   'confirm_role_change_desc': 'Ești sigur că vrei să schimbi rolul acestui utilizator în',
   'confirm_suspend': 'Confirmă suspendarea',
@@ -1510,6 +1516,7 @@ const Map<String, String> _enStrings = {
 
   // Authentication
   'login': 'Login',
+  'login_subtitle': 'Enter your email and password to\naccess your account',
   'logout': 'Logout',
   'register': 'Register',
   'sign_in': 'Sign in',
@@ -1640,6 +1647,7 @@ const Map<String, String> _enStrings = {
   'meeting_time': 'Meeting time',
   'meeting_location': 'Meeting location',
   'meeting_type': 'Meeting type',
+  'to_be_determined': 'TBD',
   'online': 'Online',
   'in_person': 'In person',
   'hybrid': 'Hybrid',
@@ -1805,6 +1813,8 @@ const Map<String, String> _enStrings = {
 
   // Status & States
   'active': 'Active',
+  'ended': 'Ended',
+  'upcoming': 'Upcoming',
   'inactive': 'Inactive',
   'enabled': 'Enabled',
   'disabled': 'Disabled',
@@ -2072,6 +2082,8 @@ const Map<String, String> _enStrings = {
   'error_approving_user': 'Error approving user',
   'error_suspending_user': 'Error suspending user',
   'error_changing_role': 'Error changing role',
+  'select_department': 'Select Department',
+  'select_department_description': 'Choose the department for this user',
   'confirm_role_change': 'Confirm Role Change',
   'confirm_role_change_desc': 'Are you sure you want to change this user\'s role to',
   'confirm_suspend': 'Confirm Suspension',
