@@ -39,7 +39,7 @@ class DepartmentMembersScreen extends ConsumerWidget {
                 child: membersAsync.when(
                   data: (members) {
                     if (members.isEmpty) {
-                      return _buildEmptyState(l10n);
+                      return _buildEmptyState(context, l10n);
                     }
 
                     return ListView.builder(
@@ -61,11 +61,11 @@ class DepartmentMembersScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                        Icon(Icons.error_outline, size: 48, color: context.textSecondary),
                         const SizedBox(height: 16),
                         Text(
                           l10n.translate('error_loading'),
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: context.textSecondary),
                         ),
                         const SizedBox(height: 8),
                         TextButton(
@@ -141,7 +141,7 @@ class DepartmentMembersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -149,14 +149,14 @@ class DepartmentMembersScreen extends ConsumerWidget {
           Icon(
             Icons.people_outline_rounded,
             size: 64,
-            color: Colors.grey[300],
+            color: context.borderColor,
           ),
           const SizedBox(height: 16),
           Text(
             l10n.translate('no_members'),
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[500],
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -180,14 +180,14 @@ class _MemberListItem extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: isCurrentUser
             ? Border.all(color: AppColors.badgeDepartmentText, width: 2)
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -226,10 +226,10 @@ class _MemberListItem extends StatelessWidget {
                     Expanded(
                       child: Text(
                         member.fullName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -258,7 +258,7 @@ class _MemberListItem extends StatelessWidget {
                   member.email,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[500],
+                    color: context.textSecondary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -267,14 +267,14 @@ class _MemberListItem extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.school, size: 12, color: Colors.grey[400]),
+                      Icon(Icons.school, size: 12, color: context.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           member.schoolName!,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[400],
+                            color: context.textSecondary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

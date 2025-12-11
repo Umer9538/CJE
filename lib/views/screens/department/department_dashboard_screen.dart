@@ -154,10 +154,10 @@ class DepartmentDashboardScreen extends ConsumerWidget {
         children: [
           Text(
             l10n.translate('overview'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -203,10 +203,10 @@ class DepartmentDashboardScreen extends ConsumerWidget {
         children: [
           Text(
             l10n.translate('quick_actions'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -263,10 +263,10 @@ class DepartmentDashboardScreen extends ConsumerWidget {
             children: [
               Text(
                 l10n.translate('upcoming_meetings'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               TextButton(
@@ -290,17 +290,17 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                 return Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: context.cardColor,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Center(
                     child: Column(
                       children: [
-                        Icon(Icons.event_busy_rounded, size: 48, color: Colors.grey[300]),
+                        Icon(Icons.event_busy_rounded, size: 48, color: context.borderColor),
                         const SizedBox(height: 12),
                         Text(
                           l10n.translate('no_upcoming_meetings'),
-                          style: TextStyle(color: Colors.grey[500]),
+                          style: TextStyle(color: context.textSecondary),
                         ),
                       ],
                     ),
@@ -344,11 +344,11 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -371,17 +371,17 @@ class _StatCard extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: context.textSecondary,
                   ),
                 ),
               ],
@@ -413,11 +413,11 @@ class _QuickActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -437,10 +437,10 @@ class _QuickActionButton extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
             ),
@@ -462,11 +462,11 @@ class _MeetingCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -496,7 +496,7 @@ class _MeetingCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey[600],
+                    color: context.textSecondary,
                   ),
                 ),
               ],
@@ -509,10 +509,10 @@ class _MeetingCard extends StatelessWidget {
               children: [
                 Text(
                   meeting.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -520,20 +520,20 @@ class _MeetingCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.access_time, size: 14, color: Colors.grey[500]),
+                    Icon(Icons.access_time, size: 14, color: context.textSecondary),
                     const SizedBox(width: 4),
                     Text(
                       DateFormat('HH:mm').format(meeting.dateTime),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
                     ),
                     if (meeting.location != null) ...[
                       const SizedBox(width: 12),
-                      Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                      Icon(Icons.location_on, size: 14, color: context.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           meeting.location!,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 12, color: context.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -544,7 +544,7 @@ class _MeetingCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: Colors.grey),
+          Icon(Icons.chevron_right, color: context.textSecondary),
         ],
       ),
     );

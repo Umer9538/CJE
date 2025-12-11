@@ -36,17 +36,20 @@ class _DepartmentShellState extends ConsumerState<DepartmentShell> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
+    // Clamp index to valid range (safety for hot reload)
+    final safeIndex = _currentIndex.clamp(0, _screens.length - 1);
+
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: safeIndex,
         children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: context.shadowColor,
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -128,7 +131,7 @@ class _NavItem extends StatelessWidget {
             Icon(
               icon,
               size: 24,
-              color: isSelected ? AppColors.badgeDepartmentText : Colors.grey[400],
+              color: isSelected ? context.textPrimary : context.textSecondary,
             ),
             const SizedBox(height: 4),
             Text(
@@ -136,7 +139,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? AppColors.badgeDepartmentText : Colors.grey[400],
+                color: isSelected ? context.textPrimary : context.textSecondary,
               ),
             ),
           ],

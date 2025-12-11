@@ -78,7 +78,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -88,14 +88,14 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                 ),
               ],
             ),
-            child: const Icon(Icons.close, color: AppColors.navy, size: 20),
+            child: Icon(Icons.close, color: context.textPrimary, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           l10n.translate('create_meeting'),
-          style: const TextStyle(
-            color: AppColors.navy,
+          style: TextStyle(
+            color: context.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -109,10 +109,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             // Meeting Type
             Text(
               l10n.translate('meeting_type'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -157,10 +157,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             // Title
             Text(
               l10n.translate('meeting_title'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -187,10 +187,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                     children: [
                       Text(
                         l10n.translate('date'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -205,10 +205,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                     children: [
                       Text(
                         l10n.translate('time'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -223,10 +223,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             // Duration
             Text(
               l10n.translate('duration'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -264,10 +264,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                       children: [
                         Text(
                           l10n.translate('online'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -275,7 +275,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                           'This is an online meeting',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -301,10 +301,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             if (_isOnline) ...[
               Text(
                 l10n.translate('meeting_link'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -318,10 +318,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             ] else ...[
               Text(
                 l10n.translate('meeting_location'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -337,10 +337,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             // Description
             Text(
               l10n.translate('meeting_description'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -358,10 +358,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
               children: [
                 Text(
                   l10n.translate('agenda'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 const Spacer(),
@@ -369,7 +369,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                   '${_agendaItems.length} items',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[500],
+                    color: context.textSecondary,
                   ),
                 ),
               ],
@@ -383,10 +383,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
               children: [
                 Text(
                   l10n.translate('documents'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 const Spacer(),
@@ -394,7 +394,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                   '${_pendingFiles.length} ${l10n.translate('files')}',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey[500],
+                    color: context.textSecondary,
                   ),
                 ),
               ],
@@ -417,12 +417,12 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                   elevation: 0,
                 ),
                 child: _isLoading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       )
                     : Text(
@@ -444,7 +444,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
   InputDecoration _buildInputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400]),
+      hintStyle: TextStyle(color: context.textSecondary),
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(
@@ -501,14 +501,14 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_rounded, color: Colors.grey[400], size: 20),
+            Icon(Icons.calendar_today_rounded, color: context.textSecondary, size: 20),
             const SizedBox(width: 12),
             Text(
               dateFormat.format(_selectedDate),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
           ],
@@ -554,14 +554,14 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.schedule_rounded, color: Colors.grey[400], size: 20),
+            Icon(Icons.schedule_rounded, color: context.textSecondary, size: 20),
             const SizedBox(width: 12),
             Text(
               timeFormat.format(dateTime),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
           ],
@@ -646,7 +646,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                    icon: Icon(Icons.close, size: 18, color: context.textSecondary),
                     onPressed: () {
                       setState(() => _agendaItems.removeAt(index));
                     },
@@ -664,7 +664,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                   controller: _agendaController,
                   decoration: InputDecoration(
                     hintText: l10n.translate('agenda_item_hint'),
-                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    hintStyle: TextStyle(color: context.textSecondary),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -741,14 +741,14 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                           _formatFileSize(file.size),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[400],
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                    icon: Icon(Icons.close, size: 18, color: context.textSecondary),
                     onPressed: () {
                       setState(() => _pendingFiles.removeAt(index));
                     },

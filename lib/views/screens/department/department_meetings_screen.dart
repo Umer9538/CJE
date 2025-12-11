@@ -90,11 +90,11 @@ class _DepartmentMeetingsScreenState extends ConsumerState<DepartmentMeetingsScr
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                        Icon(Icons.error_outline, size: 48, color: context.textSecondary),
                         const SizedBox(height: 16),
                         Text(
                           l10n.translate('error_loading'),
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: context.textSecondary),
                         ),
                         const SizedBox(height: 8),
                         TextButton(
@@ -194,7 +194,7 @@ class _DepartmentMeetingsScreenState extends ConsumerState<DepartmentMeetingsScr
           Icon(
             Icons.event_busy_rounded,
             size: 64,
-            color: Colors.grey[300],
+            color: context.borderColor,
           ),
           const SizedBox(height: 16),
           Text(
@@ -203,7 +203,7 @@ class _DepartmentMeetingsScreenState extends ConsumerState<DepartmentMeetingsScr
                 : l10n.translate('no_meetings'),
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[500],
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -211,7 +211,7 @@ class _DepartmentMeetingsScreenState extends ConsumerState<DepartmentMeetingsScr
             l10n.translate('create_first_meeting'),
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[400],
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -233,15 +233,16 @@ class _FilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.badgeDepartmentBg : Colors.grey[100],
+          color: isSelected ? AppColors.badgeDepartmentBg : (isDark ? Colors.grey[800] : Colors.grey[100]),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppColors.badgeDepartmentText : Colors.grey[300]!,
+            color: isSelected ? AppColors.badgeDepartmentText : context.borderColor,
           ),
         ),
         child: Text(
@@ -249,7 +250,7 @@ class _FilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: isSelected ? AppColors.badgeDepartmentText : Colors.grey[600],
+            color: isSelected ? AppColors.badgeDepartmentText : context.textSecondary,
           ),
         ),
       ),
@@ -269,6 +270,7 @@ class _MeetingListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPast = meeting.dateTime.isBefore(DateTime.now());
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: onTap,
@@ -276,11 +278,11 @@ class _MeetingListItem extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -294,7 +296,7 @@ class _MeetingListItem extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: isPast
-                    ? Colors.grey[100]
+                    ? (isDark ? Colors.grey[800] : Colors.grey[100])
                     : AppColors.badgeDepartmentBg.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -305,7 +307,7 @@ class _MeetingListItem extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: isPast ? Colors.grey[500] : const Color(0xFF92400E),
+                      color: isPast ? context.textSecondary : const Color(0xFF92400E),
                     ),
                   ),
                   Text(
@@ -313,7 +315,7 @@ class _MeetingListItem extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isPast ? Colors.grey[400] : Colors.grey[600],
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
@@ -331,7 +333,7 @@ class _MeetingListItem extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: isPast ? Colors.grey[500] : AppColors.navy,
+                      color: isPast ? context.textSecondary : context.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -342,18 +344,18 @@ class _MeetingListItem extends StatelessWidget {
                       Icon(
                         Icons.access_time,
                         size: 14,
-                        color: Colors.grey[500],
+                        color: context.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         DateFormat('HH:mm').format(meeting.dateTime),
-                        style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 13, color: context.textSecondary),
                       ),
                       const SizedBox(width: 12),
                       Icon(
                         meeting.isOnline ? Icons.videocam : Icons.location_on,
                         size: 14,
-                        color: Colors.grey[500],
+                        color: context.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -361,7 +363,7 @@ class _MeetingListItem extends StatelessWidget {
                           meeting.isOnline
                               ? 'Online'
                               : (meeting.location ?? 'TBD'),
-                          style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 13, color: context.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -373,7 +375,7 @@ class _MeetingListItem extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
+                        color: isDark ? Colors.grey[800] : Colors.grey[100],
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -381,7 +383,7 @@ class _MeetingListItem extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: Colors.grey[500],
+                          color: context.textSecondary,
                         ),
                       ),
                     ),
@@ -389,7 +391,7 @@ class _MeetingListItem extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.grey),
+            Icon(Icons.chevron_right, color: context.textSecondary),
           ],
         ),
       ),

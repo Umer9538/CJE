@@ -143,16 +143,16 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
                   ),
                 ],
               ),
-              child: const Icon(Icons.arrow_back_rounded, color: AppColors.navy, size: 22),
+              child: Icon(Icons.arrow_back_rounded, color: context.textPrimary, size: 22),
             ),
           ),
           const SizedBox(width: 16),
           Text(
             l10n.translate('meetings'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
           const Spacer(),
@@ -185,7 +185,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
             ),
           ],
         ),
-        child: Icon(icon, color: AppColors.navy, size: 22),
+        child: Icon(icon, color: context.textPrimary, size: 22),
       ),
     );
   }
@@ -292,10 +292,10 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
             _upcomingOnly
                 ? l10n.translate('no_upcoming_meetings')
                 : l10n.translate('no_meetings'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
@@ -303,7 +303,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
             'Check back later for updates',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -320,7 +320,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
           const SizedBox(height: 16),
           Text(
             'Failed to load meetings',
-            style: TextStyle(color: Colors.grey[600]),
+            style: TextStyle(color: context.textSecondary),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
@@ -533,7 +533,7 @@ class _MeetingCard extends StatelessWidget {
                               ? Icons.link_rounded
                               : Icons.location_on_outlined,
                           size: 14,
-                          color: Colors.grey[400],
+                          color: context.textSecondary,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -543,7 +543,7 @@ class _MeetingCard extends StatelessWidget {
                                 : meeting.location ?? 'Location TBD',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: context.textSecondary,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -558,14 +558,14 @@ class _MeetingCard extends StatelessWidget {
                         Icon(
                           Icons.schedule_rounded,
                           size: 14,
-                          color: Colors.grey[400],
+                          color: context.textSecondary,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           '${meeting.durationMinutes} min',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -580,7 +580,7 @@ class _MeetingCard extends StatelessWidget {
               padding: const EdgeInsets.only(right: 16),
               child: Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
             ),
           ],

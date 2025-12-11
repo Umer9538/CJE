@@ -41,7 +41,7 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
                 child: documentsAsync.when(
                   data: (documents) {
                     if (documents.isEmpty) {
-                      return _buildEmptyState(l10n);
+                      return _buildEmptyState(context, l10n);
                     }
 
                     return ListView.builder(
@@ -63,11 +63,11 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+                        Icon(Icons.error_outline, size: 48, color: context.textSecondary),
                         const SizedBox(height: 16),
                         Text(
                           l10n.translate('error_loading'),
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: context.textSecondary),
                         ),
                         const SizedBox(height: 8),
                         TextButton(
@@ -138,7 +138,7 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -146,14 +146,14 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
           Icon(
             Icons.folder_open_rounded,
             size: 64,
-            color: Colors.grey[300],
+            color: context.borderColor,
           ),
           const SizedBox(height: 16),
           Text(
             l10n.translate('no_documents'),
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey[500],
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -161,7 +161,7 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
             l10n.translate('upload_first_document'),
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[400],
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -204,11 +204,11 @@ class _DocumentListItem extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -244,10 +244,10 @@ class _DocumentListItem extends StatelessWidget {
                 children: [
                   Text(
                     document.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -257,14 +257,14 @@ class _DocumentListItem extends StatelessWidget {
                     children: [
                       Text(
                         document.fileSizeFormatted,
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: context.textSecondary),
                       ),
                       const SizedBox(width: 12),
-                      Icon(Icons.calendar_today, size: 12, color: Colors.grey[400]),
+                      Icon(Icons.calendar_today, size: 12, color: context.textSecondary),
                       const SizedBox(width: 4),
                       Text(
                         DateFormat('dd MMM yyyy').format(document.createdAt),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: context.textSecondary),
                       ),
                     ],
                   ),
@@ -272,11 +272,11 @@ class _DocumentListItem extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.download, size: 12, color: Colors.grey[400]),
+                        Icon(Icons.download, size: 12, color: context.textSecondary),
                         const SizedBox(width: 4),
                         Text(
                           '${document.downloadCount} downloads',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                          style: TextStyle(fontSize: 11, color: context.textSecondary),
                         ),
                       ],
                     ),
@@ -284,7 +284,7 @@ class _DocumentListItem extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.open_in_new, color: Colors.grey, size: 20),
+            Icon(Icons.open_in_new, color: context.textSecondary, size: 20),
           ],
         ),
       ),

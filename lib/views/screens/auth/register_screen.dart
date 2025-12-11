@@ -233,7 +233,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final schoolsAsync = ref.watch(schoolsListProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: context.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -263,10 +263,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     },
                     child: Text(
                       l10n.translate('create_account'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.navy,
+                        color: context.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -278,7 +278,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     l10n.translate('join_student_council'),
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: context.textSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -318,10 +318,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           children: [
                             Text(
                               l10n.translate('first_name'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.navy,
+                                color: context.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -347,10 +347,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           children: [
                             Text(
                               l10n.translate('last_name'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.navy,
+                                color: context.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -376,10 +376,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // Email
                   Text(
                     l10n.translate('email'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -403,10 +403,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // Phone Number (Required)
                   Text(
                     l10n.translate('phone_number'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -432,10 +432,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // City Dropdown (Required)
                   Text(
                     l10n.translate('city'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -467,10 +467,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // City Password (Required - provided by admin)
                   Text(
                     l10n.translate('city_password'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -478,11 +478,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _cityPasswordController,
                     enabled: !_isLoading && !_isGoogleLoading && _selectedCity != null,
                     obscureText: _obscureCityPassword,
-                    decoration: _inputDecoration(l10n.translate('city_password_hint')).copyWith(
+                    style: TextStyle(color: context.textPrimary),
+                    decoration: _inputDecoration(
+                      l10n.translate('city_password_hint'),
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureCityPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: Colors.grey[500],
+                          color: context.textSecondary,
                           size: 20,
                         ),
                         onPressed: () => setState(() => _obscureCityPassword = !_obscureCityPassword),
@@ -512,10 +514,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // School Dropdown
                   Text(
                     l10n.translate('school'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -552,10 +554,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // Password
                   Text(
                     l10n.translate('password'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -563,11 +565,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _passwordController,
                     enabled: !_isLoading && !_isGoogleLoading,
                     obscureText: _obscurePassword,
-                    decoration: _inputDecoration('${l10n.translate('password')}...').copyWith(
+                    style: TextStyle(color: context.textPrimary),
+                    decoration: _inputDecoration(
+                      '${l10n.translate('password')}...',
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: Colors.grey[500],
+                          color: context.textSecondary,
                           size: 20,
                         ),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -588,10 +592,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // Confirm Password
                   Text(
                     l10n.translate('confirm_password'),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -599,11 +603,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _confirmPasswordController,
                     enabled: !_isLoading && !_isGoogleLoading,
                     obscureText: _obscureConfirmPassword,
-                    decoration: _inputDecoration('${l10n.translate('confirm_password')}...').copyWith(
+                    style: TextStyle(color: context.textPrimary),
+                    decoration: _inputDecoration(
+                      '${l10n.translate('confirm_password')}...',
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: Colors.grey[500],
+                          color: context.textSecondary,
                           size: 20,
                         ),
                         onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
@@ -663,17 +669,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         '${l10n.translate('already_have_account')} ',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: context.textSecondary,
                         ),
                       ),
                       GestureDetector(
                         onTap: () => context.pop(),
                         child: Text(
                           l10n.translate('login'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                       ),
@@ -684,19 +690,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   // OR Divider
                   Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.grey[300])),
+                      Expanded(child: Divider(color: context.borderColor)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
                           l10n.translate('or').toUpperCase(),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      Expanded(child: Divider(color: Colors.grey[300])),
+                      Expanded(child: Divider(color: context.borderColor)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -739,35 +745,37 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(String hint, {Widget? suffixIcon}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
-        color: Colors.grey[400],
+        color: context.textSecondary,
         fontSize: 14,
       ),
       filled: true,
-      fillColor: Colors.grey[50],
+      fillColor: isDark ? Colors.grey[900] : Colors.grey[50],
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      suffixIcon: suffixIcon,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: context.borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: context.borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.navy, width: 1.5),
+        borderSide: BorderSide(color: context.primaryColor, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.red[400]!),
+        borderSide: BorderSide(color: context.errorColor),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.red[400]!, width: 1.5),
+        borderSide: BorderSide(color: context.errorColor, width: 1.5),
       ),
     );
   }

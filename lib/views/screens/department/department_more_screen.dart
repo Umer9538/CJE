@@ -125,10 +125,10 @@ class DepartmentMoreScreen extends ConsumerWidget {
           children: [
             Text(
               l10n.translate('select_language'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -170,10 +170,10 @@ class DepartmentMoreScreen extends ConsumerWidget {
           children: [
             Text(
               l10n.translate('select_theme'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 16),
@@ -326,7 +326,7 @@ class _SectionTitle extends StatelessWidget {
       style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
-        color: Colors.grey[600],
+        color: context.textSecondary,
       ),
     );
   }
@@ -341,11 +341,11 @@ class _MenuCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -359,7 +359,7 @@ class _MenuCard extends StatelessWidget {
                   children: [
                     e.value,
                     if (e.key < children.length - 1)
-                      Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1)),
+                      Divider(height: 1, color: context.dividerColor),
                   ],
                 ))
             .toList(),
@@ -395,19 +395,19 @@ class _MenuItem extends StatelessWidget {
       ),
       title: Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontWeight: FontWeight.w600,
-          color: AppColors.navy,
+          color: context.textPrimary,
         ),
       ),
       subtitle: Text(
         subtitle,
         style: TextStyle(
           fontSize: 12,
-          color: Colors.grey[500],
+          color: context.textSecondary,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      trailing: Icon(Icons.chevron_right, color: context.textSecondary),
     );
   }
 }

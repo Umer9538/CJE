@@ -140,16 +140,16 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
                   ),
                 ],
               ),
-              child: const Icon(Icons.arrow_back_rounded, color: AppColors.navy, size: 22),
+              child: Icon(Icons.arrow_back_rounded, color: context.textPrimary, size: 22),
             ),
           ),
           const SizedBox(width: 16),
           Text(
             l10n.translate('documents'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
           const Spacer(),
@@ -184,7 +184,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
             ),
           ],
         ),
-        child: Icon(icon, color: AppColors.navy, size: 20),
+        child: Icon(icon, color: context.textPrimary, size: 20),
       ),
     );
   }
@@ -251,10 +251,10 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
             const SizedBox(height: 24),
             Text(
               l10n.translate('no_documents'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -263,7 +263,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: context.textSecondary,
               ),
             ),
           ],
@@ -283,7 +283,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
             const SizedBox(height: 16),
             Text(
               l10n.translate('error_loading'),
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: context.textSecondary),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -439,10 +439,10 @@ class _DocumentCard extends ConsumerWidget {
                 children: [
                   Text(
                     document.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -473,15 +473,15 @@ class _DocumentCard extends ConsumerWidget {
                       ),
                       Text(
                         document.fileType.displayName,
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 11, color: context.textSecondary),
                       ),
                       Text(
                         document.fileSizeFormatted,
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 11, color: context.textSecondary),
                       ),
                       Text(
                         yearFormat.format(document.createdAt),
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 11, color: context.textSecondary),
                       ),
                     ],
                   ),
@@ -494,7 +494,7 @@ class _DocumentCard extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           document.uploadedByName,
-                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 11, color: context.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
