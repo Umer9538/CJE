@@ -80,7 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.white,
+      backgroundColor: context.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -108,12 +108,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         );
                       }
                     },
-                    child: const Text(
+                    child: Text(
                       'Welcome back 👋',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.navy,
+                        color: context.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -125,7 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     'Enter your email and password to\nget access your account',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: context.textSecondary,
                       height: 1.5,
                     ),
                     textAlign: TextAlign.center,
@@ -158,12 +158,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
 
                   // Email Label
-                  const Text(
+                  Text(
                     'Email Address',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -175,8 +175,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     enabled: !_isLoading && !_isGoogleLoading,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
+                    style: TextStyle(color: context.textPrimary),
                     onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
-                    decoration: _inputDecoration('Email address...'),
+                    decoration: _inputDecoration(context, 'Email address...'),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return l10n.translate('field_required');
@@ -190,12 +191,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 20),
 
                   // Password Label
-                  const Text(
+                  Text(
                     'Password',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -207,12 +208,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     enabled: !_isLoading && !_isGoogleLoading,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
+                    style: TextStyle(color: context.textPrimary),
                     onFieldSubmitted: (_) => _handleEmailLogin(),
-                    decoration: _inputDecoration('Password...').copyWith(
+                    decoration: _inputDecoration(context, 'Password...').copyWith(
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: Colors.grey[500],
+                          color: context.textSecondary,
                           size: 20,
                         ),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
@@ -241,7 +243,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               value: _rememberMe,
                               onChanged: (value) => setState(() => _rememberMe = value ?? false),
                               shape: const CircleBorder(),
-                              side: BorderSide(color: Colors.grey[400]!),
+                              side: BorderSide(color: context.textSecondary),
                               activeColor: AppColors.gold,
                             ),
                           ),
@@ -250,7 +252,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             'Remember me',
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey[600],
+                              color: context.textSecondary,
                             ),
                           ),
                         ],
@@ -258,12 +260,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       // Forgot password
                       GestureDetector(
                         onTap: () => context.push(RouteNames.forgotPassword),
-                        child: const Text(
+                        child: Text(
                           'Forgot Password ?',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                       ),
@@ -313,17 +315,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         "Don't have an account ? ",
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey[600],
+                          color: context.textSecondary,
                         ),
                       ),
                       GestureDetector(
                         onTap: () => context.push(RouteNames.register),
-                        child: const Text(
+                        child: Text(
                           'Sign Up',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                       ),
@@ -334,19 +336,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   // OR Divider
                   Row(
                     children: [
-                      Expanded(child: Divider(color: Colors.grey[300])),
+                      Expanded(child: Divider(color: context.borderColor)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
                           'OR',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
-                      Expanded(child: Divider(color: Colors.grey[300])),
+                      Expanded(child: Divider(color: context.borderColor)),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -383,35 +385,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _inputDecoration(BuildContext context, String hint) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
-        color: Colors.grey[400],
+        color: context.textSecondary,
         fontSize: 14,
       ),
       filled: true,
-      fillColor: Colors.grey[50],
+      fillColor: isDark ? Colors.grey[900] : Colors.grey[50],
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: context.borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.grey[300]!),
+        borderSide: BorderSide(color: context.borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.navy, width: 1.5),
+        borderSide: BorderSide(color: context.primaryColor, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.red[400]!),
+        borderSide: BorderSide(color: context.errorColor),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.red[400]!, width: 1.5),
+        borderSide: BorderSide(color: context.errorColor, width: 1.5),
       ),
     );
   }

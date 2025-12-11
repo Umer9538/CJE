@@ -108,3 +108,48 @@ extension ThemeAwareColorVariants on Color {
     return withValues(alpha: isDark ? 0.4 : 0.2);
   }
 }
+
+/// Helper function to get theme-aware input decoration
+/// Use this instead of custom _inputDecoration methods in screens
+InputDecoration getThemedInputDecoration(
+  BuildContext context,
+  String hint, {
+  Widget? suffixIcon,
+  Widget? prefixIcon,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final theme = Theme.of(context);
+
+  return InputDecoration(
+    hintText: hint,
+    hintStyle: TextStyle(
+      color: context.textSecondary,
+      fontSize: 14,
+    ),
+    filled: true,
+    fillColor: isDark ? Colors.grey[900] : Colors.grey[50],
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    suffixIcon: suffixIcon,
+    prefixIcon: prefixIcon,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: context.borderColor),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: context.borderColor),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: theme.colorScheme.error),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: theme.colorScheme.error, width: 1.5),
+    ),
+  );
+}
