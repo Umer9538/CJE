@@ -98,11 +98,11 @@ class _MeetingsTab extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.event_busy_rounded, size: 64, color: Colors.grey[300]),
+                Icon(Icons.event_busy_rounded, size: 64, color: context.textSecondary),
                 const SizedBox(height: 16),
                 Text(
                   l10n.translate('no_meetings'),
-                  style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 16, color: context.textSecondary),
                 ),
               ],
             ),
@@ -157,11 +157,11 @@ class _MeetingCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -209,7 +209,7 @@ class _MeetingCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: Colors.grey[600],
+                          color: context.textSecondary,
                         ),
                       ),
                     ),
@@ -229,10 +229,10 @@ class _MeetingCard extends StatelessWidget {
                 children: [
                   Text(
                     meeting.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   if (meeting.description != null && meeting.description!.isNotEmpty) ...[
@@ -241,7 +241,7 @@ class _MeetingCard extends StatelessWidget {
                       meeting.description!,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[600],
+                        color: context.textSecondary,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -276,7 +276,7 @@ class _MeetingCard extends StatelessWidget {
                           '${meeting.agendaItems.length} ${l10n.translate('agenda_items')}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                           ),
                         ),
                     ],
@@ -318,13 +318,13 @@ class _InfoChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: Colors.grey[500]),
+        Icon(icon, size: 14, color: context.textSecondary),
         const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[600],
+            color: context.textSecondary,
           ),
         ),
       ],

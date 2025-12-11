@@ -41,10 +41,10 @@ class _BexShellState extends ConsumerState<BexShell> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
+              color: context.shadowColor,
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -120,7 +120,7 @@ class _NavItem extends StatelessWidget {
             Icon(
               icon,
               size: 24,
-              color: isSelected ? AppColors.navy : Colors.grey[400],
+              color: isSelected ? context.textPrimary : context.textSecondary,
             ),
             const SizedBox(height: 4),
             Text(
@@ -128,7 +128,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? AppColors.navy : Colors.grey[400],
+                color: isSelected ? context.textPrimary : context.textSecondary,
               ),
             ),
           ],

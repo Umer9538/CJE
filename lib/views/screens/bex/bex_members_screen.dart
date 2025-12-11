@@ -160,11 +160,11 @@ class _BexMembersScreenState extends ConsumerState<BexMembersScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.people_outline, size: 64, color: Colors.grey[300]),
+                        Icon(Icons.people_outline, size: 64, color: context.textSecondary),
                         const SizedBox(height: 16),
                         Text(
                           l10n.translate('no_users_found'),
-                          style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 16, color: context.textSecondary),
                         ),
                       ],
                     ),
@@ -255,11 +255,11 @@ class _MemberCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -288,10 +288,10 @@ class _MemberCard extends StatelessWidget {
                 children: [
                   Text(
                     user.fullName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -319,7 +319,7 @@ class _MemberCard extends StatelessWidget {
                             user.schoolName!,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: context.textSecondary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

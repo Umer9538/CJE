@@ -282,7 +282,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       child: user?.photoUrl != null
                           ? Image.network(user.photoUrl!, fit: BoxFit.cover)
                           : Container(
-                              color: AppColors.navy,
+                              color: context.textPrimary,
                               child: Center(
                                 child: Text(
                                   user?.fullName?.isNotEmpty == true
@@ -331,12 +331,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.verified_rounded, color: AppColors.navy, size: 14),
+                              Icon(Icons.verified_rounded, color: context.textPrimary, size: 14),
                               const SizedBox(width: 4),
                               Text(
                                 l10n.translate(_getRoleTranslationKey(user?.role)),
-                                style: const TextStyle(
-                                  color: AppColors.navy,
+                                style: TextStyle(
+                                  color: context.textPrimary,
                                   fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -449,12 +449,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Achievements',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               Container(
@@ -463,10 +463,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   color: AppColors.gold.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
+                child: Text(
                   '8/12',
                   style: TextStyle(
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -498,12 +498,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Settings',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -614,7 +614,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   Widget _buildDivider() {
     return Padding(
       padding: const EdgeInsets.only(left: 70),
-      child: Divider(height: 1, color: Colors.grey.withValues(alpha: 0.15)),
+      child: Divider(height: 1, color: context.dividerColor),
     );
   }
 
@@ -712,9 +712,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               top: 24,
               bottom: MediaQuery.of(context).padding.bottom + 24,
             ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -723,17 +723,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.3),
+                    color: context.borderColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
                 const SizedBox(height: 24),
-                const Text(
+                Text(
                   'Quick Settings',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -763,13 +763,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: AppColors.navy.withValues(alpha: 0.1),
+                      color: context.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       currentLocale == 'ro' ? 'Română' : 'English',
-                      style: const TextStyle(
-                        color: AppColors.navy,
+                      style: TextStyle(
+                        color: context.textPrimary,
                         fontWeight: FontWeight.w500,
                         fontSize: 13,
                       ),
@@ -799,36 +799,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+      child: Builder(
+        builder: (context) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: context.borderColor.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
               ),
-              child: Icon(icon, color: iconColor, size: 22),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.navy,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: context.textPrimary,
+                  ),
                 ),
               ),
-            ),
-            trailing,
-          ],
+              trailing,
+            ],
+          ),
         ),
       ),
     );
@@ -849,9 +851,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           top: 24,
           bottom: MediaQuery.of(context).padding.bottom + 24,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -860,17 +862,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
+                color: context.borderColor,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Select Language',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 24),
@@ -908,7 +910,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(28),
           ),
           child: Column(
@@ -924,12 +926,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 child: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 28),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Log Out?',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -937,7 +939,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 'Are you sure you want to log out?',
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: context.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -950,14 +952,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.1),
+                          color: context.borderColor.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
                             'Cancel',
                             style: TextStyle(
-                              color: AppColors.navy,
+                              color: context.textPrimary,
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1198,7 +1200,7 @@ class _LanguageOption extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.navy,
+                color: context.textPrimary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Center(
@@ -1219,7 +1221,7 @@ class _LanguageOption extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
             ),
@@ -1227,8 +1229,8 @@ class _LanguageOption extends StatelessWidget {
               Container(
                 width: 24,
                 height: 24,
-                decoration: const BoxDecoration(
-                  color: AppColors.navy,
+                decoration: BoxDecoration(
+                  color: context.textPrimary,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.check_rounded, color: AppColors.gold, size: 16),
