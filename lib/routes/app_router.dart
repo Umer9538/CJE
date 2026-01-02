@@ -15,8 +15,9 @@ import '../views/screens/main/main_shell.dart';
 import '../views/screens/onboarding/onboarding_screen.dart';
 import '../views/screens/announcements/announcements_screen.dart';
 import '../views/screens/meetings/meetings_screen.dart';
-import '../views/screens/initiatives/initiatives_screen.dart';
+import '../views/screens/ideas/ideas_screen.dart';
 import '../views/screens/profile/profile_screen.dart';
+import '../views/screens/menu/menu_screen.dart';
 import '../views/screens/documents/documents_screen.dart';
 import '../views/screens/polls/polls_screen.dart';
 import '../views/screens/splash/splash_screen.dart';
@@ -29,6 +30,11 @@ import '../views/screens/admin/user_detail_screen.dart';
 import '../views/screens/search/search_screen.dart';
 import '../views/screens/notifications/notifications_screen.dart';
 import '../views/screens/calendar/calendar_screen.dart';
+import '../views/screens/profile/help_support_screen.dart';
+import '../views/screens/announcements/announcement_detail_screen.dart';
+import '../views/screens/meetings/meeting_detail_screen.dart';
+import '../views/screens/initiatives/initiative_detail_screen.dart';
+import '../views/screens/polls/poll_detail_screen.dart';
 import '../core/constants/enums.dart';
 import 'route_names.dart';
 
@@ -60,13 +66,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           currentPath == RouteNames.profileSetup ||
           currentPath == RouteNames.pendingApproval ||
           currentPath == RouteNames.suspended;
+      // Global routes accessible by ALL authenticated users (any role)
+      final isGlobalPath = currentPath == RouteNames.notifications ||
+          currentPath == RouteNames.calendar ||
+          currentPath == RouteNames.search ||
+          currentPath == RouteNames.help ||
+          currentPath.startsWith('/announcements/') ||
+          currentPath.startsWith('/meetings/') ||
+          currentPath.startsWith('/initiatives/') ||
+          currentPath.startsWith('/polls/') ||
+          currentPath.startsWith('/documents/');
+
+      // Main app paths for regular students only
       final isMainAppPath = currentPath == RouteNames.home ||
           currentPath == RouteNames.announcements ||
           currentPath == RouteNames.meetings ||
           currentPath == RouteNames.initiatives ||
           currentPath == RouteNames.documents ||
           currentPath == RouteNames.polls ||
-          currentPath == RouteNames.profile;
+          currentPath == RouteNames.profile ||
+          currentPath == RouteNames.menu;
 
       // If auth state is initial, stay on splash (only on app launch)
       if (authState.state == AuthState.initial) {
@@ -137,6 +156,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return RouteNames.departmentDashboard;
         }
         return RouteNames.home;
+      }
+
+      // Allow all authenticated users to access global paths (notifications, calendar, search, help, detail pages)
+      if (authState.isAuthenticated && isGlobalPath) {
+        return null;
       }
 
       // If superadmin trying to access regular user home, redirect to admin
@@ -250,7 +274,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: RouteNames.initiatives,
             name: 'initiatives',
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: InitiativesScreen(),
+              child: IdeasScreen(),
             ),
           ),
           GoRoute(
@@ -274,7 +298,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               child: ProfileScreen(),
             ),
           ),
+          GoRoute(
+            path: RouteNames.menu,
+            name: 'menu',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: MenuScreen(),
+            ),
+          ),
         ],
+      ),
+
+      // ============================================
+      // DETAIL ROUTES (for notifications and deep links)
+      // ============================================
+      GoRoute(
+        path: RouteNames.announcementDetail,
+        name: 'announcementDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return _AnnouncementDetailWrapper(announcementId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.meetingDetail,
+        name: 'meetingDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return _MeetingDetailWrapper(meetingId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.initiativeDetail,
+        name: 'initiativeDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return _InitiativeDetailWrapper(initiativeId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.pollDetail,
+        name: 'pollDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return _PollDetailWrapper(pollId: id);
+        },
       ),
 
       // ============================================
@@ -340,6 +407,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'calendar',
         builder: (context, state) => const CalendarScreen(),
       ),
+      GoRoute(
+        path: RouteNames.help,
+        name: 'help',
+        builder: (context, state) => const HelpSupportScreen(),
+      ),
     ],
     errorBuilder: (context, state) => Scaffold(
       body: Center(
@@ -392,4 +464,145 @@ class _AuthStateNotifier extends ChangeNotifier {
   }
 
   final Ref _ref;
+}
+
+// ============================================
+// DETAIL WRAPPER WIDGETS
+// ============================================
+
+/// Wrapper widget to load announcement by ID
+class _AnnouncementDetailWrapper extends ConsumerWidget {
+  final String announcementId;
+  const _AnnouncementDetailWrapper({required this.announcementId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final announcementAsync = ref.watch(announcementProvider(announcementId));
+    return announcementAsync.when(
+      data: (announcement) {
+        if (announcement == null) {
+          return _buildNotFound(context, 'Comunicatul nu a fost găsit');
+        }
+        return AnnouncementDetailScreen(announcement: announcement);
+      },
+      loading: () => _buildLoading(),
+      error: (e, _) => _buildError(context, e.toString()),
+    );
+  }
+}
+
+/// Wrapper widget to load meeting by ID
+class _MeetingDetailWrapper extends ConsumerWidget {
+  final String meetingId;
+  const _MeetingDetailWrapper({required this.meetingId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final meetingAsync = ref.watch(meetingProvider(meetingId));
+    return meetingAsync.when(
+      data: (meeting) {
+        if (meeting == null) {
+          return _buildNotFound(context, 'Ședința nu a fost găsită');
+        }
+        return MeetingDetailScreen(meeting: meeting);
+      },
+      loading: () => _buildLoading(),
+      error: (e, _) => _buildError(context, e.toString()),
+    );
+  }
+}
+
+/// Wrapper widget to load initiative by ID
+class _InitiativeDetailWrapper extends ConsumerWidget {
+  final String initiativeId;
+  const _InitiativeDetailWrapper({required this.initiativeId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final initiativeAsync = ref.watch(initiativeProvider(initiativeId));
+    return initiativeAsync.when(
+      data: (initiative) {
+        if (initiative == null) {
+          return _buildNotFound(context, 'Inițiativa nu a fost găsită');
+        }
+        return InitiativeDetailScreen(initiative: initiative);
+      },
+      loading: () => _buildLoading(),
+      error: (e, _) => _buildError(context, e.toString()),
+    );
+  }
+}
+
+/// Wrapper widget to load poll by ID
+class _PollDetailWrapper extends ConsumerWidget {
+  final String pollId;
+  const _PollDetailWrapper({required this.pollId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pollAsync = ref.watch(pollProvider(pollId));
+    return pollAsync.when(
+      data: (poll) {
+        if (poll == null) {
+          return _buildNotFound(context, 'Sondajul nu a fost găsit');
+        }
+        return PollDetailScreen(poll: poll);
+      },
+      loading: () => _buildLoading(),
+      error: (e, _) => _buildError(context, e.toString()),
+    );
+  }
+}
+
+/// Build loading scaffold
+Widget _buildLoading() {
+  return const Scaffold(
+    body: Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
+}
+
+/// Build not found scaffold
+Widget _buildNotFound(BuildContext context, String message) {
+  return Scaffold(
+    appBar: AppBar(),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.search_off, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(message, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.pop(),
+            child: const Text('Înapoi'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Build error scaffold
+Widget _buildError(BuildContext context, String error) {
+  return Scaffold(
+    appBar: AppBar(),
+    body: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          Text('Eroare: $error', style: Theme.of(context).textTheme.bodyMedium),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: () => context.pop(),
+            child: const Text('Înapoi'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
