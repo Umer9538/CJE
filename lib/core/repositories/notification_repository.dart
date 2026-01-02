@@ -32,13 +32,20 @@ class NotificationRepository {
 
   /// Get notifications stream for real-time updates
   Stream<List<NotificationModel>> getNotificationsStream(String userId, {int limit = 50}) {
+    debugPrint('NotificationRepository: Getting notifications stream for user $userId');
     return _notificationsCollection
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => NotificationModel.fromFirestore(doc)).toList());
+        .handleError((error) {
+          debugPrint('NotificationRepository: Stream error - $error');
+          // Return empty list on error to prevent app crash
+        })
+        .map((snapshot) {
+          debugPrint('NotificationRepository: Received ${snapshot.docs.length} notifications');
+          return snapshot.docs.map((doc) => NotificationModel.fromFirestore(doc)).toList();
+        });
   }
 
   /// Get unread notification count
@@ -169,9 +176,11 @@ class NotificationRepository {
     required String body,
     required NotificationType type,
     String? countyId,
+    String? schoolId,
     List<UserRole>? targetRoles,
     required String senderId,
     required String senderName,
+    Map<String, dynamic>? additionalData,
   }) async {
     try {
       // Get all users in the county (or all users if countyId is null)
@@ -191,10 +200,20 @@ class NotificationRepository {
         return false;
       }
 
-      // Filter by roles if specified
+      // Filter by roles and school if specified
       List<String> targetUserIds = [];
       for (final doc in usersSnapshot.docs) {
         final userData = doc.data();
+
+        // Filter by school if specified
+        if (schoolId != null && schoolId.isNotEmpty) {
+          final userSchoolId = userData['schoolId'] as String?;
+          if (userSchoolId != schoolId) {
+            continue; // Skip users not in the target school
+          }
+        }
+
+        // Filter by roles if specified
         if (targetRoles != null && targetRoles.isNotEmpty) {
           final userRole = userData['role'] as String?;
           if (userRole != null && targetRoles.any((r) => r.name == userRole)) {
@@ -206,7 +225,7 @@ class NotificationRepository {
       }
 
       if (targetUserIds.isEmpty) {
-        debugPrint('No users match the target roles');
+        debugPrint('No users match the target criteria');
         return false;
       }
 
@@ -218,17 +237,21 @@ class NotificationRepository {
 
         for (var j = i; j < end; j++) {
           final docRef = _notificationsCollection.doc();
+          // Merge additional data with base data
+          final notificationData = <String, dynamic>{
+            'senderId': senderId,
+            'senderName': senderName,
+            'isCountyWide': schoolId == null || schoolId.isEmpty,
+            'targetSchoolId': schoolId,
+            ...?additionalData,
+          };
           batch.set(docRef, {
             'userId': targetUserIds[j],
             'type': type.name,
             'title': title,
             'body': body,
             'isRead': false,
-            'data': {
-              'senderId': senderId,
-              'senderName': senderName,
-              'isCountyWide': true,
-            },
+            'data': notificationData,
             'createdAt': Timestamp.now(),
           });
         }
@@ -236,10 +259,10 @@ class NotificationRepository {
         await batch.commit();
       }
 
-      debugPrint('Sent county-wide notification to ${targetUserIds.length} users');
+      debugPrint('Sent notification to ${targetUserIds.length} users');
       return true;
     } catch (e) {
-      debugPrint('Error sending county-wide notification: $e');
+      debugPrint('Error sending notification: $e');
       return false;
     }
   }
