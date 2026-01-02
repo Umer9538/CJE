@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/repositories/repositories.dart';
 import '../../core/constants/enums.dart';
+import '../../core/services/translation_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
 import '../admin/admin_controller.dart';
+import '../notifications/notification_controller.dart';
 
 /// Announcement repository provider
 final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
@@ -118,6 +121,7 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
   /// - BEX and Superadmin can create county and school announcements
   /// - SchoolRep can only create school announcements
   /// - Other roles cannot create announcements
+  /// - schoolId/schoolName: Optional overrides for BEX/Superadmin to create announcements for specific schools
   Future<String?> createAnnouncement({
     required String title,
     required String content,
@@ -127,6 +131,8 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
     List<String>? attachmentUrls,
     List<String>? tags,
     bool publishImmediately = false,
+    String? schoolId,
+    String? schoolName,
   }) async {
     state = const AsyncValue.loading();
 
@@ -154,17 +160,52 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       }
     }
 
+    // Determine school ID and name
+    // - If schoolId is provided (BEX/Superadmin selected specific school), use it
+    // - Otherwise, use the current user's school (for SchoolRep)
+    final effectiveSchoolId = type == AnnouncementType.school
+        ? (schoolId ?? user.schoolId)
+        : null;
+    final effectiveSchoolName = type == AnnouncementType.school
+        ? (schoolName ?? user.schoolName)
+        : null;
+
+    // Translate content to both languages
+    Map<String, String>? titleTranslations;
+    Map<String, String>? contentTranslations;
+    Map<String, String>? summaryTranslations;
+
+    try {
+      final translatedTitle = await TranslatableContent.fromText(title);
+      titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+
+      final translatedContent = await TranslatableContent.fromText(content);
+      contentTranslations = {'en': translatedContent.en, 'ro': translatedContent.ro};
+
+      if (summary != null && summary.isNotEmpty) {
+        final translatedSummary = await TranslatableContent.fromText(summary);
+        summaryTranslations = {'en': translatedSummary.en, 'ro': translatedSummary.ro};
+      }
+      debugPrint('AnnouncementController: Content translated successfully');
+    } catch (e) {
+      debugPrint('AnnouncementController: Translation failed - $e');
+      // Continue without translations if translation fails
+    }
+
     final announcement = AnnouncementModel(
       id: '',
       title: title,
       content: content,
       summary: summary,
+      titleTranslations: titleTranslations,
+      contentTranslations: contentTranslations,
+      summaryTranslations: summaryTranslations,
       type: type,
       authorId: user.id,
       authorName: user.fullName,
       authorPhotoUrl: user.photoUrl,
-      schoolId: type == AnnouncementType.school ? user.schoolId : null,
-      schoolName: type == AnnouncementType.school ? user.schoolName : null,
+      schoolId: effectiveSchoolId,
+      schoolName: effectiveSchoolName,
       imageUrl: imageUrl,
       attachmentUrls: attachmentUrls ?? [],
       tags: tags ?? [],
@@ -191,6 +232,15 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
           publishedBy: user.fullName,
         );
         _ref.invalidate(recentActivitiesProvider);
+
+        // Send automatic notification for published announcement
+        await _sendAnnouncementNotification(
+          title: title,
+          summary: summary ?? content,
+          type: type,
+          schoolId: type == AnnouncementType.school ? user.schoolId : null,
+          announcementId: id,
+        );
       }
     } else {
       state = AsyncValue.error('Failed to create announcement', StackTrace.current);
@@ -253,9 +303,51 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
           publishedBy: user?.fullName,
         );
         _ref.invalidate(recentActivitiesProvider);
+
+        // Send automatic notification for published announcement
+        await _sendAnnouncementNotification(
+          title: announcement.title,
+          summary: announcement.summary ?? announcement.content,
+          type: announcement.type,
+          schoolId: announcement.schoolId,
+          announcementId: id,
+        );
       }
     }
     return success;
+  }
+
+  /// Send notification for a new announcement
+  Future<void> _sendAnnouncementNotification({
+    required String title,
+    required String summary,
+    required AnnouncementType type,
+    String? schoolId,
+    required String announcementId,
+  }) async {
+    try {
+      final notificationRepo = _ref.read(notificationRepositoryProvider);
+      final user = _ref.read(currentUserProvider);
+
+      // Truncate summary for notification body
+      final notificationBody = summary.length > 100
+          ? '${summary.substring(0, 100)}...'
+          : summary;
+
+      await notificationRepo.sendCountyWideNotification(
+        title: 'New Announcement: $title',
+        body: notificationBody,
+        type: NotificationType.newAnnouncement,
+        schoolId: type == AnnouncementType.school ? schoolId : null,
+        senderId: user?.id ?? '',
+        senderName: user?.fullName ?? 'System',
+        additionalData: {'announcementId': announcementId},
+      );
+
+      debugPrint('Sent notification for announcement: $title');
+    } catch (e) {
+      debugPrint('Error sending announcement notification: $e');
+    }
   }
 
   /// Toggle pin status
