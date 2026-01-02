@@ -429,21 +429,39 @@ class AuthController extends StateNotifier<AuthStateData> {
   }
 
   /// Create profile for Google sign-in user (also works for email users without Firestore profile)
-  Future<bool> createGoogleUserProfile({
+  /// Returns a tuple of (success, errorMessage)
+  Future<(bool, String?)> createGoogleUserProfile({
     required String fullName,
     required String schoolId,
+    String? schoolName,
     required String phoneNumber,
     required String city,
     String? className,
   }) async {
+    debugPrint('=== createGoogleUserProfile START ===');
+    debugPrint('Params: fullName=$fullName, schoolId=$schoolId, schoolName=$schoolName, phone=$phoneNumber, city=$city, class=$className');
+
     final firebaseUser = _authService.currentUser;
     if (firebaseUser == null) {
-      debugPrint('createGoogleUserProfile: No Firebase user');
-      return false;
+      debugPrint('createGoogleUserProfile: ERROR - No Firebase user');
+      return (false, 'No authenticated user found');
     }
+    debugPrint('Firebase user: uid=${firebaseUser.uid}, email=${firebaseUser.email}');
 
     try {
+      // Try to get school from Firestore, fall back to provided name for sample schools
+      debugPrint('Fetching school by ID: $schoolId');
       final school = await _schoolRepository.getSchoolById(schoolId);
+      debugPrint('School from Firestore: ${school?.name ?? "null"}');
+
+      final effectiveSchoolName = school?.name ?? schoolName ?? 'Unknown School';
+
+      if (school == null && schoolName == null) {
+        debugPrint('createGoogleUserProfile: ERROR - School not found and no name provided: $schoolId');
+        return (false, 'School not found');
+      }
+
+      debugPrint('createGoogleUserProfile: Using school name: $effectiveSchoolName');
 
       final userModel = UserModel(
         id: firebaseUser.uid,
@@ -455,40 +473,53 @@ class AuthController extends StateNotifier<AuthStateData> {
         role: UserRole.student,
         status: UserStatus.pending, // Requires admin/BEX approval
         schoolId: schoolId,
-        schoolName: school?.name,
+        schoolName: effectiveSchoolName,
         className: className,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
 
-      // Create user in Firestore with retry
-      bool success = await _userRepository.createUser(userModel);
+      debugPrint('UserModel created: id=${userModel.id}, email=${userModel.email}, fullName=${userModel.fullName}');
+      debugPrint('UserModel school: schoolId=${userModel.schoolId}, schoolName=${userModel.schoolName}');
 
-      // Retry once if failed
-      if (!success) {
-        debugPrint('createGoogleUserProfile: First attempt failed, retrying...');
-        await Future.delayed(const Duration(milliseconds: 500));
+      // Create user in Firestore with retry and exponential backoff
+      bool success = false;
+      const maxAttempts = 3;
+      final delays = [Duration.zero, const Duration(milliseconds: 500), const Duration(seconds: 2)];
+
+      for (int attempt = 1; attempt <= maxAttempts && !success; attempt++) {
+        if (attempt > 1) {
+          final delay = delays[attempt - 1];
+          debugPrint('createGoogleUserProfile: Attempt $attempt failed, waiting ${delay.inMilliseconds}ms before retry...');
+          await Future.delayed(delay);
+        }
+        debugPrint('Attempting to save user to Firestore (attempt $attempt of $maxAttempts)...');
         success = await _userRepository.createUser(userModel);
+        debugPrint('Attempt $attempt result: $success');
       }
 
       if (!success) {
-        debugPrint('createGoogleUserProfile: Failed to create user in Firestore');
-        return false;
+        debugPrint('createGoogleUserProfile: ERROR - Failed to create user in Firestore after $maxAttempts attempts');
+        return (false, 'Failed to save profile to database');
       }
 
-      debugPrint('createGoogleUserProfile: User created successfully');
+      debugPrint('createGoogleUserProfile: SUCCESS - User created in Firestore');
 
       // Increment school student count
       if (schoolId.isNotEmpty) {
+        debugPrint('Incrementing student count for school: $schoolId');
         await _schoolRepository.incrementStudentCount(schoolId);
       }
 
       // Reload user profile
+      debugPrint('Reloading user profile...');
       await _loadUserProfile(firebaseUser);
-      return true;
-    } catch (e) {
-      debugPrint('createGoogleUserProfile error: $e');
-      return false;
+      debugPrint('=== createGoogleUserProfile END (success) ===');
+      return (true, null);
+    } catch (e, stackTrace) {
+      debugPrint('createGoogleUserProfile EXCEPTION: $e');
+      debugPrint('Stack trace: $stackTrace');
+      return (false, e.toString());
     }
   }
 
