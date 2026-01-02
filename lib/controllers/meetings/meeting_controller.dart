@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/repositories/repositories.dart';
 import '../../core/constants/enums.dart';
+import '../../core/services/translation_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
+import '../notifications/notification_controller.dart';
 
 /// Meeting repository provider
 final meetingRepositoryProvider = Provider<MeetingRepository>((ref) {
@@ -122,6 +125,20 @@ final meetingAttendanceProvider = FutureProvider.family<List<MeetingAttendance>,
   return repository.getMeetingAttendance(meetingId);
 });
 
+/// Provider to get users by their IDs (for showing participant names)
+final usersByIdsProvider = FutureProvider.family<List<UserModel>, List<String>>((ref, userIds) async {
+  if (userIds.isEmpty) return [];
+  final repository = ref.watch(userRepositoryProvider);
+  return repository.getUsersByIds(userIds);
+});
+
+/// Provider for searchable users (for adding participants)
+final searchUsersProvider = FutureProvider.family<List<UserModel>, String>((ref, query) async {
+  if (query.isEmpty) return [];
+  final repository = ref.watch(userRepositoryProvider);
+  return repository.searchUsers(query);
+});
+
 /// Filter model for meetings
 class MeetingFilter {
   final MeetingType? type;
@@ -194,6 +211,9 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     String? location,
     bool isOnline = false,
     String? onlineLink,
+    String? schoolId,
+    String? schoolName,
+    DepartmentType? department,
     List<String>? agendaItems,
     List<String>? attendeeIds,
     List<MeetingDocument>? documents,
@@ -218,19 +238,51 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
 
     debugPrint('createMeeting: Permission check passed');
 
+    // Use provided school/department or fall back to user's values
+    final meetingSchoolId = type == MeetingType.school
+        ? (schoolId ?? user.schoolId)
+        : null;
+    final meetingSchoolName = type == MeetingType.school
+        ? (schoolName ?? user.schoolName)
+        : null;
+    final meetingDepartment = type == MeetingType.department
+        ? (department ?? user.department)
+        : null;
+
+    // Translate content to both languages
+    Map<String, String>? titleTranslations;
+    Map<String, String>? descriptionTranslations;
+
+    try {
+      final translatedTitle = await TranslatableContent.fromText(title);
+      titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+
+      if (description != null && description.isNotEmpty) {
+        final translatedDescription = await TranslatableContent.fromText(description);
+        descriptionTranslations = {'en': translatedDescription.en, 'ro': translatedDescription.ro};
+      }
+
+      debugPrint('MeetingController: Content translated successfully');
+    } catch (e) {
+      debugPrint('MeetingController: Translation failed - $e');
+      // Continue without translations if translation fails
+    }
+
     final meeting = MeetingModel(
       id: '',
       title: title,
       description: description,
+      titleTranslations: titleTranslations,
+      descriptionTranslations: descriptionTranslations,
       type: type,
       dateTime: dateTime,
       durationMinutes: durationMinutes,
       location: location,
       isOnline: isOnline,
       onlineLink: onlineLink,
-      schoolId: type == MeetingType.school ? user.schoolId : null,
-      schoolName: type == MeetingType.school ? user.schoolName : null,
-      department: type == MeetingType.department ? user.department : null,
+      schoolId: meetingSchoolId,
+      schoolName: meetingSchoolName,
+      department: meetingDepartment,
       createdById: user.id,
       createdByName: user.fullName,
       agendaItems: agendaItems ?? [],
@@ -251,6 +303,16 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       if (type == MeetingType.department) {
         _ref.invalidate(departmentMeetingsProvider);
       }
+
+      // Send automatic notification for new meeting
+      await _sendMeetingNotification(
+        title: title,
+        dateTime: dateTime,
+        type: type,
+        schoolId: meetingSchoolId,
+        location: isOnline ? 'Online' : location,
+        meetingId: id,
+      );
     } else {
       state = AsyncValue.error('Failed to create meeting', StackTrace.current);
     }
@@ -353,6 +415,121 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(meetingAttendanceProvider(meetingId));
     }
     return success;
+  }
+
+  /// Add participant to meeting (adds to attendeeIds and creates attendance record)
+  Future<bool> addParticipant({
+    required String meetingId,
+    required String oderId,
+    required String userName,
+    AttendanceStatus status = AttendanceStatus.present,
+  }) async {
+    try {
+      // First get the current meeting
+      final meeting = await _repository.getMeetingById(meetingId);
+      if (meeting == null) return false;
+
+      // Add user to attendeeIds if not already there
+      if (!meeting.attendeeIds.contains(oderId)) {
+        final updatedAttendeeIds = [...meeting.attendeeIds, oderId];
+        final updatedMeeting = meeting.copyWith(
+          attendeeIds: updatedAttendeeIds,
+          updatedAt: DateTime.now(),
+        );
+        await _repository.updateMeeting(updatedMeeting);
+      }
+
+      // Create attendance record
+      final success = await recordAttendance(
+        meetingId: meetingId,
+        oderId: oderId,
+        userName: userName,
+        status: status,
+      );
+
+      if (success) {
+        _ref.invalidate(meetingProvider(meetingId));
+        _ref.invalidate(usersByIdsProvider(meeting.attendeeIds));
+      }
+
+      return success;
+    } catch (e) {
+      debugPrint('Error adding participant: $e');
+      return false;
+    }
+  }
+
+  /// Remove participant from meeting
+  Future<bool> removeParticipant({
+    required String meetingId,
+    required String oderId,
+  }) async {
+    try {
+      final meeting = await _repository.getMeetingById(meetingId);
+      if (meeting == null) return false;
+
+      // Remove from attendeeIds
+      final updatedAttendeeIds = meeting.attendeeIds.where((id) => id != oderId).toList();
+      final updatedMeeting = meeting.copyWith(
+        attendeeIds: updatedAttendeeIds,
+        updatedAt: DateTime.now(),
+      );
+      await _repository.updateMeeting(updatedMeeting);
+
+      // Also delete attendance record if exists
+      final attendanceId = '${meetingId}_$oderId';
+      try {
+        await _repository.deleteAttendance(attendanceId);
+      } catch (_) {
+        // Attendance might not exist, that's ok
+      }
+
+      _ref.invalidate(meetingProvider(meetingId));
+      _ref.invalidate(meetingAttendanceProvider(meetingId));
+      _ref.invalidate(usersByIdsProvider(updatedAttendeeIds));
+
+      return true;
+    } catch (e) {
+      debugPrint('Error removing participant: $e');
+      return false;
+    }
+  }
+
+  /// Send notification for a new meeting
+  Future<void> _sendMeetingNotification({
+    required String title,
+    required DateTime dateTime,
+    required MeetingType type,
+    String? schoolId,
+    String? location,
+    required String meetingId,
+  }) async {
+    try {
+      final notificationRepo = _ref.read(notificationRepositoryProvider);
+      final user = _ref.read(currentUserProvider);
+
+      // Format date and time for notification
+      final dateFormat = DateFormat('MMM d, yyyy');
+      final timeFormat = DateFormat('h:mm a');
+      final dateStr = dateFormat.format(dateTime);
+      final timeStr = timeFormat.format(dateTime);
+
+      final notificationBody = 'Scheduled for $dateStr at $timeStr${location != null ? ' - $location' : ''}';
+
+      await notificationRepo.sendCountyWideNotification(
+        title: 'New ${type.displayName} Meeting: $title',
+        body: notificationBody,
+        type: NotificationType.meetingReminder,
+        schoolId: type == MeetingType.school ? schoolId : null,
+        senderId: user?.id ?? '',
+        senderName: user?.fullName ?? 'System',
+        additionalData: {'meetingId': meetingId},
+      );
+
+      debugPrint('Sent notification for meeting: $title');
+    } catch (e) {
+      debugPrint('Error sending meeting notification: $e');
+    }
   }
 }
 
