@@ -47,21 +47,14 @@ final notificationsStreamProvider = StreamProvider<List<NotificationModel>>((ref
   );
 });
 
-/// Unread notification count provider - using Future instead of Stream to avoid retry loops
-final unreadNotificationCountProvider = FutureProvider<int>((ref) async {
-  final user = ref.read(currentUserProvider); // Use read to avoid rebuilds
-  if (user == null) return 0;
-
-  final repository = ref.read(notificationRepositoryProvider);
-  try {
-    return await repository.getUnreadCount(user.id).timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => 0,
-    );
-  } catch (e) {
-    debugPrint('Error getting unread count: $e');
-    return 0;
-  }
+/// Unread notification count provider - derives from notifications stream to stay in sync
+final unreadNotificationCountProvider = Provider<AsyncValue<int>>((ref) {
+  final notificationsAsync = ref.watch(notificationsStreamProvider);
+  return notificationsAsync.when(
+    data: (notifications) => AsyncValue.data(notifications.where((n) => !n.isRead).length),
+    loading: () => const AsyncValue.loading(),
+    error: (e, st) => AsyncValue.error(e, st),
+  );
 });
 
 /// Notification controller for managing notifications
@@ -177,6 +170,7 @@ class NotificationController extends StateNotifier<AsyncValue<void>> {
     required String body,
     NotificationType type = NotificationType.systemAlert,
     String? countyId,
+    String? schoolId,
     List<UserRole>? targetRoles,
   }) async {
     state = const AsyncValue.loading();
@@ -199,6 +193,7 @@ class NotificationController extends StateNotifier<AsyncValue<void>> {
         body: body,
         type: type,
         countyId: countyId, // Let repository handle if null
+        schoolId: schoolId,
         targetRoles: targetRoles,
         senderId: user.id,
         senderName: user.fullName,
