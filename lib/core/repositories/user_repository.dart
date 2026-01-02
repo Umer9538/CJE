@@ -41,11 +41,27 @@ class UserRepository {
 
   /// Create new user
   Future<bool> createUser(UserModel user) async {
+    debugPrint('UserRepository.createUser: Starting for user id=${user.id}');
     try {
-      await _usersCollection.doc(user.id).set(user.toFirestore());
+      final data = user.toFirestore();
+      debugPrint('UserRepository.createUser: Data to save: $data');
+      debugPrint('UserRepository.createUser: Writing to Firestore...');
+
+      // Add timeout to prevent hanging
+      await _usersCollection.doc(user.id).set(data).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('UserRepository.createUser: TIMEOUT after 15 seconds');
+          throw Exception('Firestore write timeout');
+        },
+      );
+
+      debugPrint('UserRepository.createUser: SUCCESS - User saved to Firestore');
       return true;
-    } catch (e) {
-      debugPrint('Error creating user: $e');
+    } catch (e, stackTrace) {
+      debugPrint('UserRepository.createUser: ERROR - $e');
+      debugPrint('UserRepository.createUser: Error type: ${e.runtimeType}');
+      debugPrint('UserRepository.createUser: Stack trace: $stackTrace');
       return false;
     }
   }
@@ -241,11 +257,22 @@ class UserRepository {
     return updateUserFields(userId, {'status': 'suspended'});
   }
 
-  /// Change user role
-  Future<bool> changeUserRole(String userId, UserRole newRole) async {
+  /// Change user role (with optional department for department role)
+  Future<bool> changeUserRole(String userId, UserRole newRole, {DepartmentType? department}) async {
     try {
-      debugPrint('changeUserRole: userId=$userId, newRole=${newRole.toFirestore()}');
-      final result = await updateUserFields(userId, {'role': newRole.toFirestore()});
+      debugPrint('changeUserRole: userId=$userId, newRole=${newRole.toFirestore()}, department=$department');
+
+      final Map<String, dynamic> fields = {'role': newRole.toFirestore()};
+
+      // If changing to department role, also set the department type
+      if (newRole == UserRole.department && department != null) {
+        fields['department'] = department.toFirestore();
+      } else if (newRole != UserRole.department) {
+        // Clear department if changing away from department role
+        fields['department'] = null;
+      }
+
+      final result = await updateUserFields(userId, fields);
       debugPrint('changeUserRole: result=$result');
       return result;
     } catch (e) {
@@ -271,6 +298,26 @@ class UserRepository {
       return users;
     } catch (e) {
       debugPrint('Error searching users: $e');
+      return [];
+    }
+  }
+
+  /// Get users by a list of IDs
+  Future<List<UserModel>> getUsersByIds(List<String> userIds) async {
+    if (userIds.isEmpty) return [];
+    try {
+      final List<UserModel> users = [];
+      // Firestore whereIn has a limit of 10 items, so we batch if needed
+      for (var i = 0; i < userIds.length; i += 10) {
+        final batch = userIds.skip(i).take(10).toList();
+        final snapshot = await _usersCollection
+            .where(FieldPath.documentId, whereIn: batch)
+            .get();
+        users.addAll(snapshot.docs.map((doc) => UserModel.fromFirestore(doc)));
+      }
+      return users;
+    } catch (e) {
+      debugPrint('Error getting users by IDs: $e');
       return [];
     }
   }
