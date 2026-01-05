@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../controllers/admin/admin_controller.dart';
+import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../core/core.dart';
 import '../../../../models/models.dart';
 
@@ -37,17 +38,74 @@ class _UserRoleSelectorState extends ConsumerState<UserRoleSelector> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final currentUser = ref.watch(currentUserProvider);
+
+    // SECURITY: Don't show role selector at all for Superadmin accounts (unless current user is Superadmin)
+    if (widget.user.role == UserRole.superadmin && currentUser?.role != UserRole.superadmin) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.lock, color: context.textSecondary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.translate('superadmin_role_protected'),
+                style: TextStyle(fontSize: 13, color: context.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // SECURITY: Don't show role selector for BEX accounts (unless current user is Superadmin)
+    if (widget.user.role == UserRole.bex && currentUser?.role != UserRole.superadmin) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.lock, color: context.textSecondary, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.translate('bex_role_protected'),
+                style: TextStyle(fontSize: 13, color: context.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // Use local selected role for display, fallback to widget.user.role
     final currentRole = _selectedRole ?? widget.user.role;
+
+    // SECURITY: Filter available roles based on current user's permissions
+    final availableRoles = UserRole.values.where((role) {
+      // Never allow promoting to superadmin
+      if (role == UserRole.superadmin) return false;
+      // Only Superadmin can assign BEX role
+      if (role == UserRole.bex && currentUser?.role != UserRole.superadmin) return false;
+      return true;
+    }).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -58,15 +116,13 @@ class _UserRoleSelectorState extends ConsumerState<UserRoleSelector> {
         children: [
           Text(
             l10n.translate('select_new_role'),
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 13, color: context.textSecondary),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            // Exclude superadmin from available roles - only one superadmin allowed
-            children: UserRole.values
-                .where((role) => role != UserRole.superadmin)
+            children: availableRoles
                 .map((role) => _RoleChip(
                       role: role,
                       isSelected: currentRole == role,
@@ -87,11 +143,22 @@ class _UserRoleSelectorState extends ConsumerState<UserRoleSelector> {
     final l10n = AppLocalizations.of(context);
     final roleName = _getLocalizedRoleName(newRole);
 
+    // If changing to department role, first ask which department
+    DepartmentType? selectedDepartment;
+    if (newRole == UserRole.department) {
+      selectedDepartment = await _showDepartmentPicker(l10n);
+      if (selectedDepartment == null) return; // User cancelled
+    }
+
+    if (!mounted) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.translate('confirm_role_change')),
-        content: Text('${l10n.translate('change_role_to')} $roleName?'),
+        content: Text(newRole == UserRole.department
+            ? '${l10n.translate('change_role_to')} $roleName (${selectedDepartment!.displayName})?'
+            : '${l10n.translate('change_role_to')} $roleName?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -115,7 +182,7 @@ class _UserRoleSelectorState extends ConsumerState<UserRoleSelector> {
 
     final success = await ref
         .read(adminControllerProvider.notifier)
-        .changeUserRole(widget.user.id, newRole);
+        .changeUserRole(widget.user.id, newRole, department: selectedDepartment);
 
     if (success) {
       // Update local state immediately for instant UI feedback
@@ -139,6 +206,70 @@ class _UserRoleSelectorState extends ConsumerState<UserRoleSelector> {
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
+    }
+  }
+
+  Future<DepartmentType?> _showDepartmentPicker(AppLocalizations l10n) async {
+    return showModalBottomSheet<DepartmentType>(
+      context: context,
+      backgroundColor: context.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.translate('select_department'),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: ctx.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.translate('select_department_description'),
+              style: TextStyle(
+                fontSize: 14,
+                color: ctx.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ...DepartmentType.values.map((dept) => ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.badgeDepartmentBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _getDepartmentIcon(dept),
+                      color: AppColors.badgeDepartmentText,
+                      size: 20,
+                    ),
+                  ),
+                  title: Text(dept.displayName),
+                  onTap: () => Navigator.pop(context, dept),
+                )),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getDepartmentIcon(DepartmentType dept) {
+    switch (dept) {
+      case DepartmentType.prCommunications:
+        return Icons.campaign_rounded;
+      case DepartmentType.volunteering:
+        return Icons.volunteer_activism_rounded;
+      case DepartmentType.schoolInclusion:
+        return Icons.diversity_3_rounded;
     }
   }
 
@@ -178,13 +309,14 @@ class _RoleChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final roleName = _getLocalizedRoleName(l10n, role);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: isSelected || isLoading ? null : onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? role.badgeBackgroundColor : Colors.grey[100],
+          color: isSelected ? role.badgeBackgroundColor : (isDark ? Colors.grey[800] : Colors.grey[100]),
           borderRadius: BorderRadius.circular(10),
           border: isSelected ? Border.all(color: role.badgeTextColor, width: 2) : null,
         ),
@@ -201,7 +333,7 @@ class _RoleChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? role.badgeTextColor : Colors.grey[700],
+                color: isSelected ? role.badgeTextColor : context.textPrimary,
               ),
             ),
           ],
