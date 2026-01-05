@@ -24,36 +24,38 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   String? _selectedCity;
   String? _selectedSchoolId;
+  String? _selectedSchoolName;
   bool _isLoading = false;
   bool _obscureCityPassword = true;
   String? _errorMessage;
 
-  // Cities list
+  // Counties list (42 Romanian counties from Parole_judete.xlsx)
   final List<String> _cities = [
-    'Bucharest',
-    'Cluj-Napoca',
-    'Timisoara',
-    'Iasi',
-    'Constanta',
-    'Craiova',
-    'Brasov',
-    'Galati',
-    'Ploiesti',
-    'Oradea',
+    'Alba', 'Arad', 'Argeș', 'Bacău', 'Bihor', 'Bistrița-Năsăud',
+    'Botoșani', 'Brașov', 'Brăila', 'București', 'Buzău', 'Caraș-Severin',
+    'Călărași', 'Cluj', 'Constanța', 'Covasna', 'Dâmbovița', 'Dolj',
+    'Galați', 'Giurgiu', 'Gorj', 'Harghita', 'Hunedoara', 'Ialomița',
+    'Iași', 'Ilfov', 'Maramureș', 'Mehedinți', 'Mureș', 'Neamț',
+    'Olt', 'Prahova', 'Satu Mare', 'Sălaj', 'Sibiu', 'Suceava',
+    'Teleorman', 'Timiș', 'Tulcea', 'Vaslui', 'Vâlcea', 'Vrancea',
   ];
 
-  // City passwords for access control
+  // County passwords for access control (Registration codes from Parole_judete.xlsx)
   static const Map<String, String> _cityPasswords = {
-    'Bucharest': 'BUC2024',
-    'Cluj-Napoca': 'CLJ2024',
-    'Timisoara': 'TIM2024',
-    'Iasi': 'IAS2024',
-    'Constanta': 'CTA2024',
-    'Craiova': 'CRA2024',
-    'Brasov': 'BV2024',
-    'Galati': 'GL2024',
-    'Ploiesti': 'PH2024',
-    'Oradea': 'BH2024',
+    'Alba': 'AB#7291', 'Arad': 'AR#3842', 'Argeș': 'AG#9103',
+    'Bacău': 'BC#5528', 'Bihor': 'BH#1937', 'Bistrița-Năsăud': 'BN#6482',
+    'Botoșani': 'BT#2749', 'Brașov': 'BV#8301', 'Brăila': 'BR#4615',
+    'București': 'B#9920', 'Buzău': 'BZ#3156', 'Caraș-Severin': 'CS#7043',
+    'Călărași': 'CL#2819', 'Cluj': 'CJ#5392', 'Constanța': 'CT#8264',
+    'Covasna': 'CV#1473', 'Dâmbovița': 'DB#6038', 'Dolj': 'DJ#9521',
+    'Galați': 'GL#3740', 'Giurgiu': 'GR#5186', 'Gorj': 'GJ#2905',
+    'Harghita': 'HR#7634', 'Hunedoara': 'HD#4027', 'Ialomița': 'IL#8392',
+    'Iași': 'IS#1504', 'Ilfov': 'IF#6273', 'Maramureș': 'MM#9418',
+    'Mehedinți': 'MH#3365', 'Mureș': 'MS#7820', 'Neamț': 'NT#2059',
+    'Olt': 'OT#5941', 'Prahova': 'PH#1683', 'Satu Mare': 'SM#8407',
+    'Sălaj': 'SJ#3256', 'Sibiu': 'SB#9172', 'Suceava': 'SV#4839',
+    'Teleorman': 'TR#6701', 'Timiș': 'TM#2548', 'Tulcea': 'TL#5092',
+    'Vaslui': 'VS#7364', 'Vâlcea': 'VL#1825', 'Vrancea': 'VN#4910',
   };
 
   bool _validateCityPassword() {
@@ -108,42 +110,40 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _errorMessage = null;
     });
 
-    final success = await ref.read(authControllerProvider.notifier).createGoogleUserProfile(
+    final (success, errorMessage) = await ref.read(authControllerProvider.notifier).createGoogleUserProfile(
           fullName: _fullNameController.text.trim(),
           schoolId: _selectedSchoolId!,
+          schoolName: _selectedSchoolName,
           phoneNumber: _phoneController.text.trim(),
           city: _selectedCity!,
-          className: _classNameController.text.trim().isNotEmpty
-              ? _classNameController.text.trim()
-              : null,
+          className: _classNameController.text.trim(),
         );
 
     if (mounted) {
       setState(() => _isLoading = false);
 
       if (!success) {
-        setState(() => _errorMessage = 'Eroare la salvarea profilului. Încearcă din nou.');
+        setState(() => _errorMessage = errorMessage ?? l10n.translate('error_saving_profile'));
       }
     }
   }
 
   Future<void> _handleCancel() async {
+    final l10n = AppLocalizations.of(context);
     // Show confirmation dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Anulezi înregistrarea?'),
-        content: const Text(
-          'Dacă anulezi, vei fi deconectat și va trebui să te înregistrezi din nou.',
-        ),
+        title: Text(l10n.translate('cancel_registration')),
+        content: Text(l10n.translate('cancel_registration_message')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Nu'),
+            child: Text(l10n.translate('no')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Da, anulează'),
+            child: Text(l10n.translate('yes_cancel')),
           ),
         ],
       ),
@@ -158,7 +158,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final schoolsAsync = ref.watch(schoolsListProvider);
+    final schoolsAsync = ref.watch(schoolsByCountyProvider(_selectedCity));
     final authService = ref.read(authServiceProvider);
     final firebaseUser = authService.currentUser;
 
@@ -246,7 +246,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 const SizedBox(height: AppSizes.spacing24),
 
                 // Error message
-                if (_errorMessage != null) ...[
+                if (_errorMessage != null && _errorMessage!.isNotEmpty) ...[
                   Container(
                     padding: const EdgeInsets.all(AppSizes.paddingMD),
                     decoration: BoxDecoration(
@@ -255,12 +255,12 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: theme.colorScheme.error),
+                        Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
                         const SizedBox(width: AppSizes.spacing8),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: TextStyle(color: theme.colorScheme.error),
+                            style: TextStyle(color: theme.colorScheme.onErrorContainer),
                           ),
                         ),
                       ],
@@ -273,7 +273,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 AppTextField(
                   controller: _fullNameController,
                   label: l10n.translate('full_name'),
-                  hint: 'Ion Popescu',
+                  hint: l10n.translate('example_name'),
                   prefixIcon: const Icon(Icons.person_outline),
                   textCapitalization: TextCapitalization.words,
                   enabled: !_isLoading,
@@ -282,7 +282,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       return l10n.translate('field_required');
                     }
                     if (value.trim().length < 3) {
-                      return 'Numele trebuie să aibă cel puțin 3 caractere';
+                      return l10n.translate('too_short');
                     }
                     return null;
                   },
@@ -327,6 +327,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       : (value) {
                           setState(() {
                             _selectedCity = value;
+                            _selectedSchoolId = null; // Reset school when city changes
+                            _selectedSchoolName = null;
                             _cityPasswordController.clear();
                           });
                         },
@@ -377,30 +379,53 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
                 // School dropdown
                 schoolsAsync.when(
-                  data: (schools) => DropdownButtonFormField<String>(
-                    decoration: InputDecoration(
-                      labelText: l10n.translate('school'),
-                      prefixIcon: const Icon(Icons.school_outlined),
-                    ),
-                    items: schools.map((school) {
-                      return DropdownMenuItem(
-                        value: school.id,
-                        child: Text(
-                          school.shortName.isNotEmpty ? school.shortName : school.name,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: _isLoading
-                        ? null
-                        : (value) => setState(() => _selectedSchoolId = value),
-                    validator: (value) {
-                      if (value == null) {
-                        return l10n.translate('field_required');
-                      }
-                      return null;
-                    },
-                  ),
+                  data: (schools) {
+                    // Check if selected school exists in the current schools list
+                    final schoolExists = _selectedSchoolId != null &&
+                        schools.any((s) => s.id == _selectedSchoolId);
+                    // Reset if school doesn't exist in new list
+                    if (_selectedSchoolId != null && !schoolExists) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() => _selectedSchoolId = null);
+                        }
+                      });
+                    }
+                    return DropdownButtonFormField<String>(
+                      value: schoolExists ? _selectedSchoolId : null,
+                      decoration: InputDecoration(
+                        labelText: l10n.translate('school'),
+                        prefixIcon: const Icon(Icons.school_outlined),
+                      ),
+                      items: schools.map((school) {
+                        return DropdownMenuItem(
+                          value: school.id,
+                          child: Text(
+                            school.shortName.isNotEmpty ? school.shortName : school.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: _isLoading
+                          ? null
+                          : (value) {
+                              final school = schools.firstWhere(
+                                (s) => s.id == value,
+                                orElse: () => schools.first,
+                              );
+                              setState(() {
+                                _selectedSchoolId = value;
+                                _selectedSchoolName = school.name;
+                              });
+                            },
+                      validator: (value) {
+                        if (value == null) {
+                          return l10n.translate('field_required');
+                        }
+                        return null;
+                      },
+                    );
+                  },
                   loading: () => const LinearProgressIndicator(),
                   error: (_, __) => Text(
                     'Eroare la încărcarea școlilor',
@@ -409,14 +434,20 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ),
                 const SizedBox(height: AppSizes.spacing16),
 
-                // Class name (optional)
+                // Class name (required)
                 AppTextField(
                   controller: _classNameController,
-                  label: '${l10n.translate('class_name')} (opțional)',
+                  label: l10n.translate('class_name'),
                   hint: '12A',
                   prefixIcon: const Icon(Icons.class_outlined),
                   textCapitalization: TextCapitalization.characters,
                   enabled: !_isLoading,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return l10n.translate('field_required');
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: AppSizes.spacing24),
 

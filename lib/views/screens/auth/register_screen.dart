@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,73 +9,68 @@ import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
 
-/// Provider to fetch schools list
-final schoolsListProvider = FutureProvider<List<SchoolModel>>((ref) async {
+/// Provider to fetch schools list filtered by county
+final schoolsByCountyProvider = FutureProvider.family<List<SchoolModel>, String?>((ref, county) async {
+  if (county == null || county.isEmpty) {
+    return [];
+  }
+
   try {
+    debugPrint('schoolsByCountyProvider: Fetching schools for county: $county');
+
+    // Simple query without orderBy to avoid index requirements
     final snapshot = await FirebaseFirestore.instance
         .collection('schools')
-        .where('isActive', isEqualTo: true)
-        .orderBy('name')
+        .where('city', isEqualTo: county)
         .get();
 
-    final schools = snapshot.docs.map((doc) => SchoolModel.fromFirestore(doc)).toList();
+    // Filter active schools and sort in memory
+    final schools = snapshot.docs
+        .map((doc) => SchoolModel.fromFirestore(doc))
+        .where((school) => school.isActive)
+        .toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
 
-    // If no schools in database, return sample schools for development
+    debugPrint('schoolsByCountyProvider: Found ${schools.length} schools for $county');
+    for (var school in schools) {
+      debugPrint('  - ${school.name} (${school.shortName}) id=${school.id}');
+    }
+
+    // If no schools in database for this county, return sample schools for development
     if (schools.isEmpty) {
-      return _getSampleSchools();
+      debugPrint('schoolsByCountyProvider: No schools found, using sample schools');
+      return _getSampleSchools(county);
     }
 
     return schools;
   } catch (e) {
     // Return sample schools if Firebase fails (for development)
-    return _getSampleSchools();
+    debugPrint('schoolsByCountyProvider: Error fetching schools: $e');
+    debugPrint('schoolsByCountyProvider: Using sample schools as fallback');
+    return _getSampleSchools(county);
   }
 });
 
-/// Sample schools for development/testing
-List<SchoolModel> _getSampleSchools() {
+/// Sample schools for development/testing - filtered by county
+List<SchoolModel> _getSampleSchools(String county) {
+  // Return sample schools for the selected county
+  // These are only shown when database has no schools for this county
+  final countyAbbr = county.length >= 2 ? county.substring(0, 2).toUpperCase() : county.toUpperCase();
   return [
     SchoolModel(
-      id: 'school_1',
-      name: 'Colegiul Național "Emil Racoviță"',
-      shortName: 'CNER',
-      city: 'Iași',
+      id: '${county.toLowerCase().replaceAll(' ', '_').replaceAll('-', '_')}_school_1',
+      name: 'Colegiul Național "$county"',
+      shortName: 'CN$countyAbbr',
+      city: county,
       isActive: true,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     ),
     SchoolModel(
-      id: 'school_2',
-      name: 'Colegiul Național',
-      shortName: 'CN',
-      city: 'Iași',
-      isActive: true,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-    SchoolModel(
-      id: 'school_3',
-      name: 'Liceul Teoretic "Dimitrie Cantemir"',
-      shortName: 'LTDC',
-      city: 'Iași',
-      isActive: true,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-    SchoolModel(
-      id: 'school_4',
-      name: 'Colegiul Național "Costache Negruzzi"',
-      shortName: 'CNCN',
-      city: 'Iași',
-      isActive: true,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ),
-    SchoolModel(
-      id: 'school_5',
-      name: 'Colegiul Național "Mihail Sadoveanu"',
-      shortName: 'CNMS',
-      city: 'Iași',
+      id: '${county.toLowerCase().replaceAll(' ', '_').replaceAll('-', '_')}_school_2',
+      name: 'Liceul Teoretic "$county"',
+      shortName: 'LT$countyAbbr',
+      city: county,
       isActive: true,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -96,6 +92,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _cityPasswordController = TextEditingController();
+  final _classNameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -109,32 +106,97 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _errorMessage;
   int _titleTapCount = 0;
 
-  // City passwords for access control (in production, these would be stored securely on the server)
+  // County passwords for access control (Registration codes from Parole_judete.xlsx)
+  // IMPORTANT: Must match passwords in profile_setup_screen.dart
   static const Map<String, String> _cityPasswords = {
-    'București': 'BUC2024',
-    'Cluj-Napoca': 'CLJ2024',
-    'Timișoara': 'TIM2024',
-    'Iași': 'IAS2024',
-    'Constanța': 'CTA2024',
-    'Craiova': 'CRA2024',
-    'Brașov': 'BV2024',
-    'Galați': 'GL2024',
-    'Ploiești': 'PH2024',
-    'Oradea': 'BH2024',
+    'Alba': 'AB#7291',
+    'Arad': 'AR#3842',
+    'Argeș': 'AG#9103',
+    'Bacău': 'BC#5528',
+    'Bihor': 'BH#1937',
+    'Bistrița-Năsăud': 'BN#6482',
+    'Botoșani': 'BT#2749',
+    'Brașov': 'BV#8301',
+    'Brăila': 'BR#4615',
+    'București': 'B#9920',
+    'Buzău': 'BZ#3156',
+    'Caraș-Severin': 'CS#7043',
+    'Călărași': 'CL#2819',
+    'Cluj': 'CJ#5392',
+    'Constanța': 'CT#8264',
+    'Covasna': 'CV#1473',
+    'Dâmbovița': 'DB#6038',
+    'Dolj': 'DJ#9521',
+    'Galați': 'GL#3740',
+    'Giurgiu': 'GR#5186',
+    'Gorj': 'GJ#2905',
+    'Harghita': 'HR#7634',
+    'Hunedoara': 'HD#4027',
+    'Ialomița': 'IL#8392',
+    'Iași': 'IS#1504',
+    'Ilfov': 'IF#6273',
+    'Maramureș': 'MM#9418',
+    'Mehedinți': 'MH#3365',
+    'Mureș': 'MS#7820',
+    'Neamț': 'NT#2059',
+    'Olt': 'OT#5941',
+    'Prahova': 'PH#1683',
+    'Satu Mare': 'SM#8407',
+    'Sălaj': 'SJ#3256',
+    'Sibiu': 'SB#9172',
+    'Suceava': 'SV#4839',
+    'Teleorman': 'TR#6701',
+    'Timiș': 'TM#2548',
+    'Tulcea': 'TL#5092',
+    'Vaslui': 'VS#7364',
+    'Vâlcea': 'VL#1825',
+    'Vrancea': 'VN#4910',
   };
 
-  // Cities list (Romanian names with proper diacritics)
+  // Counties list (all 42 Romanian counties with proper diacritics)
   final List<String> _cities = [
-    'București',
-    'Cluj-Napoca',
-    'Timișoara',
-    'Iași',
-    'Constanța',
-    'Craiova',
+    'Alba',
+    'Arad',
+    'Argeș',
+    'Bacău',
+    'Bihor',
+    'Bistrița-Năsăud',
+    'Botoșani',
     'Brașov',
+    'Brăila',
+    'București',
+    'Buzău',
+    'Caraș-Severin',
+    'Călărași',
+    'Cluj',
+    'Constanța',
+    'Covasna',
+    'Dâmbovița',
+    'Dolj',
     'Galați',
-    'Ploiești',
-    'Oradea',
+    'Giurgiu',
+    'Gorj',
+    'Harghita',
+    'Hunedoara',
+    'Ialomița',
+    'Iași',
+    'Ilfov',
+    'Maramureș',
+    'Mehedinți',
+    'Mureș',
+    'Neamț',
+    'Olt',
+    'Prahova',
+    'Satu Mare',
+    'Sălaj',
+    'Sibiu',
+    'Suceava',
+    'Teleorman',
+    'Timiș',
+    'Tulcea',
+    'Vaslui',
+    'Vâlcea',
+    'Vrancea',
   ];
 
   @override
@@ -144,6 +206,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _cityPasswordController.dispose();
+    _classNameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -190,6 +253,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           schoolId: _selectedSchoolId!,
           phoneNumber: _phoneController.text.trim(),
           city: _selectedCity!,
+          className: _classNameController.text.trim(),
         );
 
     if (mounted) {
@@ -198,14 +262,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (result.success) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created! Please wait for approval.'),
+            SnackBar(
+              content: Text(AppLocalizations.of(context).translate('account_created_wait_approval')),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        setState(() => _errorMessage = result.errorMessage);
+        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
       }
     }
   }
@@ -222,15 +286,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       setState(() => _isGoogleLoading = false);
 
       if (!result.success) {
-        setState(() => _errorMessage = result.errorMessage);
+        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
       }
     }
+  }
+
+  /// Get localized error message based on error code
+  String _getLocalizedAuthError(String? errorCode) {
+    final l10n = AppLocalizations.of(context);
+    final key = 'auth_error_${errorCode?.replaceAll('-', '_') ?? 'default'}';
+    final translation = l10n.translate(key);
+    // If translation returns the key itself, use the default error message
+    if (translation == key) {
+      return l10n.translate('auth_error_default');
+    }
+    return translation;
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final schoolsAsync = ref.watch(schoolsListProvider);
+    final schoolsAsync = ref.watch(schoolsByCountyProvider(_selectedCity));
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -285,22 +361,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 32),
 
                   // Error message
-                  if (_errorMessage != null) ...[
+                  if (_errorMessage != null && _errorMessage!.isNotEmpty) ...[
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red[50],
+                        color: Theme.of(context).colorScheme.errorContainer,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red[200]!),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.onErrorContainer, size: 20),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: TextStyle(color: Colors.red[700], fontSize: 13),
+                              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 13),
                             ),
                           ),
                         ],
@@ -452,6 +527,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         : (value) {
                             setState(() {
                               _selectedCity = value;
+                              _selectedSchoolId = null; // Reset school when city changes
                               _cityPasswordController.clear(); // Clear password when city changes
                             });
                           },
@@ -521,33 +597,66 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  schoolsAsync.when(
-                    data: (schools) => DropdownButtonFormField<String>(
-                      decoration: _inputDecoration('${l10n.translate('select')} ${l10n.translate('school')}...'),
-                      items: schools.map((school) {
-                        return DropdownMenuItem(
-                          value: school.id,
-                          child: Text(
-                            school.shortName.isNotEmpty ? school.shortName : school.name,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: _isLoading || _isGoogleLoading
-                          ? null
-                          : (value) => setState(() => _selectedSchoolId = value),
-                      validator: (value) {
-                        if (value == null) {
-                          return l10n.translate('field_required');
-                        }
-                        return null;
-                      },
+                  if (_selectedCity == null)
+                    // Show disabled dropdown when no city is selected
+                    DropdownButtonFormField<String>(
+                      decoration: _inputDecoration(l10n.translate('select_city_first')),
+                      items: const [],
+                      onChanged: null,
+                    )
+                  else
+                    schoolsAsync.when(
+                      data: (schools) => DropdownButtonFormField<String>(
+                        value: _selectedSchoolId,
+                        decoration: _inputDecoration('${l10n.translate('select')} ${l10n.translate('school')}...'),
+                        items: schools.map((school) {
+                          return DropdownMenuItem(
+                            value: school.id,
+                            child: Text(
+                              school.shortName.isNotEmpty ? school.shortName : school.name,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: _isLoading || _isGoogleLoading
+                            ? null
+                            : (value) => setState(() => _selectedSchoolId = value),
+                        validator: (value) {
+                          if (value == null) {
+                            return l10n.translate('field_required');
+                          }
+                          return null;
+                        },
+                      ),
+                      loading: () => const LinearProgressIndicator(),
+                      error: (_, __) => Text(
+                        l10n.translate('error_loading'),
+                        style: TextStyle(color: Colors.red[700]),
+                      ),
                     ),
-                    loading: () => const LinearProgressIndicator(),
-                    error: (_, __) => Text(
-                      'Error loading schools',
-                      style: TextStyle(color: Colors.red[700]),
+                  const SizedBox(height: 16),
+
+                  // Class Name (Required)
+                  Text(
+                    l10n.translate('class_name'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _classNameController,
+                    enabled: !_isLoading && !_isGoogleLoading,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: _inputDecoration('12A'),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return l10n.translate('field_required');
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
 
@@ -707,33 +816,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Social Sign Up Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _SocialButton(
-                          icon: 'G',
-                          iconColor: Colors.red,
-                          label: 'Google',
-                          isLoading: _isGoogleLoading,
-                          onPressed: _isLoading ? null : _handleGoogleSignUp,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _SocialButton(
-                          icon: 'in',
-                          iconColor: const Color(0xFF0077B5),
-                          label: 'LinkedIn',
-                          isOutlined: true,
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('LinkedIn sign in coming soon')),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                  // Google Sign Up Button
+                  _SocialButton(
+                    icon: 'G',
+                    iconColor: Colors.red,
+                    label: 'Continue with Google',
+                    isLoading: _isGoogleLoading,
+                    onPressed: _isLoading ? null : _handleGoogleSignUp,
                   ),
                   const SizedBox(height: 32),
                 ],
