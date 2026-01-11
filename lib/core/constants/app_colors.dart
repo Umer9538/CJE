@@ -194,10 +194,10 @@ class AppColors {
   // DOCUMENT CATEGORY COLORS
   // ============================================
 
-  static const Color docStatutElevului = Color(0xFF3B82F6);
-  static const Color docRegulamente = Color(0xFF10B981);
-  static const Color docMetodologii = Color(0xFFF59E0B);
-  static const Color docFormulare = Color(0xFF8B5CF6);
+  static const Color docRegulamente = Color(0xFF3B82F6);  // Blue
+  static const Color docGhiduri = Color(0xFF10B981);      // Green
+  static const Color docUtile = Color(0xFFF59E0B);        // Amber
+  static const Color docRapoarte = Color(0xFF8B5CF6);     // Purple
 
   // ============================================
   // COMMON COLORS

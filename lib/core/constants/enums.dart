@@ -129,7 +129,7 @@ enum UserStatus {
   suspended,
   pending;
 
-  /// Get display name in Romanian
+  /// Get display name in Romanian (legacy - prefer translationKey for l10n)
   String get displayName {
     switch (this) {
       case UserStatus.active:
@@ -138,6 +138,18 @@ enum UserStatus {
         return AppStrings.statusSuspended;
       case UserStatus.pending:
         return AppStrings.statusPending;
+    }
+  }
+
+  /// Get translation key for l10n
+  String get translationKey {
+    switch (this) {
+      case UserStatus.active:
+        return 'active';
+      case UserStatus.suspended:
+        return 'suspended';
+      case UserStatus.pending:
+        return 'pending';
     }
   }
 
@@ -372,36 +384,36 @@ enum AnnouncementType {
 /// DOCUMENT CATEGORY ENUM
 /// ============================================
 enum DocumentCategory {
-  statutElevului,
   regulamente,
-  metodologii,
-  formulare;
+  ghiduri,
+  utile,
+  rapoarte;
 
   /// Get display name in Romanian
   String get displayName {
     switch (this) {
-      case DocumentCategory.statutElevului:
-        return AppStrings.docCategoryStatut;
       case DocumentCategory.regulamente:
         return AppStrings.docCategoryRegulamente;
-      case DocumentCategory.metodologii:
-        return AppStrings.docCategoryMetodologii;
-      case DocumentCategory.formulare:
-        return AppStrings.docCategoryFormulare;
+      case DocumentCategory.ghiduri:
+        return AppStrings.docCategoryGhiduri;
+      case DocumentCategory.utile:
+        return AppStrings.docCategoryUtile;
+      case DocumentCategory.rapoarte:
+        return AppStrings.docCategoryRapoarte;
     }
   }
 
   /// Get category color
   Color get color {
     switch (this) {
-      case DocumentCategory.statutElevului:
-        return AppColors.docStatutElevului;
       case DocumentCategory.regulamente:
         return AppColors.docRegulamente;
-      case DocumentCategory.metodologii:
-        return AppColors.docMetodologii;
-      case DocumentCategory.formulare:
-        return AppColors.docFormulare;
+      case DocumentCategory.ghiduri:
+        return AppColors.docGhiduri;
+      case DocumentCategory.utile:
+        return AppColors.docUtile;
+      case DocumentCategory.rapoarte:
+        return AppColors.docRapoarte;
     }
   }
 
@@ -412,7 +424,7 @@ enum DocumentCategory {
   static DocumentCategory fromFirestore(String value) {
     return DocumentCategory.values.firstWhere(
       (e) => e.name == value,
-      orElse: () => DocumentCategory.formulare,
+      orElse: () => DocumentCategory.regulamente,
     );
   }
 }
@@ -475,19 +487,59 @@ enum DocumentFileType {
 }
 
 /// ============================================
+/// INITIATIVE TYPE ENUM
+/// ============================================
+enum InitiativeType {
+  school,
+  county;
+
+  /// Get translation key for l10n
+  String get translationKey {
+    switch (this) {
+      case InitiativeType.school:
+        return 'school';
+      case InitiativeType.county:
+        return 'county';
+    }
+  }
+
+  /// Convert to Firestore value
+  String toFirestore() => name;
+
+  /// Create from Firestore value
+  static InitiativeType fromFirestore(String? value) {
+    if (value == null) return InitiativeType.school;
+    return InitiativeType.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => InitiativeType.school,
+    );
+  }
+}
+
+/// ============================================
 /// POLL TYPE ENUM
 /// ============================================
 enum PollType {
   school,
   county;
 
-  /// Get display name in Romanian
+  /// Get display name in Romanian (legacy - prefer getLocalizedName for translations)
   String get displayName {
     switch (this) {
       case PollType.school:
         return AppStrings.pollSchool;
       case PollType.county:
         return AppStrings.pollCounty;
+    }
+  }
+
+  /// Get translation key for l10n
+  String get translationKey {
+    switch (this) {
+      case PollType.school:
+        return 'poll_school';
+      case PollType.county:
+        return 'poll_county';
     }
   }
 

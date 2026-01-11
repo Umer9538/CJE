@@ -74,8 +74,11 @@ extension ThemeAwareColors on BuildContext {
   /// Bottom navigation background
   Color get bottomNavColor => cardColor;
 
-  /// Icon color
-  Color get iconColor => textPrimary;
+  /// Icon color - Gold in dark mode for visibility
+  Color get iconColor => _isDark ? AppColors.gold : AppColors.navy;
+
+  /// Secondary icon color - for less prominent icons
+  Color get iconSecondaryColor => _isDark ? Colors.grey[400]! : Colors.grey[600]!;
 
   /// Disabled color
   Color get disabledColor => textSecondary.withValues(alpha: 0.5);
