@@ -19,7 +19,7 @@ class HomeUpcomingEvents extends ConsumerWidget {
       child: upcomingMeetings.when(
         data: (meetings) {
           if (meetings.isEmpty) {
-            return _buildEmptyState(l10n);
+            return _buildEmptyState(context, l10n);
           }
           return _buildMeetingsList(context, meetings);
         },
@@ -29,14 +29,14 @@ class HomeUpcomingEvents extends ConsumerWidget {
         error: (_, __) => Center(
           child: Text(
             'Failed to load meetings',
-            style: TextStyle(color: Colors.grey[500]),
+            style: TextStyle(color: context.textSecondary),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -44,11 +44,11 @@ class HomeUpcomingEvents extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -57,11 +57,11 @@ class HomeUpcomingEvents extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.event_available, color: Colors.grey[400], size: 40),
+              Icon(Icons.event_available, color: context.textSecondary, size: 40),
               const SizedBox(height: 12),
               Text(
                 l10n.translate('no_upcoming_meetings'),
-                style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                style: TextStyle(color: context.textSecondary, fontSize: 14),
               ),
             ],
           ),

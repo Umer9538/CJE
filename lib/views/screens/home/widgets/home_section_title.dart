@@ -24,41 +24,42 @@ class HomeSectionTitle extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
+              color: context.goldColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppColors.navy, size: 18),
+            child: Icon(icon, color: context.goldColor, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.goldColor,
               ),
             ),
           ),
-          if (onSeeAll != null) _buildSeeAllButton(),
+          if (onSeeAll != null) _buildSeeAllButton(context),
         ],
       ),
     );
   }
 
-  Widget _buildSeeAllButton() {
+  Widget _buildSeeAllButton(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return GestureDetector(
       onTap: onSeeAll,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.gold.withValues(alpha: 0.15),
+          color: context.goldColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Text(
-          'See All',
+        child: Text(
+          l10n.translate('see_all'),
           style: TextStyle(
-            color: AppColors.navy,
+            color: context.textPrimary,
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),

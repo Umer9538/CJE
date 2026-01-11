@@ -134,6 +134,7 @@ class HomeWelcomeCard extends ConsumerWidget {
 class _ImpactStats extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final activePolls = ref.watch(activePollsProvider);
     final recentInitiatives = ref.watch(recentInitiativesProvider);
     final upcomingMeetings = ref.watch(upcomingMeetingsProvider);
@@ -147,7 +148,7 @@ class _ImpactStats extends ConsumerWidget {
               loading: () => '-',
               error: (_, __) => '0',
             ),
-            label: 'Active Polls',
+            label: l10n.translate('active_polls'),
           ),
         ),
         Expanded(
@@ -157,7 +158,7 @@ class _ImpactStats extends ConsumerWidget {
               loading: () => '-',
               error: (_, __) => '0',
             ),
-            label: 'Initiatives',
+            label: l10n.translate('initiatives'),
           ),
         ),
         Expanded(
@@ -167,7 +168,7 @@ class _ImpactStats extends ConsumerWidget {
               loading: () => '-',
               error: (_, __) => '0',
             ),
-            label: 'Meetings',
+            label: l10n.translate('meetings'),
           ),
         ),
       ],

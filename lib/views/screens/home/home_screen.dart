@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../routes/route_names.dart';
+import '../main/main_shell.dart';
 import 'widgets/widgets.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -123,17 +124,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                     const SliverToBoxAdapter(child: HomeQuickStats()),
                     SliverToBoxAdapter(
                       child: HomeSectionTitle(
-                        title: 'Upcoming Events',
+                        title: AppLocalizations.of(context).translate('upcoming_events'),
                         icon: Icons.calendar_month_rounded,
-                        onSeeAll: () => context.go(RouteNames.meetings),
+                        onSeeAll: () {
+                          ref.read(navigationIndexProvider.notifier).state = 3; // Meetings tab
+                          context.go(RouteNames.meetings);
+                        },
                       ),
                     ),
                     const SliverToBoxAdapter(child: HomeUpcomingEvents()),
                     SliverToBoxAdapter(
                       child: HomeSectionTitle(
-                        title: 'Recent Activity',
+                        title: AppLocalizations.of(context).translate('recent_activity'),
                         icon: Icons.bolt_rounded,
-                        onSeeAll: () => context.go(RouteNames.announcements),
+                        onSeeAll: () {
+                          ref.read(navigationIndexProvider.notifier).state = 1; // Announcements tab
+                          context.go(RouteNames.announcements);
+                        },
                       ),
                     ),
                     const SliverToBoxAdapter(child: HomeActivityFeed()),

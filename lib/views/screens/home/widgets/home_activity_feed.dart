@@ -21,7 +21,7 @@ class HomeActivityFeed extends ConsumerWidget {
         children: [
           _buildAnnouncements(context, recentAnnouncements),
           _buildInitiatives(context, recentInitiatives),
-          _buildEmptyState(recentAnnouncements, recentInitiatives),
+          _buildEmptyState(context, recentAnnouncements, recentInitiatives),
         ],
       ),
     );
@@ -86,18 +86,18 @@ class HomeActivityFeed extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmptyState(AsyncValue<List<dynamic>> announcements,
+  Widget _buildEmptyState(BuildContext context, AsyncValue<List<dynamic>> announcements,
       AsyncValue<List<dynamic>> initiatives) {
     if (announcements.valueOrNull?.isEmpty == true &&
         initiatives.valueOrNull?.isEmpty == true) {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -105,11 +105,11 @@ class HomeActivityFeed extends ConsumerWidget {
         ),
         child: Column(
           children: [
-            Icon(Icons.inbox_rounded, color: Colors.grey[400], size: 40),
+            Icon(Icons.inbox_rounded, color: context.textSecondary, size: 40),
             const SizedBox(height: 12),
             Text(
               'No recent activity',
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+              style: TextStyle(color: context.textSecondary, fontSize: 14),
             ),
           ],
         ),
@@ -179,7 +179,7 @@ class ActivityCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(20),
         border: isUrgent
             ? Border.all(
@@ -188,7 +188,7 @@ class ActivityCard extends StatelessWidget {
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -215,20 +215,20 @@ class ActivityCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       ),
                     ),
-                    if (isUrgent) _buildUrgentBadge(),
+                    if (isUrgent) _buildUrgentBadge(context),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -240,7 +240,7 @@ class ActivityCard extends StatelessWidget {
             time,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey[400],
+              color: context.textSecondary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -249,16 +249,17 @@ class ActivityCard extends StatelessWidget {
     );
   }
 
-  Widget _buildUrgentBadge() {
+  Widget _buildUrgentBadge(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xFFEF4444).withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Text(
-        'Urgent',
-        style: TextStyle(
+      child: Text(
+        l10n.translate('urgent'),
+        style: const TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.bold,
           color: Color(0xFFEF4444),

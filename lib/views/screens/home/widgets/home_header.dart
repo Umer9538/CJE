@@ -17,9 +17,9 @@ class HomeHeader extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          _buildAvatar(),
+          _buildAvatar(context),
           const SizedBox(width: 16),
-          _buildGreeting(),
+          _buildGreeting(context),
           _buildCalendarButton(context),
           const SizedBox(width: 12),
           _buildSearchButton(context),
@@ -30,7 +30,7 @@ class HomeHeader extends ConsumerWidget {
     );
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(BuildContext context) {
     return Stack(
       children: [
         Container(
@@ -78,7 +78,7 @@ class HomeHeader extends ConsumerWidget {
             decoration: BoxDecoration(
               color: const Color(0xFF10B981),
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFF8F9FE), width: 2),
+              border: Border.all(color: context.scaffoldBackgroundColor, width: 2),
             ),
           ),
         ),
@@ -86,15 +86,16 @@ class HomeHeader extends ConsumerWidget {
     );
   }
 
-  Widget _buildGreeting() {
+  Widget _buildGreeting(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final hour = DateTime.now().hour;
-    String greeting;
+    String greetingKey;
     if (hour < 12) {
-      greeting = 'Good Morning';
+      greetingKey = 'good_morning';
     } else if (hour < 17) {
-      greeting = 'Good Afternoon';
+      greetingKey = 'good_afternoon';
     } else {
-      greeting = 'Good Evening';
+      greetingKey = 'good_evening';
     }
 
     return Expanded(
@@ -102,20 +103,20 @@ class HomeHeader extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            greeting,
+            l10n.translate(greetingKey),
             style: TextStyle(
               fontSize: 13,
-              color: Colors.grey[500],
+              color: context.textSecondary,
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             user?.fullName?.split(' ').first ?? 'User',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.goldColor,
             ),
           ),
         ],
@@ -130,18 +131,18 @@ class HomeHeader extends ConsumerWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: const Center(
-          child: Icon(Icons.calendar_month_rounded, color: AppColors.navy, size: 22),
+        child: Center(
+          child: Icon(Icons.calendar_month_rounded, color: context.iconColor, size: 22),
         ),
       ),
     );
@@ -154,18 +155,18 @@ class HomeHeader extends ConsumerWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: const Center(
-          child: Icon(Icons.search_rounded, color: AppColors.navy, size: 22),
+        child: Center(
+          child: Icon(Icons.search_rounded, color: context.iconColor, size: 22),
         ),
       ),
     );
@@ -183,11 +184,11 @@ class _NotificationButton extends ConsumerWidget {
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -195,9 +196,9 @@ class _NotificationButton extends ConsumerWidget {
         ),
         child: Stack(
           children: [
-            const Center(
+            Center(
               child: Icon(Icons.notifications_none_rounded,
-                  color: AppColors.navy, size: 22),
+                  color: context.iconColor, size: 22),
             ),
             unreadCount.when(
               data: (count) => count > 0
