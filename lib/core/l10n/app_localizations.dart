@@ -656,6 +656,7 @@ const Map<String, String> _roStrings = {
   'add_document': 'Adaugă document',
   'polls': 'Sondaje',
   'calendar': 'Calendar',
+  'no_events_on_date': 'Niciun eveniment în această zi',
   'notifications': 'Notificări',
   'notifications_subtitle': 'Push, email, SMS',
   'notify': 'Notifică',
@@ -790,6 +791,7 @@ const Map<String, String> _roStrings = {
   'move_to_voting': 'Spre vot',
   'reject_initiative': 'Respinge inițiativa',
   'reject_initiative_reason': 'Te rugăm să furnizezi un motiv pentru respingere:',
+  'rejection_reason': 'Motiv respingere',
   'enter_reason': 'Introdu motivul...',
   'reason_required': 'Motivul este obligatoriu',
 
@@ -874,6 +876,12 @@ const Map<String, String> _roStrings = {
   'light_theme': 'Temă deschisă',
   'dark_theme': 'Temă întunecată',
   'system_theme': 'Temă sistem',
+  'enable_light_theme': 'Activează tema deschisă',
+  'enable_dark_theme': 'Activează tema întunecată',
+  'select_appearance': 'Selectează aspectul',
+  'follow_device_settings': 'Urmează setările dispozitivului',
+  'light_appearance': 'Aspect luminos',
+  'dark_appearance': 'Aspect întunecat',
   'language': 'Limbă',
   'select_language': 'Selectează limba',
   'push_notifications': 'Notificări push',
@@ -885,6 +893,15 @@ const Map<String, String> _roStrings = {
   'about_app': 'Despre aplicație',
   'version': 'Versiune',
   'delete_account': 'Șterge contul',
+
+  // Translation Settings
+  'auto_translation': 'Traducere automată',
+  'auto_translation_desc': 'Traduce automat conținutul în limba ta',
+  'not_configured': 'Nu este configurată',
+  'select_provider': 'Selectează furnizorul',
+  'enter_api_key': 'Introdu cheia API',
+  'libretranslate_free': 'LibreTranslate (Gratuit)',
+  'firebase_ml_offline': 'Firebase ML Kit (Offline)',
 
   // Time & Date
   'today': 'Azi',
@@ -939,8 +956,12 @@ const Map<String, String> _roStrings = {
   'no_items_yet': 'Niciun element încă',
   'no_notifications': 'Nicio notificare',
   'no_announcements': 'Niciun anunț',
+  'failed_to_load_announcements': 'Nu s-au putut încărca anunțurile',
   'no_meetings': 'Nicio ședință programată',
   'no_initiatives': 'Nicio inițiativă',
+  'no_initiatives_desc': 'Fii primul care propune o inițiativă!',
+  'in_review': 'În revizuire',
+  'in_debate': 'În dezbatere',
   'no_documents': 'Niciun document',
   'no_polls': 'Niciun sondaj',
   'participants': 'Participanți',
@@ -1109,6 +1130,7 @@ const Map<String, String> _roStrings = {
 
   // Initiative screens
   'support': 'Susține',
+  'supported': 'Susținut',
   'supporters': 'Susținători',
   'problem': 'Problemă',
   'solution': 'Soluție',
@@ -1153,6 +1175,7 @@ const Map<String, String> _roStrings = {
   'cannot_open_file': 'Nu s-a putut deschide fișierul',
   'error_opening_file': 'Eroare la deschiderea fișierului',
   'error_loading': 'Eroare la încărcare',
+  'error_updating_support': 'Eroare la actualizarea susținerii',
   'error_loading_comments': 'Eroare la încărcarea comentariilor',
   'no_comments_yet': 'Nu există comentarii încă',
 
@@ -1183,6 +1206,13 @@ const Map<String, String> _roStrings = {
   'approve_user': 'Aprobă utilizator',
   'suspend_user': 'Suspendă utilizator',
   'reactivate_user': 'Reactivează utilizator',
+  'delete_user_permanently': 'Șterge permanent utilizator',
+  'delete_user_title': 'Șterge utilizator',
+  'delete_user_warning': 'Această acțiune este PERMANENTĂ și nu poate fi anulată!',
+  'delete_user_confirmation': 'Ești sigur că vrei să ștergi permanent acest utilizator?',
+  'delete_permanently': 'Șterge permanent',
+  'user_deleted_successfully': 'Utilizator șters cu succes',
+  'error_deleting_user': 'Eroare la ștergerea utilizatorului',
   'user_approved': 'Utilizator aprobat',
   'user_suspended': 'Utilizator suspendat',
   'user_reactivated': 'Utilizator reactivat',
@@ -1207,9 +1237,41 @@ const Map<String, String> _roStrings = {
   'superadmin_role_protected': 'Rolul Superadmin este protejat și nu poate fi modificat',
   'bex_role_protected': 'Rolul BEX poate fi modificat doar de Superadmin',
 
+  // Admin Setup
+  'admin_setup': 'Configurare Admin',
+  'admin_setup_warning': 'Acest ecran este doar pentru configurarea inițială. Super Admin are control total asupra aplicației.',
+  'current_super_admins': 'Super Admini Actuali',
+  'add_super_admin': 'Adaugă Super Admin',
+  'add_super_admin_desc': 'Introdu emailul unui utilizator înregistrat pentru a-l face Super Admin.',
+  'user_email': 'Email utilizator',
+  'admin_email_hint': 'admin@example.com',
+  'please_enter_email': 'Te rugăm să introduci un email',
+  'please_enter_valid_email': 'Te rugăm să introduci un email valid',
+  'set_as_super_admin': 'Setează ca Super Admin',
+  'super_admin_set_success': 'Super Admin setat cu succes! Utilizatorul poate acum gestiona întreaga aplicație.',
+  'super_admin_set_failed': 'Setarea Super Admin a eșuat. Asigură-te că emailul este înregistrat în aplicație.',
+  'super_admin_capabilities': 'Capacități Super Admin',
+  'cap_view_manage_users': 'Vizualizează și gestionează toți utilizatorii',
+  'cap_approve_users': 'Aprobă sau suspendă orice utilizator',
+  'cap_change_roles': 'Schimbă rolurile utilizatorilor',
+  'cap_create_content': 'Creează anunțuri, întâlniri, sondaje',
+  'cap_upload_docs': 'Încarcă documente',
+  'cap_full_access': 'Acces complet la toate funcțiile aplicației',
+
   // Admin Dashboard
+  'all_counties': 'Toate județele',
   'statistics': 'Statistici',
   'total_users': 'Total utilizatori',
+
+  // Analytics
+  'initiative_statistics': 'Statistici Inițiative',
+  'status_breakdown': 'Distribuție pe Status',
+  'poll_statistics': 'Statistici Sondaje',
+  'adoption_rate': 'Rată de adoptare',
+  'total_polls': 'Total sondaje',
+  'county_polls': 'Sondaje județ',
+  'school_polls': 'Sondaje școli',
+  'drafts': 'Ciorne',
   'quick_actions': 'Acțiuni rapide',
   'add_user': 'Adaugă',
   'user_added_successfully': 'Utilizator adăugat cu succes',
@@ -1304,7 +1366,6 @@ const Map<String, String> _roStrings = {
   'delete_user': 'Șterge Utilizator',
   'delete_user_confirm': 'Ești sigur că vrei să ștergi acest utilizator? Această acțiune nu poate fi anulată.',
   'user_deleted': 'Utilizatorul a fost șters',
-  'error_deleting_user': 'Eroare la ștergerea utilizatorului',
   'users': 'Utilizatori',
 
   // Warnings & Absences
@@ -1636,6 +1697,31 @@ const Map<String, String> _roStrings = {
   'auth_error_invalid_credential': 'Email sau parolă incorectă.',
   'auth_error_requires_recent_login': 'Te rugăm să te autentifici din nou pentru această operațiune.',
   'auth_error_default': 'A apărut o eroare. Încearcă din nou.',
+
+  // Not Found Messages
+  'announcement_not_found': 'Comunicatul nu a fost găsit',
+  'meeting_not_found': 'Ședința nu a fost găsită',
+  'initiative_not_found': 'Inițiativa nu a fost găsită',
+  'poll_not_found': 'Sondajul nu a fost găsit',
+  'page_not_found': 'Pagina nu a fost găsită',
+  'back_home': 'Înapoi acasă',
+
+  // Voting Messages
+  'you_have_voted': 'Ai votat deja',
+  'vote_recorded': 'Votul tău a fost înregistrat',
+  'voting_permissions': 'Permisiuni de vot',
+  'select_voting_role': 'Selectează rolul minim necesar pentru a vota pe această inițiativă:',
+  'and_above': 'și mai sus',
+  'voting_role_hint': 'Doar utilizatorii cu acest rol sau mai sus vor putea vota.',
+  'start_voting': 'Pornește votarea',
+  'eligible_voters': 'Alegători eligibili',
+  'insufficient_role_to_vote': 'Rolul tău nu îți permite să votezi pe această inițiativă.',
+
+  // Participant Messages
+  'no_available_users': 'Nu există utilizatori disponibili',
+  'all_users_already_added': 'Toți utilizatorii din județ au fost deja adăugați',
+  'available_participants': 'Participanți disponibili',
+  'error_loading_users': 'Eroare la încărcarea utilizatorilor',
 };
 
 // ============================================
@@ -1761,6 +1847,7 @@ const Map<String, String> _enStrings = {
   'add_document': 'Add document',
   'polls': 'Polls',
   'calendar': 'Calendar',
+  'no_events_on_date': 'No events on this date',
   'notifications': 'Notifications',
   'notifications_subtitle': 'Push, email, SMS',
   'notify': 'Notify',
@@ -1895,6 +1982,7 @@ const Map<String, String> _enStrings = {
   'move_to_voting': 'Move to voting',
   'reject_initiative': 'Reject initiative',
   'reject_initiative_reason': 'Please provide a reason for rejection:',
+  'rejection_reason': 'Rejection Reason',
   'enter_reason': 'Enter reason...',
   'reason_required': 'Reason is required',
 
@@ -1979,6 +2067,12 @@ const Map<String, String> _enStrings = {
   'light_theme': 'Light theme',
   'dark_theme': 'Dark theme',
   'system_theme': 'System theme',
+  'enable_light_theme': 'Enable light theme',
+  'enable_dark_theme': 'Enable dark theme',
+  'select_appearance': 'Select appearance',
+  'follow_device_settings': 'Follow device settings',
+  'light_appearance': 'Light appearance',
+  'dark_appearance': 'Dark appearance',
   'language': 'Language',
   'select_language': 'Select language',
   'push_notifications': 'Push notifications',
@@ -1990,6 +2084,15 @@ const Map<String, String> _enStrings = {
   'about_app': 'About app',
   'version': 'Version',
   'delete_account': 'Delete account',
+
+  // Translation Settings
+  'auto_translation': 'Automatic translation',
+  'auto_translation_desc': 'Automatically translate content to your language',
+  'not_configured': 'Not configured',
+  'select_provider': 'Select provider',
+  'enter_api_key': 'Enter API key',
+  'libretranslate_free': 'LibreTranslate (Free)',
+  'firebase_ml_offline': 'Firebase ML Kit (Offline)',
 
   // Time & Date
   'today': 'Today',
@@ -2044,8 +2147,12 @@ const Map<String, String> _enStrings = {
   'no_items_yet': 'No items yet',
   'no_notifications': 'No notifications',
   'no_announcements': 'No announcements',
+  'failed_to_load_announcements': 'Failed to load announcements',
   'no_meetings': 'No meetings scheduled',
   'no_initiatives': 'No initiatives',
+  'no_initiatives_desc': 'Be the first to propose an initiative!',
+  'in_review': 'In Review',
+  'in_debate': 'In Debate',
   'no_documents': 'No documents',
   'no_polls': 'No polls',
   'participants': 'Participants',
@@ -2214,6 +2321,7 @@ const Map<String, String> _enStrings = {
 
   // Initiative screens
   'support': 'Support',
+  'supported': 'Supported',
   'supporters': 'Supporters',
   'problem': 'Problem',
   'solution': 'Solution',
@@ -2258,6 +2366,7 @@ const Map<String, String> _enStrings = {
   'cannot_open_file': 'Could not open file',
   'error_opening_file': 'Error opening file',
   'error_loading': 'Error loading',
+  'error_updating_support': 'Error updating support',
   'error_loading_comments': 'Error loading comments',
   'no_comments_yet': 'No comments yet',
 
@@ -2288,6 +2397,13 @@ const Map<String, String> _enStrings = {
   'approve_user': 'Approve User',
   'suspend_user': 'Suspend User',
   'reactivate_user': 'Reactivate User',
+  'delete_user_permanently': 'Delete User Permanently',
+  'delete_user_title': 'Delete User',
+  'delete_user_warning': 'This action is PERMANENT and cannot be undone!',
+  'delete_user_confirmation': 'Are you sure you want to permanently delete this user?',
+  'delete_permanently': 'Delete Permanently',
+  'user_deleted_successfully': 'User deleted successfully',
+  'error_deleting_user': 'Error deleting user',
   'user_approved': 'User approved',
   'user_suspended': 'User suspended',
   'user_reactivated': 'User reactivated',
@@ -2312,9 +2428,41 @@ const Map<String, String> _enStrings = {
   'superadmin_role_protected': 'Superadmin role is protected and cannot be modified',
   'bex_role_protected': 'BEX role can only be modified by Superadmin',
 
+  // Admin Setup
+  'admin_setup': 'Admin Setup',
+  'admin_setup_warning': 'This screen is for initial setup only. Super Admins have full control over the app.',
+  'current_super_admins': 'Current Super Admins',
+  'add_super_admin': 'Add Super Admin',
+  'add_super_admin_desc': 'Enter the email of a registered user to make them a Super Admin.',
+  'user_email': 'User Email',
+  'admin_email_hint': 'admin@example.com',
+  'please_enter_email': 'Please enter an email',
+  'please_enter_valid_email': 'Please enter a valid email',
+  'set_as_super_admin': 'Set as Super Admin',
+  'super_admin_set_success': 'Super Admin set successfully! The user can now manage the entire app.',
+  'super_admin_set_failed': 'Failed to set Super Admin. Make sure the email is registered in the app.',
+  'super_admin_capabilities': 'Super Admin Capabilities',
+  'cap_view_manage_users': 'View and manage all users',
+  'cap_approve_users': 'Approve or suspend any user',
+  'cap_change_roles': 'Change user roles',
+  'cap_create_content': 'Create announcements, meetings, polls',
+  'cap_upload_docs': 'Upload documents',
+  'cap_full_access': 'Full access to all app features',
+
   // Admin Dashboard
+  'all_counties': 'All Counties',
   'statistics': 'Statistics',
   'total_users': 'Total Users',
+
+  // Analytics
+  'initiative_statistics': 'Initiative Statistics',
+  'status_breakdown': 'Status Breakdown',
+  'poll_statistics': 'Poll Statistics',
+  'adoption_rate': 'Adoption Rate',
+  'total_polls': 'Total Polls',
+  'county_polls': 'County Polls',
+  'school_polls': 'School Polls',
+  'drafts': 'Drafts',
   'quick_actions': 'Quick Actions',
   'add_user': 'Add User',
   'user_added_successfully': 'User added successfully',
@@ -2409,7 +2557,6 @@ const Map<String, String> _enStrings = {
   'delete_user': 'Delete User',
   'delete_user_confirm': 'Are you sure you want to delete this user? This action cannot be undone.',
   'user_deleted': 'User deleted successfully',
-  'error_deleting_user': 'Error deleting user',
   'users': 'Users',
 
   // Warnings & Absences
@@ -2741,4 +2888,29 @@ const Map<String, String> _enStrings = {
   'auth_error_invalid_credential': 'Invalid email or password.',
   'auth_error_requires_recent_login': 'Please sign in again to perform this operation.',
   'auth_error_default': 'An error occurred. Please try again.',
+
+  // Not Found Messages
+  'announcement_not_found': 'Announcement not found',
+  'meeting_not_found': 'Meeting not found',
+  'initiative_not_found': 'Initiative not found',
+  'poll_not_found': 'Poll not found',
+  'page_not_found': 'Page not found',
+  'back_home': 'Back to home',
+
+  // Voting Messages
+  'you_have_voted': 'You have already voted',
+  'vote_recorded': 'Your vote has been recorded',
+  'voting_permissions': 'Voting Permissions',
+  'select_voting_role': 'Select the minimum role required to vote on this initiative:',
+  'and_above': 'and above',
+  'voting_role_hint': 'Only users with this role or higher will be able to vote.',
+  'start_voting': 'Start Voting',
+  'eligible_voters': 'Eligible voters',
+  'insufficient_role_to_vote': 'Your role does not allow you to vote on this initiative.',
+
+  // Participant Messages
+  'no_available_users': 'No available users',
+  'all_users_already_added': 'All users from your county have already been added',
+  'available_participants': 'Available participants',
+  'error_loading_users': 'Error loading users',
 };
