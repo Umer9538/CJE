@@ -107,7 +107,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
       ),
       floatingActionButton: canCreate
           ? Padding(
-              padding: const EdgeInsets.only(bottom: 70),
+              padding: const EdgeInsets.only(bottom: 100),
               child: FloatingActionButton.extended(
                 heroTag: 'fab_meetings',
                 onPressed: () => _navigateToCreate(context),
@@ -122,28 +122,42 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    final currentUser = ref.watch(currentUserProvider);
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
           // Back button
           GestureDetector(
-            onTap: () => context.go(RouteNames.home),
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(backRoute);
+              }
+            },
             child: Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.shadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Icon(Icons.arrow_back_rounded, color: context.textPrimary, size: 22),
+              child: Center(
+                child: Icon(Icons.arrow_back_rounded, color: context.iconColor, size: 22),
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -175,17 +189,17 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Icon(icon, color: context.textPrimary, size: 22),
+        child: Icon(icon, color: context.iconColor, size: 22),
       ),
     );
   }
@@ -215,11 +229,11 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -227,11 +241,11 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
       ),
       child: TabBar(
         controller: _tabController,
-        labelColor: AppColors.navy,
-        unselectedLabelColor: Colors.grey[400],
+        labelColor: context.textPrimary,
+        unselectedLabelColor: context.textSecondary,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: AppColors.gold.withValues(alpha: 0.15),
+          color: context.goldColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
         ),
         dividerColor: Colors.transparent,
@@ -300,7 +314,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Check back later for updates',
+            l10n.translate('check_back_later'),
             style: TextStyle(
               fontSize: 14,
               color: context.textSecondary,
@@ -319,14 +333,14 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
           const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
           Text(
-            'Failed to load meetings',
+            l10n.translate('error_loading'),
             style: TextStyle(color: context.textSecondary),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () => ref.invalidate(meetingsProvider),
             icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+            label: Text(l10n.translate('retry')),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.gold,
               foregroundColor: AppColors.navy,
@@ -376,11 +390,11 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.gold : Colors.white,
+          color: isSelected ? context.goldColor : context.cardColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -391,7 +405,7 @@ class _FilterChip extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: isSelected ? AppColors.navy : Colors.grey[600],
+            color: isSelected ? AppColors.navy : context.textSecondary,
           ),
         ),
       ),
@@ -419,11 +433,11 @@ class _MeetingCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -437,8 +451,8 @@ class _MeetingCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 20),
               decoration: BoxDecoration(
                 color: isPast
-                    ? Colors.grey.shade100
-                    : AppColors.gold.withValues(alpha: 0.15),
+                    ? context.textSecondary.withValues(alpha: 0.1)
+                    : context.goldColor.withValues(alpha: 0.15),
                 borderRadius: const BorderRadius.horizontal(
                   left: Radius.circular(20),
                 ),
@@ -450,7 +464,7 @@ class _MeetingCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isPast ? Colors.grey[500] : AppColors.gold,
+                      color: isPast ? context.textSecondary : context.goldColor,
                     ),
                   ),
                   Text(
@@ -458,14 +472,14 @@ class _MeetingCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: isPast ? Colors.grey[600] : AppColors.navy,
+                      color: isPast ? context.textSecondary : context.textPrimary,
                     ),
                   ),
                   Text(
                     timeFormat.format(meeting.dateTime),
                     style: TextStyle(
                       fontSize: 11,
-                      color: isPast ? Colors.grey[500] : Colors.grey[600],
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
@@ -478,25 +492,33 @@ class _MeetingCard extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Type badge
+                    // Type badge with school name for school meetings
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getTypeColor(meeting.type).withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            _getTypeLabel(meeting.type),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _getTypeColor(meeting.type),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getTypeColor(meeting.type).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              // Show school name for school meetings, type label for others
+                              meeting.type == MeetingType.school && meeting.schoolName != null
+                                  ? meeting.schoolName!
+                                  : _getTypeLabel(meeting.type),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _getTypeColor(meeting.type),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -512,18 +534,18 @@ class _MeetingCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
 
-                    // Title
+                    // Title (with translation support)
                     Text(
-                      meeting.title,
+                      meeting.getTitle(Localizations.localeOf(context).languageCode),
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: isPast ? Colors.grey[600] : AppColors.navy,
+                        color: isPast ? context.textSecondary : context.textPrimary,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
                     // Location/Link
                     Row(
@@ -545,6 +567,7 @@ class _MeetingCard extends StatelessWidget {
                               fontSize: 12,
                               color: context.textSecondary,
                             ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

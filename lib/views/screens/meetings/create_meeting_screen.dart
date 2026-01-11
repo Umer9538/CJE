@@ -38,6 +38,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
   bool _isOnline = false;
   bool _isLoading = false;
 
+  // School and department selection for targeting
+  String? _selectedSchoolId;
+  String? _selectedSchoolName;
+  DepartmentType? _selectedDepartment;
+
   final List<String> _agendaItems = [];
   final _agendaController = TextEditingController();
 
@@ -82,13 +87,13 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: Icon(Icons.close, color: context.textPrimary, size: 20),
+            child: Icon(Icons.close, color: context.iconColor, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -133,7 +138,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                   onTap: () => setState(() => _selectedType = MeetingType.department),
                 ),
                 _TypeChip(
-                  label: 'AG Județean',
+                  label: l10n.translate('meeting_type_county_ag'),
                   icon: Icons.account_balance_rounded,
                   isSelected: _selectedType == MeetingType.countyAG,
                   isDisabled: !canCreatePlenary,
@@ -142,7 +147,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                       : null,
                 ),
                 _TypeChip(
-                  label: 'BEx',
+                  label: l10n.translate('meeting_type_bex'),
                   icon: Icons.admin_panel_settings_rounded,
                   isSelected: _selectedType == MeetingType.bex,
                   isDisabled: !canCreatePlenary,
@@ -152,6 +157,19 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                 ),
               ],
             ),
+
+            // School Dropdown (when School type is selected)
+            if (_selectedType == MeetingType.school) ...[
+              const SizedBox(height: 16),
+              _buildSchoolSelector(l10n),
+            ],
+
+            // Department Dropdown (when Department type is selected)
+            if (_selectedType == MeetingType.department) ...[
+              const SizedBox(height: 16),
+              _buildDepartmentSelector(l10n),
+            ],
+
             const SizedBox(height: 24),
 
             // Title
@@ -237,7 +255,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -272,7 +290,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'This is an online meeting',
+                          l10n.translate('this_is_online_meeting'),
                           style: TextStyle(
                             fontSize: 13,
                             color: context.textSecondary,
@@ -446,14 +464,14 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       hintText: hint,
       hintStyle: TextStyle(color: context.textSecondary),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: context.cardColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: context.borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderSide: BorderSide(color: context.borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -496,7 +514,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -549,7 +567,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -583,7 +601,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.gold : Colors.white,
+              color: isSelected ? AppColors.gold : context.cardColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -591,7 +609,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? AppColors.navy : Colors.grey[600],
+                color: isSelected ? AppColors.navy : context.textSecondary,
               ),
             ),
           ),
@@ -600,11 +618,169 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
     );
   }
 
+  Widget _buildSchoolSelector(AppLocalizations l10n) {
+    final schoolsAsync = ref.watch(allSchoolsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('select_school'),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        schoolsAsync.when(
+          data: (schools) {
+            if (schools.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: context.cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  l10n.translate('no_schools_available'),
+                  style: TextStyle(color: context.textSecondary),
+                ),
+              );
+            }
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: context.borderColor),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedSchoolId,
+                  hint: Text(
+                    l10n.translate('select_school'),
+                    style: TextStyle(color: context.textSecondary),
+                  ),
+                  isExpanded: true,
+                  icon: Icon(Icons.keyboard_arrow_down, color: context.iconColor),
+                  dropdownColor: context.cardColor,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: context.textPrimary,
+                  ),
+                  items: schools.map((school) {
+                    return DropdownMenuItem<String>(
+                      value: school.id,
+                      child: Text(
+                        school.name,
+                        style: TextStyle(color: context.textPrimary),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      final school = schools.firstWhere((s) => s.id == value);
+                      setState(() {
+                        _selectedSchoolId = school.id;
+                        _selectedSchoolName = school.name;
+                      });
+                    }
+                  },
+                ),
+              ),
+            );
+          },
+          loading: () => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          error: (_, __) => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Text(
+              l10n.translate('error_loading_schools'),
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDepartmentSelector(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('select_department'),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: context.cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.borderColor),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<DepartmentType>(
+              value: _selectedDepartment,
+              hint: Text(
+                l10n.translate('select_department'),
+                style: TextStyle(color: context.textSecondary),
+              ),
+              isExpanded: true,
+              icon: Icon(Icons.keyboard_arrow_down, color: context.iconColor),
+              dropdownColor: context.cardColor,
+              style: TextStyle(
+                fontSize: 15,
+                color: context.textPrimary,
+              ),
+              items: DepartmentType.values.map((dept) {
+                return DropdownMenuItem<DepartmentType>(
+                  value: dept,
+                  child: Text(
+                    dept.displayName,
+                    style: TextStyle(color: context.textPrimary),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedDepartment = value;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAgendaSection(AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -641,7 +817,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                       item,
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey[700],
+                        color: context.textPrimary,
                       ),
                     ),
                   ),
@@ -696,7 +872,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -732,7 +908,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.grey[700],
+                            color: context.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -765,7 +941,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: Colors.grey[300]!,
+                  color: context.borderColor,
                   style: BorderStyle.solid,
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -813,7 +989,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking files: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error_picking_files')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -934,6 +1110,9 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       location: _isOnline ? null : _locationController.text.trim(),
       isOnline: _isOnline,
       onlineLink: _isOnline ? _onlineLinkController.text.trim() : null,
+      schoolId: _selectedSchoolId,
+      schoolName: _selectedSchoolName,
+      department: _selectedDepartment,
       agendaItems: _agendaItems.isEmpty ? null : _agendaItems,
       documents: uploadedDocuments.isEmpty ? null : uploadedDocuments,
     );
@@ -983,14 +1162,14 @@ class _TypeChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.gold : Colors.white,
+          color: isSelected ? AppColors.gold : context.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
                 ? AppColors.gold
                 : isDisabled
-                    ? Colors.grey.shade200
-                    : Colors.grey.shade300,
+                    ? context.borderColor.withValues(alpha: 0.5)
+                    : context.borderColor,
           ),
         ),
         child: Row(
@@ -1000,10 +1179,10 @@ class _TypeChip extends StatelessWidget {
               icon,
               size: 18,
               color: isDisabled
-                  ? Colors.grey.shade300
+                  ? context.textSecondary.withValues(alpha: 0.5)
                   : isSelected
                       ? AppColors.navy
-                      : Colors.grey[600],
+                      : context.textSecondary,
             ),
             const SizedBox(width: 8),
             Text(
@@ -1012,10 +1191,10 @@ class _TypeChip extends StatelessWidget {
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: isDisabled
-                    ? Colors.grey.shade400
+                    ? context.textSecondary.withValues(alpha: 0.5)
                     : isSelected
                         ? AppColors.navy
-                        : Colors.grey[600],
+                        : context.textSecondary,
               ),
             ),
           ],

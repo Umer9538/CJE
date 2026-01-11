@@ -59,7 +59,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
           return [
             // App Bar with meeting header
             SliverAppBar(
-              expandedHeight: 240,
+              expandedHeight: 260,
               pinned: true,
               backgroundColor: AppColors.navy,
               leading: IconButton(
@@ -156,9 +156,9 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                             ),
                           ),
                           const SizedBox(height: 12),
-                          // Title
+                          // Title (with translation support)
                           Text(
-                            widget.meeting.title,
+                            widget.meeting.getTitle(Localizations.localeOf(context).languageCode),
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
@@ -168,40 +168,47 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 16),
-                          // Date, Time & Location row
-                          Row(
+                          const SizedBox(height: 12),
+                          // Date & Time row - responsive layout
+                          Wrap(
+                            spacing: 16,
+                            runSpacing: 6,
                             children: [
-                              Icon(
-                                Icons.calendar_today_rounded,
-                                size: 16,
-                                color: Colors.white.withValues(alpha: 0.8),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today_rounded,
+                                    size: 14,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    dateFormat.format(widget.meeting.dateTime),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                dateFormat.format(widget.meeting.dateTime),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.access_time_rounded,
-                                size: 16,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                '${timeFormat.format(widget.meeting.dateTime)} (${widget.meeting.durationMinutes} min)',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    size: 14,
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '${timeFormat.format(widget.meeting.dateTime)} (${widget.meeting.durationMinutes} min)',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -212,7 +219,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                                 widget.meeting.isOnline
                                     ? Icons.videocam_rounded
                                     : Icons.location_on_rounded,
-                                size: 16,
+                                size: 14,
                                 color: Colors.white.withValues(alpha: 0.8),
                               ),
                               const SizedBox(width: 6),
@@ -315,11 +322,11 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -354,7 +361,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                     item,
                     style: TextStyle(
                       fontSize: 15,
-                      color: Colors.grey[800],
+                      color: context.textPrimary,
                       height: 1.4,
                     ),
                   ),
@@ -384,11 +391,11 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -411,23 +418,23 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
             ),
             title: Text(
               doc.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             subtitle: Text(
               doc.fileType?.toUpperCase() ?? 'FILE',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[500],
+                color: context.textSecondary,
               ),
             ),
             trailing: IconButton(
               icon: Icon(
                 Icons.download_rounded,
-                color: Colors.grey[600],
+                color: context.textSecondary,
               ),
               onPressed: () => _openDocument(context, doc),
             ),
@@ -439,59 +446,120 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
   }
 
   Widget _buildParticipantsTab(BuildContext context, AppLocalizations l10n) {
-    // Fetch attendance data
+    final canManageAttendance = ref.watch(canManageAttendanceProvider);
     final attendanceAsync = ref.watch(meetingAttendanceProvider(widget.meeting.id));
+    final invitedUsersAsync = ref.watch(usersByIdsProvider(widget.meeting.attendeeIds));
 
-    return attendanceAsync.when(
-      data: (attendees) {
-        if (attendees.isEmpty && widget.meeting.attendeeIds.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.people_outline_rounded,
-            title: l10n.translate('no_participants'),
-            subtitle: l10n.translate('no_participants_description'),
-          );
-        }
-
-        // If we have attendance records, show them
-        if (attendees.isNotEmpty) {
-          return ListView.builder(
+    return Column(
+      children: [
+        // Add participant button for authorized users
+        if (canManageAttendance)
+          Padding(
             padding: const EdgeInsets.all(16),
-            itemCount: attendees.length,
-            itemBuilder: (context, index) {
-              final attendee = attendees[index];
-              return _buildParticipantCard(attendee);
-            },
-          );
-        }
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showAddParticipantDialog(context, l10n),
+                icon: const Icon(Icons.person_add_rounded),
+                label: Text(l10n.translate('add_participant')),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.gold,
+                  foregroundColor: AppColors.navy,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        // Participants list
+        Expanded(
+          child: attendanceAsync.when(
+            data: (attendees) {
+              // Create a combined list: attendance records + invited users without attendance
+              final attendeeUserIds = attendees.map((a) => a.userId).toSet();
 
-        // Otherwise show invited users count
-        return _buildEmptyState(
-          icon: Icons.people_outline_rounded,
-          title: '${widget.meeting.attendeeIds.length} ${l10n.translate('invited')}',
-          subtitle: l10n.translate('attendance_not_recorded'),
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => _buildEmptyState(
-        icon: Icons.error_outline_rounded,
-        title: l10n.translate('error'),
-        subtitle: l10n.translate('error_loading_participants'),
+              return invitedUsersAsync.when(
+                data: (invitedUsers) {
+                  // Filter invited users who don't have attendance records yet
+                  final pendingInvites = invitedUsers
+                      .where((u) => !attendeeUserIds.contains(u.id))
+                      .toList();
+
+                  if (attendees.isEmpty && pendingInvites.isEmpty) {
+                    return _buildEmptyState(
+                      icon: Icons.people_outline_rounded,
+                      title: l10n.translate('no_participants'),
+                      subtitle: l10n.translate('no_participants_description'),
+                    );
+                  }
+
+                  return ListView(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: canManageAttendance ? 0 : 16,
+                      bottom: 16,
+                    ),
+                    children: [
+                      // Attendance records (present/absent)
+                      if (attendees.isNotEmpty) ...[
+                        _buildSectionLabel(context, l10n.translate('attendance_recorded')),
+                        const SizedBox(height: 8),
+                        ...attendees.map((attendee) => _buildParticipantCard(context, attendee, canManageAttendance)),
+                      ],
+                      // Pending invites (no attendance yet)
+                      if (pendingInvites.isNotEmpty) ...[
+                        if (attendees.isNotEmpty) const SizedBox(height: 16),
+                        _buildSectionLabel(context, l10n.translate('invited_pending')),
+                        const SizedBox(height: 8),
+                        ...pendingInvites.map((user) => _buildInvitedUserCard(context, user, canManageAttendance, l10n)),
+                      ],
+                    ],
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (_, __) => _buildEmptyState(
+                  icon: Icons.error_outline_rounded,
+                  title: l10n.translate('error'),
+                  subtitle: l10n.translate('error_loading_participants'),
+                ),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => _buildEmptyState(
+              icon: Icons.error_outline_rounded,
+              title: l10n.translate('error'),
+              subtitle: l10n.translate('error_loading_participants'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionLabel(BuildContext context, String label) {
+    return Text(
+      label,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: context.textSecondary,
       ),
     );
   }
 
-  Widget _buildParticipantCard(MeetingAttendance attendee) {
-    final statusColor = attendee.status.color;
-
+  Widget _buildInvitedUserCard(BuildContext context, UserModel user, bool canManage, AppLocalizations l10n) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -501,13 +569,160 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
         children: [
           CircleAvatar(
             radius: 22,
-            backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+            backgroundColor: AppColors.gold.withValues(alpha: 0.15),
             child: Text(
-              attendee.userName.isNotEmpty ? attendee.userName[0].toUpperCase() : '?',
-              style: const TextStyle(
+              user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.textPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user.fullName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                ),
+                Text(
+                  user.schoolName ?? user.email,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (canManage) ...[
+            // Mark as present button
+            IconButton(
+              icon: const Icon(Icons.check_circle_outline, color: Colors.green),
+              tooltip: l10n.translate('mark_present'),
+              onPressed: () => _markAttendance(user, AttendanceStatus.present),
+            ),
+            // Mark as absent button
+            IconButton(
+              icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+              tooltip: l10n.translate('mark_absent'),
+              onPressed: () => _markAttendance(user, AttendanceStatus.absent),
+            ),
+          ] else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                l10n.translate('pending'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.orange,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _markAttendance(UserModel user, AttendanceStatus status) async {
+    final l10n = AppLocalizations.of(context);
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final success = await ref.read(meetingControllerProvider.notifier).addParticipant(
+      meetingId: widget.meeting.id,
+      oderId: user.id,
+      userName: user.fullName,
+      status: status,
+    );
+
+    // Close loading dialog
+    if (mounted) Navigator.of(context).pop();
+
+    if (mounted) {
+      if (success) {
+        ref.invalidate(meetingAttendanceProvider(widget.meeting.id));
+        ref.invalidate(usersByIdsProvider(widget.meeting.attendeeIds));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(status == AttendanceStatus.present
+              ? l10n.translate('marked_present')
+              : l10n.translate('marked_absent')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.translate('error_updating_attendance')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAddParticipantDialog(BuildContext context, AppLocalizations l10n) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AddParticipantSheet(
+        meetingId: widget.meeting.id,
+        existingParticipantIds: widget.meeting.attendeeIds,
+        onParticipantAdded: () {
+          ref.invalidate(meetingAttendanceProvider(widget.meeting.id));
+          ref.invalidate(usersByIdsProvider(widget.meeting.attendeeIds));
+        },
+      ),
+    );
+  }
+
+  Widget _buildParticipantCard(BuildContext context, MeetingAttendance attendee, bool canManage) {
+    final statusColor = attendee.status.color;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: context.shadowColor,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: AppColors.gold.withValues(alpha: 0.15),
+            child: Text(
+              attendee.userName.isNotEmpty ? attendee.userName[0].toUpperCase() : '?',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: context.textPrimary,
               ),
             ),
           ),
@@ -518,10 +733,10 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
               children: [
                 Text(
                   attendee.userName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 if (attendee.checkInTime != null)
@@ -529,7 +744,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
                     'Checked in at ${DateFormat('h:mm a').format(attendee.checkInTime!)}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: context.textSecondary,
                     ),
                   ),
               ],
@@ -569,13 +784,13 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.1),
+                color: context.textSecondary.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 48,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 16),
@@ -584,7 +799,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
+                color: context.textPrimary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -593,7 +808,7 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
               subtitle,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: context.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
@@ -670,9 +885,17 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
     }
 
     final uri = Uri.parse(link);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        final launchedInApp = await launchUrl(uri, mode: LaunchMode.inAppWebView);
+        if (!launchedInApp && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_link'))),
+          );
+        }
+      }
+    } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_link'))),
@@ -683,13 +906,42 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
 
   Future<void> _openDocument(BuildContext context, MeetingDocument doc) async {
     final uri = Uri.parse(doc.url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+    try {
+      // Try to launch the URL directly - Firebase Storage URLs work in browser
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        // Fallback: try with inAppWebView mode
+        final launchedInApp = await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
         );
+        if (!launchedInApp && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+          );
+        }
+      }
+    } catch (e) {
+      // If launching fails, try opening in app web view as fallback
+      try {
+        final launchedInApp = await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+        );
+        if (!launchedInApp && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+          );
+        }
+      } catch (e2) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+          );
+        }
       }
     }
   }
@@ -736,5 +988,293 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
         ],
       ),
     );
+  }
+}
+
+/// Bottom sheet for adding participants to a meeting
+class _AddParticipantSheet extends ConsumerStatefulWidget {
+  final String meetingId;
+  final List<String> existingParticipantIds;
+  final VoidCallback onParticipantAdded;
+
+  const _AddParticipantSheet({
+    required this.meetingId,
+    required this.existingParticipantIds,
+    required this.onParticipantAdded,
+  });
+
+  @override
+  ConsumerState<_AddParticipantSheet> createState() => _AddParticipantSheetState();
+}
+
+class _AddParticipantSheetState extends ConsumerState<_AddParticipantSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isAdding = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final searchResults = ref.watch(searchUsersProvider(_searchQuery));
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: BoxDecoration(
+        color: context.scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Title
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              l10n.translate('add_participant'),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: context.textPrimary,
+              ),
+            ),
+          ),
+          // Search field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchController,
+              style: TextStyle(color: context.textPrimary),
+              decoration: InputDecoration(
+                hintText: l10n.translate('search_users'),
+                hintStyle: TextStyle(color: context.textSecondary),
+                prefixIcon: Icon(Icons.search, color: context.textSecondary),
+                filled: true,
+                fillColor: context.cardColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value.trim();
+                });
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Search results or county users
+          Expanded(
+            child: _searchQuery.isEmpty
+                ? _buildCountyUsersList(l10n)
+                : searchResults.when(
+                    data: (users) {
+                      // Filter out existing participants
+                      final availableUsers = users
+                          .where((u) => !widget.existingParticipantIds.contains(u.id))
+                          .toList();
+
+                      if (availableUsers.isEmpty) {
+                        return Center(
+                          child: Text(
+                            l10n.translate('no_users_found'),
+                            style: TextStyle(color: context.textSecondary),
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: availableUsers.length,
+                        itemBuilder: (context, index) {
+                          final user = availableUsers[index];
+                          return _buildUserTile(user, l10n);
+                        },
+                      );
+                    },
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (_, __) => Center(
+                      child: Text(
+                        l10n.translate('error_searching_users'),
+                        style: TextStyle(color: context.textSecondary),
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCountyUsersList(AppLocalizations l10n) {
+    final countyUsers = ref.watch(countyUsersProvider);
+
+    return countyUsers.when(
+      data: (users) {
+        // Filter out existing participants
+        final availableUsers = users
+            .where((u) => !widget.existingParticipantIds.contains(u.id))
+            .toList();
+
+        if (availableUsers.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.people_outline,
+                  size: 48,
+                  color: context.textSecondary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  l10n.translate('no_available_users'),
+                  style: TextStyle(color: context.textSecondary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.translate('all_users_already_added'),
+                  style: TextStyle(
+                    color: context.textSecondary,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Text(
+                l10n.translate('available_participants'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.textSecondary,
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: availableUsers.length,
+                itemBuilder: (context, index) {
+                  final user = availableUsers[index];
+                  return _buildUserTile(user, l10n);
+                },
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: context.textSecondary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.translate('error_loading_users'),
+              style: TextStyle(color: context.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserTile(UserModel user, AppLocalizations l10n) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: AppColors.gold.withValues(alpha: 0.15),
+          child: Text(
+            user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: context.textPrimary,
+            ),
+          ),
+        ),
+        title: Text(
+          user.fullName,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
+        ),
+        subtitle: Text(
+          user.schoolName ?? user.email,
+          style: TextStyle(color: context.textSecondary),
+        ),
+        trailing: _isAdding
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : IconButton(
+                icon: const Icon(Icons.add_circle, color: AppColors.gold),
+                onPressed: () => _addParticipant(user, l10n),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _addParticipant(UserModel user, AppLocalizations l10n) async {
+    setState(() => _isAdding = true);
+
+    final success = await ref.read(meetingControllerProvider.notifier).addParticipant(
+      meetingId: widget.meetingId,
+      oderId: user.id,
+      userName: user.fullName,
+      status: AttendanceStatus.present,
+    );
+
+    setState(() => _isAdding = false);
+
+    if (success && mounted) {
+      widget.onParticipantAdded();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${user.fullName} ${l10n.translate('added_as_participant')}'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // Clear search
+      _searchController.clear();
+      setState(() => _searchQuery = '');
+    }
   }
 }
