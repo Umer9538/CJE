@@ -20,14 +20,14 @@ class InitiativeCommentCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: comment.isOfficial
             ? AppColors.gold.withValues(alpha: 0.1)
-            : Colors.white,
+            : context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: comment.isOfficial
             ? Border.all(color: AppColors.gold.withValues(alpha: 0.3))
             : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -36,13 +36,13 @@ class InitiativeCommentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(dateFormat),
+          _buildHeader(context, dateFormat),
           const SizedBox(height: 10),
           Text(
             comment.content,
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[700],
+              color: context.textSecondary,
               height: 1.5,
             ),
           ),
@@ -51,12 +51,12 @@ class InitiativeCommentCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(DateFormat dateFormat) {
+  Widget _buildHeader(BuildContext context, DateFormat dateFormat) {
     return Row(
       children: [
         CircleAvatar(
           radius: 16,
-          backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+          backgroundColor: context.goldColor.withValues(alpha: 0.15),
           backgroundImage: comment.authorPhotoUrl != null
               ? NetworkImage(comment.authorPhotoUrl!)
               : null,
@@ -65,10 +65,10 @@ class InitiativeCommentCard extends StatelessWidget {
                   comment.authorName.isNotEmpty
                       ? comment.authorName[0].toUpperCase()
                       : '?',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.navy,
+                    color: context.goldColor,
                   ),
                 )
               : null,
@@ -82,10 +82,10 @@ class InitiativeCommentCard extends StatelessWidget {
                 children: [
                   Text(
                     comment.authorName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   if (comment.isOfficial) ...[
@@ -98,7 +98,7 @@ class InitiativeCommentCard extends StatelessWidget {
                 dateFormat.format(comment.createdAt),
                 style: TextStyle(
                   fontSize: 11,
-                  color: Colors.grey[500],
+                  color: context.textSecondary,
                 ),
               ),
             ],

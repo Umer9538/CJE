@@ -22,11 +22,11 @@ class InitiativeContentCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -43,10 +43,10 @@ class InitiativeContentCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
               ],
@@ -58,7 +58,7 @@ class InitiativeContentCard extends StatelessWidget {
               content,
               style: TextStyle(
                 fontSize: 15,
-                color: Colors.grey[700],
+                color: context.textSecondary,
                 height: 1.6,
               ),
             ),
