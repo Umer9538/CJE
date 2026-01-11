@@ -20,13 +20,13 @@ class BexAnalyticsScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.navy),
+          icon: Icon(Icons.arrow_back_rounded, color: context.iconColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           l10n.translate('analytics'),
-          style: const TextStyle(
-            color: AppColors.navy,
+          style: TextStyle(
+            color: context.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -36,25 +36,25 @@ class BexAnalyticsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(24),
         children: [
           // Initiative Stats Section
-          _buildSectionHeader(l10n.translate('initiative_statistics'), Icons.lightbulb_outline),
+          _buildSectionHeader(l10n.translate('initiative_statistics'), Icons.lightbulb_outline, context),
           const SizedBox(height: 16),
           const _InitiativeStatsCard(),
           const SizedBox(height: 24),
 
           // Initiative Status Breakdown
-          _buildSectionHeader(l10n.translate('status_breakdown'), Icons.pie_chart_outline),
+          _buildSectionHeader(l10n.translate('status_breakdown'), Icons.pie_chart_outline, context),
           const SizedBox(height: 16),
           const _InitiativeStatusBreakdown(),
           const SizedBox(height: 24),
 
           // Poll Stats Section
-          _buildSectionHeader(l10n.translate('poll_statistics'), Icons.poll_outlined),
+          _buildSectionHeader(l10n.translate('poll_statistics'), Icons.poll_outlined, context),
           const SizedBox(height: 16),
           const _PollStatsCard(),
           const SizedBox(height: 24),
 
           // Recent Activity
-          _buildSectionHeader(l10n.translate('recent_activity'), Icons.history),
+          _buildSectionHeader(l10n.translate('recent_activity'), Icons.history, context),
           const SizedBox(height: 16),
           const _RecentActivityCard(),
           const SizedBox(height: 32),
@@ -63,17 +63,17 @@ class BexAnalyticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(String title, IconData icon, BuildContext context) {
     return Row(
       children: [
-        Icon(icon, color: AppColors.navy, size: 22),
+        Icon(icon, color: context.textPrimary, size: 22),
         const SizedBox(width: 12),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
       ],
@@ -107,11 +107,11 @@ class _InitiativeStatsCard extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -124,7 +124,7 @@ class _InitiativeStatsCard extends ConsumerWidget {
                   _StatItem(
                     value: total.toString(),
                     label: l10n.translate('total'),
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                   _StatItem(
                     value: adopted.toString(),
@@ -162,27 +162,27 @@ class _InitiativeStatsCard extends ConsumerWidget {
           ),
         );
       },
-      loading: () => _buildLoadingCard(),
-      error: (_, __) => _buildErrorCard(l10n),
+      loading: () => _buildLoadingCard(context),
+      error: (_, __) => _buildErrorCard(l10n, context),
     );
   }
 
-  Widget _buildLoadingCard() {
+  Widget _buildLoadingCard(BuildContext context) {
     return Container(
       height: 150,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Center(child: CircularProgressIndicator(color: AppColors.gold)),
     );
   }
 
-  Widget _buildErrorCard(AppLocalizations l10n) {
+  Widget _buildErrorCard(AppLocalizations l10n, BuildContext context) {
     return Container(
       height: 100,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(child: Text(l10n.translate('error_loading'))),
@@ -215,13 +215,15 @@ class _StatItem extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+          Builder(
+            builder: (context) => Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: context.textSecondary,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -250,11 +252,11 @@ class _InitiativeStatusBreakdown extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -277,7 +279,7 @@ class _InitiativeStatusBreakdown extends ConsumerWidget {
       loading: () => Container(
         height: 200,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: const Center(child: CircularProgressIndicator(color: AppColors.gold)),
@@ -285,7 +287,7 @@ class _InitiativeStatusBreakdown extends ConsumerWidget {
       error: (_, __) => Container(
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Center(child: Text(l10n.translate('error_loading'))),
@@ -296,19 +298,19 @@ class _InitiativeStatusBreakdown extends ConsumerWidget {
   String _getStatusLabel(InitiativeStatus status, AppLocalizations l10n) {
     switch (status) {
       case InitiativeStatus.draft:
-        return l10n.translate('status_draft');
+        return l10n.translate('draft');
       case InitiativeStatus.submitted:
-        return l10n.translate('status_submitted');
+        return l10n.translate('submitted');
       case InitiativeStatus.review:
-        return l10n.translate('status_review');
+        return l10n.translate('review');
       case InitiativeStatus.debate:
-        return l10n.translate('status_debate');
+        return l10n.translate('debate');
       case InitiativeStatus.voting:
-        return l10n.translate('status_voting');
+        return l10n.translate('voting');
       case InitiativeStatus.adopted:
-        return l10n.translate('status_adopted');
+        return l10n.translate('adopted');
       case InitiativeStatus.rejected:
-        return l10n.translate('status_rejected');
+        return l10n.translate('rejected');
     }
   }
 
@@ -355,12 +357,14 @@ class _StatusBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[700],
+              Builder(
+                builder: (context) => Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: context.textSecondary,
+                  ),
                 ),
               ),
               Text(
@@ -374,13 +378,15 @@ class _StatusBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: percentage,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(color),
-              minHeight: 8,
+          Builder(
+            builder: (context) => ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: percentage,
+                backgroundColor: context.dividerColor,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                minHeight: 8,
+              ),
             ),
           ),
         ],
@@ -411,11 +417,11 @@ class _PollStatsCard extends ConsumerWidget {
         return Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -428,7 +434,7 @@ class _PollStatsCard extends ConsumerWidget {
                   _StatItem(
                     value: total.toString(),
                     label: l10n.translate('total_polls'),
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                   _StatItem(
                     value: active.toString(),
@@ -469,7 +475,7 @@ class _PollStatsCard extends ConsumerWidget {
       loading: () => Container(
         height: 150,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: const Center(child: CircularProgressIndicator(color: AppColors.gold)),
@@ -477,7 +483,7 @@ class _PollStatsCard extends ConsumerWidget {
       error: (_, __) => Container(
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Center(child: Text(l10n.translate('error_loading'))),
@@ -501,13 +507,13 @@ class _RecentActivityCard extends ConsumerWidget {
           return Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Center(
               child: Text(
                 l10n.translate('no_recent_activity'),
-                style: TextStyle(color: Colors.grey[500]),
+                style: TextStyle(color: context.textSecondary),
               ),
             ),
           );
@@ -515,11 +521,11 @@ class _RecentActivityCard extends ConsumerWidget {
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -547,9 +553,11 @@ class _RecentActivityCard extends ConsumerWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Text(
-                  dateFormat.format(activity.createdAt),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                subtitle: Builder(
+                  builder: (context) => Text(
+                    dateFormat.format(activity.createdAt),
+                    style: TextStyle(fontSize: 12, color: context.textSecondary),
+                  ),
                 ),
               );
             },
@@ -559,7 +567,7 @@ class _RecentActivityCard extends ConsumerWidget {
       loading: () => Container(
         height: 200,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: const Center(child: CircularProgressIndicator(color: AppColors.gold)),
@@ -567,7 +575,7 @@ class _RecentActivityCard extends ConsumerWidget {
       error: (_, __) => Container(
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Center(child: Text(l10n.translate('error_loading'))),
