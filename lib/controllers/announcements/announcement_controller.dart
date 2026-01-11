@@ -22,6 +22,7 @@ final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, Ann
   }
 
   final repository = ref.read(announcementRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For superadmin and bex, show all school announcements without schoolId filter
   // For regular users, filter by their schoolId
@@ -33,6 +34,7 @@ final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, Ann
     return await repository.getAnnouncements(
       type: filter.type,
       schoolId: shouldFilterBySchool ? user.schoolId : null,
+      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
       limit: filter.limit,
     ).timeout(
       const Duration(seconds: 15),
@@ -47,6 +49,7 @@ final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, Ann
 final announcementsStreamProvider = StreamProvider.family<List<AnnouncementModel>, AnnouncementFilter>((ref, filter) {
   final repository = ref.read(announcementRepositoryProvider);
   final user = ref.read(currentUserProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For superadmin and bex, show all school announcements without schoolId filter
   // For regular users, filter by their schoolId
@@ -57,6 +60,7 @@ final announcementsStreamProvider = StreamProvider.family<List<AnnouncementModel
   return repository.getAnnouncementsStream(
     type: filter.type,
     schoolId: shouldFilterBySchool ? user?.schoolId : null,
+    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
     limit: filter.limit,
   );
 });
@@ -75,9 +79,16 @@ final recentAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((ref
   }
 
   final repository = ref.read(announcementRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
+  // For BEX/Superadmin, don't filter by school - they see ALL recent announcements
+  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
+
   try {
     return await repository.getRecentAnnouncements(
-      schoolId: user.schoolId,
+      schoolId: effectiveSchoolId,
+      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
       limit: 5,
     ).timeout(
       const Duration(seconds: 10),
@@ -204,6 +215,7 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       authorId: user.id,
       authorName: user.fullName,
       authorPhotoUrl: user.photoUrl,
+      countyId: user.city, // Save the county for data partitioning (city is the county name)
       schoolId: effectiveSchoolId,
       schoolName: effectiveSchoolName,
       imageUrl: imageUrl,
