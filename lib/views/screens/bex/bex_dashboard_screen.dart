@@ -7,34 +7,75 @@ import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../admin/admin_warnings_screen.dart';
+import '../admin/admin_users_screen.dart';
 import '../admin/bex_analytics_screen.dart';
 import '../admin/send_notification_screen.dart';
-import '../announcements/create_announcement_screen.dart';
-import '../polls/create_poll_screen.dart';
-import '../meetings/create_meeting_screen.dart';
-import '../documents/upload_document_screen.dart';
+import '../admin/widgets/add_user_dialog.dart';
+import '../announcements/announcements_screen.dart';
+import '../polls/polls_screen.dart';
+import '../meetings/meetings_screen.dart';
+import '../documents/documents_screen.dart';
+import '../calendar/calendar_screen.dart';
+import '../profile/profile_screen.dart';
 
 /// BEX Dashboard Screen - Overview for County Executive Bureau
 class BexDashboardScreen extends ConsumerWidget {
   const BexDashboardScreen({super.key});
+
+  Future<bool> _onWillPop(BuildContext context) async {
+    // Show exit confirmation dialog
+    final l10n = AppLocalizations.of(context);
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.translate('exit_app'), style: TextStyle(color: context.textPrimary)),
+        content: Text(l10n.translate('exit_app_confirm'), style: TextStyle(color: context.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l10n.translate('cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l10n.translate('exit')),
+          ),
+        ],
+      ),
+    );
+    return shouldExit ?? false;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: AppColors.navy,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-      ),
-      child: Scaffold(
-        backgroundColor: context.scaffoldBackgroundColor,
-        body: RefreshIndicator(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop(context);
+        if (shouldPop && context.mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: AppColors.navy,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+        ),
+        child: Scaffold(
+          backgroundColor: context.scaffoldBackgroundColor,
+          body: RefreshIndicator(
           onRefresh: () async {
+            // Invalidate all data providers to refresh dashboard data in real-time
             ref.invalidate(upcomingMeetingsProvider);
             ref.invalidate(allUsersProvider);
+            ref.invalidate(announcementsProvider);
+            ref.invalidate(pollsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -42,13 +83,13 @@ class BexDashboardScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header with navy background extending to status bar
-                _buildHeader(context, user, l10n),
+                _buildHeader(context, ref, user, l10n),
+
+                // Quick Actions (moved to top for better UX)
+                _buildQuickActionsSection(context, l10n),
 
                 // Stats Cards
                 _buildStatsSection(context, ref, l10n),
-
-                // Quick Actions
-                _buildQuickActionsSection(context, l10n),
 
                 // Upcoming Meetings
                 _buildUpcomingMeetingsSection(context, ref, l10n),
@@ -59,12 +100,13 @@ class BexDashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
+    ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, UserModel? user, AppLocalizations l10n) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, UserModel? user, AppLocalizations l10n) {
     return Container(
-      color: context.textPrimary,
+      color: AppColors.navy,
       child: SafeArea(
         bottom: false,
         child: Container(
@@ -100,27 +142,61 @@ class BexDashboardScreen extends ConsumerWidget {
                       ),
                       child: Text(
                         'BEX - ${user?.city ?? ""}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: context.textPrimary,
+                          color: AppColors.navy,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+              const SizedBox(width: 12),
+              // Calendar Button
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CalendarScreen()),
                 ),
-                child: const Icon(
-                  Icons.admin_panel_settings_rounded,
-                  color: AppColors.gold,
-                  size: 28,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Profile Avatar
+              GestureDetector(
+                onTap: () => _showProfileMenu(context, ref),
+                child: Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.gold, width: 3),
+                  ),
+                  child: Center(
+                    child: Text(
+                      user?.fullName.isNotEmpty == true
+                          ? user!.fullName[0].toUpperCase()
+                          : 'B',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -240,7 +316,7 @@ class BexDashboardScreen extends ConsumerWidget {
                 color: Colors.indigo,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const CreateMeetingScreen()),
+                  MaterialPageRoute(builder: (_) => const MeetingsScreen()),
                 ),
               ),
               _QuickActionButton(
@@ -249,7 +325,7 @@ class BexDashboardScreen extends ConsumerWidget {
                 color: Colors.purple,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const CreateAnnouncementScreen()),
+                  MaterialPageRoute(builder: (_) => const AnnouncementsScreen()),
                 ),
               ),
               _QuickActionButton(
@@ -258,7 +334,7 @@ class BexDashboardScreen extends ConsumerWidget {
                 color: Colors.orange,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const CreatePollScreen()),
+                  MaterialPageRoute(builder: (_) => const PollsScreen()),
                 ),
               ),
               _QuickActionButton(
@@ -267,7 +343,7 @@ class BexDashboardScreen extends ConsumerWidget {
                 color: Colors.red,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UploadDocumentScreen()),
+                  MaterialPageRoute(builder: (_) => const DocumentsScreen()),
                 ),
               ),
               _QuickActionButton(
@@ -278,6 +354,21 @@ class BexDashboardScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(builder: (_) => const AdminWarningsScreen()),
                 ),
+              ),
+              _QuickActionButton(
+                icon: Icons.people_rounded,
+                label: l10n.translate('users'),
+                color: Colors.blue,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminUsersScreen()),
+                ),
+              ),
+              _QuickActionButton(
+                icon: Icons.person_add_rounded,
+                label: l10n.translate('add_user'),
+                color: Colors.green,
+                onTap: () => _showAddUserDialog(context),
               ),
               _QuickActionButton(
                 icon: Icons.notifications_active_rounded,
@@ -375,10 +466,17 @@ class BexDashboardScreen extends ConsumerWidget {
                 child: CircularProgressIndicator(color: AppColors.gold),
               ),
             ),
-            error: (e, _) => Center(child: Text('Error: $e')),
+            error: (e, _) => Center(child: Text(AppLocalizations.of(context).translate('error_loading'))),
           ),
         ],
       ),
+    );
+  }
+
+  void _showAddUserDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const AddUserDialog(),
     );
   }
 
@@ -430,6 +528,42 @@ class BexDashboardScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showProfileMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(AppLocalizations.of(context).translate('profile')),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: Text(AppLocalizations.of(context).translate('logout'), style: const TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(authControllerProvider.notifier).signOut();
+              },
+            ),
           ],
         ),
       ),

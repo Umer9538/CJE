@@ -45,7 +45,7 @@ class BexMeetingsScreen extends ConsumerWidget {
           ],
         ),
         floatingActionButton: Padding(
-          padding: const EdgeInsets.only(bottom: 80),
+          padding: const EdgeInsets.only(bottom: 100),
           child: FloatingActionButton.extended(
             onPressed: () => Navigator.push(
               context,
@@ -101,7 +101,7 @@ class _MeetingsTab extends ConsumerWidget {
                 Icon(Icons.event_busy_rounded, size: 64, color: context.textSecondary),
                 const SizedBox(height: 16),
                 Text(
-                  l10n.translate('no_meetings'),
+                  l10n.translate('no_upcoming_meetings'),
                   style: TextStyle(fontSize: 16, color: context.textSecondary),
                 ),
               ],
@@ -133,7 +133,7 @@ class _MeetingsTab extends ConsumerWidget {
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppColors.gold),
       ),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(child: Text(l10n.translate('error_loading'))),
     );
   }
 }
@@ -230,10 +230,12 @@ class _MeetingCard extends StatelessWidget {
                   Text(
                     meeting.title,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                       color: context.textPrimary,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (meeting.description != null && meeting.description!.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -247,14 +249,15 @@ class _MeetingCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  Row(
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
                       _InfoChip(
                         icon: Icons.calendar_today_rounded,
                         label: DateFormat('dd MMM yyyy').format(meeting.dateTime),
                       ),
-                      const SizedBox(width: 12),
                       _InfoChip(
                         icon: Icons.access_time_rounded,
                         label: DateFormat('HH:mm').format(meeting.dateTime),
@@ -264,14 +267,17 @@ class _MeetingCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _InfoChip(
-                        icon: meeting.isOnline ? Icons.videocam_rounded : Icons.location_on_rounded,
-                        label: meeting.isOnline
-                            ? l10n.translate('online')
-                            : (meeting.location ?? l10n.translate('location_tbd')),
+                      Expanded(
+                        child: _InfoChip(
+                          icon: meeting.isOnline ? Icons.videocam_rounded : Icons.location_on_rounded,
+                          label: meeting.isOnline
+                              ? l10n.translate('online')
+                              : (meeting.location ?? l10n.translate('location_tbd')),
+                          allowOverflow: true,
+                        ),
                       ),
-                      const Spacer(),
-                      if (meeting.agendaItems.isNotEmpty)
+                      if (meeting.agendaItems.isNotEmpty) ...[
+                        const SizedBox(width: 8),
                         Text(
                           '${meeting.agendaItems.length} ${l10n.translate('agenda_items')}',
                           style: TextStyle(
@@ -279,6 +285,7 @@ class _MeetingCard extends StatelessWidget {
                             color: context.textSecondary,
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ],
@@ -307,10 +314,12 @@ class _MeetingCard extends StatelessWidget {
 class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
+  final bool allowOverflow;
 
   const _InfoChip({
     required this.icon,
     required this.label,
+    this.allowOverflow = false,
   });
 
   @override
@@ -320,13 +329,25 @@ class _InfoChip extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: context.textSecondary),
         const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: context.textSecondary,
-          ),
-        ),
+        allowOverflow
+            ? Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              )
+            : Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: context.textSecondary,
+                ),
+              ),
       ],
     );
   }

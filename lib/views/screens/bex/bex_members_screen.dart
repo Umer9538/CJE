@@ -195,7 +195,7 @@ class _BexMembersScreenState extends ConsumerState<BexMembersScreen> {
               loading: () => const Center(
                 child: CircularProgressIndicator(color: AppColors.gold),
               ),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => Center(child: Text(l10n.translate('error_loading'))),
             ),
           ),
         ],
