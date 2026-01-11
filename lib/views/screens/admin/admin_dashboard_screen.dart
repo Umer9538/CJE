@@ -17,11 +17,13 @@ import 'admin_gds_screen.dart';
 import 'admin_warnings_screen.dart';
 import 'bex_analytics_screen.dart';
 import 'send_notification_screen.dart';
-import '../announcements/create_announcement_screen.dart';
-import '../polls/create_poll_screen.dart';
-import '../meetings/create_meeting_screen.dart';
-import '../documents/upload_document_screen.dart';
+import 'widgets/add_user_dialog.dart';
+import '../announcements/announcements_screen.dart';
+import '../polls/polls_screen.dart';
+import '../meetings/meetings_screen.dart';
+import '../documents/documents_screen.dart';
 import '../profile/profile_screen.dart';
+import '../calendar/calendar_screen.dart';
 
 /// Admin Dashboard - Main screen for admin users (superadmin and BEX)
 class AdminDashboardScreen extends ConsumerWidget {
@@ -35,7 +37,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     // Show loading if user is not yet loaded
     if (user == null) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF5F7FA),
+        backgroundColor: context.scaffoldBackgroundColor,
         body: const Center(
           child: CircularProgressIndicator(),
         ),
@@ -43,7 +45,7 @@ class AdminDashboardScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: context.scaffoldBackgroundColor,
       body: Column(
         children: [
           // Navy header section with status bar
@@ -59,32 +61,54 @@ class AdminDashboardScreen extends ConsumerWidget {
               bottom: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                child: _buildHeader(context, user, l10n),
+                child: Column(
+                  children: [
+                    _buildHeader(context, user, l10n),
+                    // County Switcher for Superadmin
+                    if (user.role == UserRole.superadmin) ...[
+                      const SizedBox(height: 16),
+                      _buildCountySwitcher(context, ref, l10n),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
-          // Content
+          // Content with pull-to-refresh
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Statistics Cards
-                  _buildStatisticsSection(context, ref, l10n),
-                  const SizedBox(height: 24),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                // Invalidate all data providers to refresh dashboard data
+                ref.invalidate(allUsersProvider);
+                ref.invalidate(pendingUsersProvider);
+                ref.invalidate(activeSchoolsProvider);
+                ref.invalidate(announcementsProvider);
+                ref.invalidate(pollsProvider);
+                ref.invalidate(upcomingMeetingsProvider);
+                ref.invalidate(activeGDSProvider);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Quick Actions (moved to top for better UX)
+                    _buildQuickActionsSection(context, l10n),
+                    const SizedBox(height: 24),
 
-                  // Quick Actions
-                  _buildQuickActionsSection(context, l10n),
-                  const SizedBox(height: 24),
+                    // Statistics Cards
+                    _buildStatisticsSection(context, ref, l10n),
+                    const SizedBox(height: 24),
 
-                  // Pending Approvals
-                  _buildPendingApprovalsSection(context, ref, l10n),
-                  const SizedBox(height: 24),
+                    // Pending Approvals
+                    _buildPendingApprovalsSection(context, ref, l10n),
+                    const SizedBox(height: 24),
 
-                  // Recent Activity
-                  _buildRecentActivitySection(context, ref, l10n),
-                ],
+                    // Recent Activity
+                    _buildRecentActivitySection(context, ref, l10n),
+                  ],
+                ),
               ),
             ),
           ),
@@ -94,7 +118,7 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, UserModel user, AppLocalizations l10n) {
-    final greeting = _getGreeting();
+    final greeting = _getGreeting(l10n);
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 
@@ -133,7 +157,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  'Super Admin',
+                  l10n.translate('super_admin'),
                   style: TextStyle(
                     fontSize: isSmallScreen ? 10 : 12,
                     fontWeight: FontWeight.w600,
@@ -144,7 +168,28 @@ class AdminDashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 8),
+        // Calendar Button
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CalendarScreen()),
+          ),
+          child: Container(
+            width: isSmallScreen ? 40 : 48,
+            height: isSmallScreen ? 40 : 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.calendar_today_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
         // Profile Avatar
         GestureDetector(
           onTap: () => _showProfileMenu(context),
@@ -174,16 +219,94 @@ class AdminDashboardScreen extends ConsumerWidget {
     );
   }
 
+  /// County Switcher dropdown for Superadmin to filter content by county
+  Widget _buildCountySwitcher(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+    final selectedCounty = ref.watch(selectedCountyProvider);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.location_city_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: selectedCounty,
+                isExpanded: true,
+                dropdownColor: AppColors.navy,
+                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                hint: Text(
+                  l10n.translate('all_counties'),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.public, color: AppColors.gold, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          l10n.translate('all_counties'),
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ...romanianCounties.map((county) => DropdownMenuItem<String?>(
+                    value: county,
+                    child: Text(county, style: const TextStyle(color: Colors.white)),
+                  )),
+                ],
+                onChanged: (value) {
+                  ref.read(selectedCountyProvider.notifier).state = value;
+                  // Invalidate all data providers to refresh with new county filter
+                  ref.invalidate(allUsersProvider);
+                  ref.invalidate(pendingUsersProvider);
+                  ref.invalidate(activeSchoolsProvider);
+                  ref.invalidate(announcementsProvider);
+                  ref.invalidate(pollsProvider);
+                  ref.invalidate(upcomingMeetingsProvider);
+                  ref.invalidate(activeGDSProvider);
+                  ref.invalidate(recentActivitiesProvider);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStatisticsSection(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           l10n.translate('statistics'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
@@ -291,10 +414,10 @@ class AdminDashboardScreen extends ConsumerWidget {
       children: [
         Text(
           l10n.translate('quick_actions'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
@@ -404,10 +527,10 @@ class AdminDashboardScreen extends ConsumerWidget {
           children: [
             Text(
               l10n.translate('pending_approvals'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             TextButton(
@@ -426,7 +549,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.cardColor,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Center(
@@ -436,7 +559,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       Text(
                         l10n.translate('no_pending_approvals'),
-                        style: TextStyle(color: Colors.grey[600]),
+                        style: TextStyle(color: context.textSecondary),
                       ),
                     ],
                   ),
@@ -446,7 +569,7 @@ class AdminDashboardScreen extends ConsumerWidget {
 
             return Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ListView.separated(
@@ -480,17 +603,17 @@ class AdminDashboardScreen extends ConsumerWidget {
       children: [
         Text(
           l10n.translate('recent_activity'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(16),
           ),
           child: activitiesAsync.when(
@@ -505,7 +628,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                         Text(
                           l10n.translate('no_recent_activity'),
-                          style: TextStyle(color: Colors.grey[600]),
+                          style: TextStyle(color: context.textSecondary),
                         ),
                       ],
                     ),
@@ -524,7 +647,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                         color: _getActivityColor(activity.type),
                         title: activity.title,
                         subtitle: activity.subtitle,
-                        time: _formatTimeAgo(activity.createdAt),
+                        time: _formatTimeAgo(activity.createdAt, l10n),
                       ),
                       if (index < activities.length - 1)
                         const Divider(height: 24),
@@ -544,7 +667,7 @@ class AdminDashboardScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(20),
                 child: Text(
                   l10n.translate('error_loading'),
-                  style: TextStyle(color: Colors.grey[600]),
+                  style: TextStyle(color: context.textSecondary),
                 ),
               ),
             ),
@@ -600,31 +723,32 @@ class AdminDashboardScreen extends ConsumerWidget {
     }
   }
 
-  String _formatTimeAgo(DateTime dateTime) {
+  String _formatTimeAgo(DateTime dateTime, AppLocalizations l10n) {
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {
-      return 'Just now';
+      return l10n.translate('just_now');
     } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} min ago';
+      return '${difference.inMinutes} ${l10n.translate('min_ago')}';
     } else if (difference.inHours < 24) {
-      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      return '${difference.inHours} ${difference.inHours > 1 ? l10n.translate('hours_ago') : l10n.translate('hour_ago')}';
     } else if (difference.inDays < 7) {
-      return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      return '${difference.inDays} ${difference.inDays > 1 ? l10n.translate('days_ago') : l10n.translate('day_ago')}';
     } else {
       return DateFormat('MMM d').format(dateTime);
     }
   }
 
-  String _getGreeting() {
+  String _getGreeting(AppLocalizations l10n) {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return l10n.translate('good_morning');
+    if (hour < 17) return l10n.translate('good_afternoon');
+    return l10n.translate('good_evening');
   }
 
   void _showProfileMenu(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -638,15 +762,18 @@ class AdminDashboardScreen extends ConsumerWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.person_outline),
-                title: const Text('Profile'),
+                title: Text(l10n.translate('profile')),
                 onTap: () {
                   Navigator.pop(context);
-                  // Navigate to profile
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  );
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text('Logout', style: TextStyle(color: Colors.red)),
+                title: Text(l10n.translate('logout'), style: const TextStyle(color: Colors.red)),
                 onTap: () {
                   Navigator.pop(context);
                   ref.read(authControllerProvider.notifier).signOut();
@@ -660,24 +787,24 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 
   void _showAddUserDialog(BuildContext context) {
-    // Navigate to users screen with option to add
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const AdminUsersScreen()),
+    // Show add user dialog directly
+    showDialog(
+      context: context,
+      builder: (context) => const AddUserDialog(),
     );
   }
 
   void _showCreateAnnouncementDialog(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CreateAnnouncementScreen()),
+      MaterialPageRoute(builder: (_) => const AnnouncementsScreen()),
     );
   }
 
   void _showCreatePollDialog(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CreatePollScreen()),
+      MaterialPageRoute(builder: (_) => const PollsScreen()),
     );
   }
 
@@ -698,14 +825,14 @@ class AdminDashboardScreen extends ConsumerWidget {
   void _showCreateMeetingDialog(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const CreateMeetingScreen()),
+      MaterialPageRoute(builder: (_) => const MeetingsScreen()),
     );
   }
 
   void _showUploadDocumentDialog(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const UploadDocumentScreen()),
+      MaterialPageRoute(builder: (_) => const DocumentsScreen()),
     );
   }
 
@@ -724,13 +851,14 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 
   Future<void> _approveUser(BuildContext context, WidgetRef ref, UserModel user) async {
+    final l10n = AppLocalizations.of(context);
     final controller = ref.read(adminControllerProvider.notifier);
     final success = await controller.approveUser(user.id);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'User approved' : 'Error approving user'),
+          content: Text(success ? l10n.translate('user_approved') : l10n.translate('error_approving_user')),
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
@@ -738,13 +866,14 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 
   Future<void> _rejectUser(BuildContext context, WidgetRef ref, UserModel user) async {
+    final l10n = AppLocalizations.of(context);
     final controller = ref.read(adminControllerProvider.notifier);
     final success = await controller.suspendUser(user.id);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'User rejected' : 'Error rejecting user'),
+          content: Text(success ? l10n.translate('user_rejected') : l10n.translate('error_rejecting_user')),
           backgroundColor: success ? Colors.orange : Colors.red,
         ),
       );
@@ -783,11 +912,11 @@ class _StatCard extends StatelessWidget {
         return Container(
           padding: EdgeInsets.all(padding),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -815,7 +944,7 @@ class _StatCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: valueFontSize,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.navy,
+                        color: context.textPrimary,
                       ),
                     ),
                   ),
@@ -834,7 +963,7 @@ class _StatCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: valueFontSize,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
@@ -845,7 +974,7 @@ class _StatCard extends StatelessWidget {
                   title,
                   style: TextStyle(
                     fontSize: titleFontSize,
-                    color: Colors.grey[600],
+                    color: context.textSecondary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -888,11 +1017,11 @@ class _StatCardGeneric<T> extends StatelessWidget {
         return Container(
           padding: EdgeInsets.all(padding),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.cardColor,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
+                color: context.shadowColor,
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -919,7 +1048,7 @@ class _StatCardGeneric<T> extends StatelessWidget {
                     style: TextStyle(
                       fontSize: valueFontSize,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
@@ -937,7 +1066,7 @@ class _StatCardGeneric<T> extends StatelessWidget {
                   title,
                   style: TextStyle(
                     fontSize: titleFontSize,
-                    color: Colors.grey[600],
+                    color: context.textSecondary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -982,11 +1111,11 @@ class _QuickActionButton extends StatelessWidget {
           child: Container(
             padding: EdgeInsets.all(padding),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -1014,7 +1143,7 @@ class _QuickActionButton extends StatelessWidget {
                       style: TextStyle(
                         fontSize: fontSize,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.navy,
+                        color: context.textPrimary,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 1,
@@ -1052,12 +1181,12 @@ class _PendingUserTile extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+            backgroundColor: AppColors.gold.withValues(alpha: 0.15),
             child: Text(
               user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
           ),
@@ -1068,16 +1197,16 @@ class _PendingUserTile extends StatelessWidget {
               children: [
                 Text(
                   user.fullName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 Text(
                   '${user.email} • ${dateFormat.format(user.createdAt)}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: context.textSecondary,
                   ),
                 ),
               ],
@@ -1145,16 +1274,16 @@ class _ActivityItem extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               Text(
                 subtitle,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[500],
+                  color: context.textSecondary,
                 ),
               ),
             ],
@@ -1164,7 +1293,7 @@ class _ActivityItem extends StatelessWidget {
           time,
           style: TextStyle(
             fontSize: 11,
-            color: Colors.grey[400],
+            color: context.textSecondary,
           ),
         ),
       ],
