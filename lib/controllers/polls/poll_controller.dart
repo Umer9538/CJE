@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/repositories/poll_repository.dart';
 import '../../core/constants/enums.dart';
+import '../../core/services/translation_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
 import '../admin/admin_controller.dart';
@@ -19,6 +21,7 @@ final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, f
   }
 
   final repository = ref.read(pollRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For superadmin and bex, show all polls without schoolId filter
   // For regular users, filter by their schoolId (county polls are always visible)
@@ -28,6 +31,7 @@ final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, f
     return await repository.getPolls(
       type: filter.type,
       schoolId: shouldFilterBySchool ? user.schoolId : null,
+      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
       activeOnly: filter.activeOnly,
       limit: filter.limit,
     ).timeout(
@@ -42,9 +46,11 @@ final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, f
 /// Polls stream provider
 final pollsStreamProvider = StreamProvider.family<List<PollModel>, PollFilter>((ref, filter) {
   final repository = ref.watch(pollRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   return repository.getPollsStream(
     type: filter.type,
+    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
     limit: filter.limit,
   );
 });
@@ -63,6 +69,7 @@ final activePollsProvider = FutureProvider<List<PollModel>>((ref) async {
   }
 
   final repository = ref.read(pollRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For superadmin and bex, show all active polls without schoolId filter
   // For regular users, filter by their schoolId (county polls are always visible)
@@ -71,6 +78,7 @@ final activePollsProvider = FutureProvider<List<PollModel>>((ref) async {
   try {
     return await repository.getActivePolls(
       schoolId: shouldFilterBySchool ? user.schoolId : null,
+      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
       limit: 5,
     ).timeout(
       const Duration(seconds: 10),
@@ -87,6 +95,18 @@ final hasVotedProvider = FutureProvider.family<bool, String>((ref, pollId) async
   final user = ref.read(currentUserProvider);
   if (user == null) return false;
   return repository.hasUserVoted(pollId, user.id);
+});
+
+/// Get all votes for a poll (for admin visibility on non-anonymous polls)
+final pollVotesProvider = FutureProvider.family<List<PollVote>, String>((ref, pollId) async {
+  final repository = ref.watch(pollRepositoryProvider);
+  return repository.getVotes(pollId);
+});
+
+/// Poll votes stream for real-time updates
+final pollVotesStreamProvider = StreamProvider.family<List<PollVote>, String>((ref, pollId) {
+  final repository = ref.watch(pollRepositoryProvider);
+  return repository.getVotesStream(pollId);
 });
 
 /// Filter model for polls
@@ -122,6 +142,7 @@ class PollController extends StateNotifier<AsyncValue<void>> {
   PollController(this._repository, this._ref) : super(const AsyncValue.data(null));
 
   /// Create new poll (only schoolRep, bex, superadmin can create)
+  /// - schoolId/schoolName: Optional overrides for BEX/Superadmin to create polls for specific schools
   Future<String?> createPoll({
     required String question,
     String? description,
@@ -131,6 +152,8 @@ class PollController extends StateNotifier<AsyncValue<void>> {
     bool allowMultipleVotes = false,
     required DateTime startDate,
     required DateTime endDate,
+    String? schoolId,
+    String? schoolName,
   }) async {
     state = const AsyncValue.loading();
 
@@ -156,16 +179,57 @@ class PollController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
+    // Determine school ID and name for school polls
+    // - If schoolId is provided (BEX/Superadmin selected specific school), use it
+    // - Otherwise, use the current user's school
+    final effectiveSchoolId = type == PollType.school
+        ? (schoolId ?? user.schoolId)
+        : null;
+    final effectiveSchoolName = type == PollType.school
+        ? (schoolName ?? user.schoolName)
+        : null;
+
+    // Translate content to both languages
+    Map<String, String>? questionTranslations;
+    Map<String, String>? descriptionTranslations;
+    List<PollOption> translatedOptions = options;
+
+    try {
+      final translatedQuestion = await TranslatableContent.fromText(question);
+      questionTranslations = {'en': translatedQuestion.en, 'ro': translatedQuestion.ro};
+
+      if (description != null && description.isNotEmpty) {
+        final translatedDescription = await TranslatableContent.fromText(description);
+        descriptionTranslations = {'en': translatedDescription.en, 'ro': translatedDescription.ro};
+      }
+
+      // Translate each option
+      translatedOptions = await Future.wait(options.map((option) async {
+        final translatedText = await TranslatableContent.fromText(option.text);
+        return option.copyWith(
+          textTranslations: {'en': translatedText.en, 'ro': translatedText.ro},
+        );
+      }));
+
+      debugPrint('PollController: Content translated successfully');
+    } catch (e) {
+      debugPrint('PollController: Translation failed - $e');
+      // Continue without translations if translation fails
+    }
+
     final poll = PollModel(
       id: '',
       question: question,
       description: description,
+      questionTranslations: questionTranslations,
+      descriptionTranslations: descriptionTranslations,
       type: type,
-      options: options,
+      options: translatedOptions,
       createdById: user.id,
       createdByName: user.fullName,
-      schoolId: type == PollType.school ? user.schoolId : null,
-      schoolName: type == PollType.school ? user.schoolName : null,
+      countyId: user.city, // Save the county for data partitioning (city is the county name)
+      schoolId: effectiveSchoolId,
+      schoolName: effectiveSchoolName,
       isAnonymous: isAnonymous,
       allowMultipleVotes: allowMultipleVotes,
       startDate: startDate,
@@ -198,6 +262,11 @@ class PollController extends StateNotifier<AsyncValue<void>> {
 
   /// Vote on poll - ALL users (including students) can vote if poll allows
   Future<bool> vote(String pollId, String optionId) async {
+    return voteMultiple(pollId, [optionId]);
+  }
+
+  /// Vote on poll with multiple options (for polls with allowMultipleVotes)
+  Future<bool> voteMultiple(String pollId, List<String> optionIds) async {
     state = const AsyncValue.loading();
 
     final user = _ref.read(currentUserProvider);
@@ -206,12 +275,20 @@ class PollController extends StateNotifier<AsyncValue<void>> {
       return false;
     }
 
-    final success = await _repository.vote(pollId, optionId, user.id);
+    final success = await _repository.voteMultiple(
+      pollId: pollId,
+      optionIds: optionIds,
+      oderId: user.id,
+      voterName: user.fullName,
+      voterSchoolId: user.schoolId,
+      voterSchoolName: user.schoolName,
+    );
 
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(pollProvider(pollId));
       _ref.invalidate(hasVotedProvider(pollId));
+      _ref.invalidate(pollVotesProvider(pollId));
       _ref.invalidate(activePollsProvider);
     } else {
       state = AsyncValue.error('Failed to vote', StackTrace.current);
