@@ -29,9 +29,9 @@ class SchoolDetailSheet extends ConsumerWidget {
         child: ListView(
           controller: scrollController,
           children: [
-            _buildHeader(),
+            _buildHeader(context),
             const SizedBox(height: 24),
-            _buildInfoSection(l10n),
+            _buildInfoSection(context, l10n),
             const SizedBox(height: 24),
             _SchoolRepSection(
               school: school,
@@ -50,14 +50,15 @@ class SchoolDetailSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
           width: 64,
           height: 64,
           decoration: BoxDecoration(
-            color: AppColors.navy.withValues(alpha: 0.1),
+            color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Center(
@@ -65,10 +66,10 @@ class SchoolDetailSheet extends ConsumerWidget {
               school.shortName.isNotEmpty
                   ? school.shortName.substring(0, school.shortName.length.clamp(0, 2))
                   : 'S',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: isDark ? AppColors.gold : AppColors.navy,
               ),
             ),
           ),
@@ -80,10 +81,10 @@ class SchoolDetailSheet extends ConsumerWidget {
             children: [
               Text(
                 school.name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
@@ -98,27 +99,31 @@ class SchoolDetailSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoSection(AppLocalizations l10n) {
+  Widget _buildInfoSection(BuildContext context, AppLocalizations l10n) {
     return Column(
       children: [
         _InfoRow(
+          context: context,
           icon: Icons.people_outlined,
           label: l10n.translate('students'),
           value: '${school.studentCount}',
         ),
         if (school.city != null)
           _InfoRow(
+            context: context,
             icon: Icons.location_city_outlined,
             label: l10n.translate('city'),
             value: school.city!,
           ),
         if (school.address != null)
           _InfoRow(
+            context: context,
             icon: Icons.location_on_outlined,
             label: l10n.translate('address'),
             value: school.address!,
           ),
         _InfoRow(
+          context: context,
           icon: Icons.circle,
           label: l10n.translate('status'),
           value: school.isActive ? l10n.translate('active') : l10n.translate('inactive'),
@@ -130,12 +135,14 @@ class SchoolDetailSheet extends ConsumerWidget {
 }
 
 class _InfoRow extends StatelessWidget {
+  final BuildContext context;
   final IconData icon;
   final String label;
   final String value;
   final Color? valueColor;
 
   const _InfoRow({
+    required this.context,
     required this.icon,
     required this.label,
     required this.value,
@@ -143,7 +150,8 @@ class _InfoRow extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext _) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -152,23 +160,23 @@ class _InfoRow extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
+              color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppColors.navy, size: 20),
+            child: Icon(icon, color: isDark ? AppColors.gold : AppColors.navy, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                Text(label, style: TextStyle(fontSize: 12, color: context.textSecondary)),
                 Text(
                   value,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: valueColor ?? AppColors.navy,
+                    color: valueColor ?? context.textPrimary,
                   ),
                 ),
               ],
@@ -200,10 +208,10 @@ class _SchoolRepSection extends ConsumerWidget {
       children: [
         Text(
           l10n.translate('school_representative'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
         const SizedBox(height: 12),
@@ -216,6 +224,7 @@ class _SchoolRepSection extends ConsumerWidget {
   }
 
   Widget _buildRepCard(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -226,20 +235,20 @@ class _SchoolRepSection extends ConsumerWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: AppColors.navy,
+            backgroundColor: isDark ? AppColors.gold : AppColors.navy,
             child: Text(
               school.schoolRepName![0].toUpperCase(),
-              style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold),
+              style: TextStyle(color: isDark ? AppColors.navy : AppColors.gold, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               school.schoolRepName!,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
           ),
@@ -310,11 +319,11 @@ class _SchoolRepSection extends ConsumerWidget {
                 final user = users[index - 1];
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+                    backgroundColor: AppColors.gold.withValues(alpha: 0.15),
                     child: Text(
                       user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-                      style: const TextStyle(
-                        color: AppColors.navy,
+                      style: TextStyle(
+                        color: context.textPrimary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -353,7 +362,8 @@ class _SchoolMembersSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final membersAsync = ref.watch(usersBySchoolProvider(school.id));
+    // Use stream provider for real-time updates
+    final membersAsync = ref.watch(usersBySchoolStreamProvider(school.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -363,10 +373,10 @@ class _SchoolMembersSection extends ConsumerWidget {
           children: [
             Text(
               l10n.translate('school_members'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             TextButton.icon(
@@ -377,12 +387,12 @@ class _SchoolMembersSection extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
-        _buildMembersPreview(membersAsync, l10n),
+        _buildMembersPreview(context, membersAsync, l10n),
       ],
     );
   }
 
-  Widget _buildMembersPreview(AsyncValue<List<UserModel>> membersAsync, AppLocalizations l10n) {
+  Widget _buildMembersPreview(BuildContext context, AsyncValue<List<UserModel>> membersAsync, AppLocalizations l10n) {
     return membersAsync.when(
       data: (members) {
         if (members.isEmpty) {
@@ -408,10 +418,11 @@ class _SchoolMembersSection extends ConsumerWidget {
         final previewMembers = members.take(3).toList();
         final remainingCount = members.length - 3;
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.navy.withValues(alpha: 0.05),
+            color: isDark ? AppColors.gold.withValues(alpha: 0.08) : AppColors.navy.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -498,15 +509,15 @@ class _MemberPreviewRow extends StatelessWidget {
               children: [
                 Text(
                   member.fullName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 Text(
                   member.role.displayName,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 11, color: context.textSecondary),
                 ),
               ],
             ),

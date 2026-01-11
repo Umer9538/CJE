@@ -18,11 +18,11 @@ class UserInfoCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -42,6 +42,12 @@ class UserInfoCard extends StatelessWidget {
               icon: Icons.school_outlined,
               label: l10n.translate('school'),
               value: user.schoolName!,
+            ),
+          if (user.className != null && user.className!.isNotEmpty)
+            _InfoRow(
+              icon: Icons.class_outlined,
+              label: l10n.translate('class'),
+              value: user.className!,
             ),
           if (user.city != null)
             _InfoRow(
@@ -73,6 +79,7 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -81,10 +88,10 @@ class _InfoRow extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
+              color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppColors.navy, size: 20),
+            child: Icon(icon, color: isDark ? AppColors.gold : AppColors.navy, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -93,14 +100,14 @@ class _InfoRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
                 ),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
               ],

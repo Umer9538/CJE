@@ -14,7 +14,8 @@ class SchoolMembersSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final membersAsync = ref.watch(usersBySchoolProvider(school.id));
+    // Use stream provider for real-time updates
+    final membersAsync = ref.watch(usersBySchoolStreamProvider(school.id));
 
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -28,7 +29,7 @@ class SchoolMembersSheet extends ConsumerWidget {
           children: [
             _buildHandle(),
             const SizedBox(height: 20),
-            _buildHeader(l10n),
+            _buildHeader(context, l10n),
             const SizedBox(height: 20),
             Expanded(
               child: membersAsync.when(
@@ -59,16 +60,17 @@ class SchoolMembersSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(AppLocalizations l10n) {
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.navy.withValues(alpha: 0.1),
+            color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.people, color: AppColors.navy),
+          child: Icon(Icons.people, color: isDark ? AppColors.gold : AppColors.navy),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -77,10 +79,10 @@ class SchoolMembersSheet extends ConsumerWidget {
             children: [
               Text(
                 l10n.translate('school_members'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               Text(
@@ -191,15 +193,15 @@ class _StatItem extends StatelessWidget {
       children: [
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 12, color: context.textSecondary),
         ),
       ],
     );
@@ -274,7 +276,7 @@ class _MemberCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
@@ -299,15 +301,15 @@ class _MemberCard extends StatelessWidget {
               children: [
                 Text(
                   member.fullName,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 Text(
                   member.email,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 11, color: context.textSecondary),
                 ),
                 if (member.className != null)
                   Text(

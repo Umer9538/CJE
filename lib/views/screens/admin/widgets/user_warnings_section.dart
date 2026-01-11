@@ -20,11 +20,11 @@ class UserWarningsSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -35,7 +35,7 @@ class UserWarningsSection extends ConsumerWidget {
         children: [
           _buildHeader(context, ref, l10n),
           if (user.warnings.isEmpty)
-            _buildEmpty(l10n)
+            _buildEmpty(context, l10n)
           else
             _buildWarningsList(context, ref, dateFormat, l10n),
         ],
@@ -60,7 +60,7 @@ class UserWarningsSection extends ConsumerWidget {
             const SizedBox(width: 12),
             Text(
               '${user.warningCount} ${l10n.translate('total')}',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 14, color: context.textSecondary),
             ),
           ],
         ),
@@ -74,13 +74,13 @@ class UserWarningsSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmpty(AppLocalizations l10n) {
+  Widget _buildEmpty(BuildContext context, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Center(
         child: Text(
           l10n.translate('no_warnings'),
-          style: TextStyle(color: Colors.grey[500]),
+          style: TextStyle(color: context.textSecondary),
         ),
       ),
     );
@@ -192,14 +192,14 @@ class _WarningTile extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(child: _buildContent(l10n)),
+          Expanded(child: _buildContent(context, l10n)),
           if (warning.isActive) _buildMenu(context, ref, l10n),
         ],
       ),
     );
   }
 
-  Widget _buildContent(AppLocalizations l10n) {
+  Widget _buildContent(BuildContext context, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -208,14 +208,14 @@ class _WarningTile extends ConsumerWidget {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w500,
-            color: warning.isActive ? AppColors.navy : Colors.grey,
+            color: warning.isActive ? context.textPrimary : context.textSecondary,
             decoration: warning.isActive ? null : TextDecoration.lineThrough,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           '${l10n.translate('issued_by')}: ${warning.issuedByName} • ${dateFormat.format(warning.issuedAt)}',
-          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+          style: TextStyle(fontSize: 11, color: context.textSecondary),
         ),
         if (!warning.isActive && warning.resolvedByName != null)
           Text(

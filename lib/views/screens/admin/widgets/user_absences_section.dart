@@ -20,11 +20,11 @@ class UserAbsencesSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -35,7 +35,7 @@ class UserAbsencesSection extends ConsumerWidget {
         children: [
           _buildHeader(context, ref, l10n),
           if (user.absences.isEmpty)
-            _buildEmpty(l10n)
+            _buildEmpty(context, l10n)
           else
             _buildAbsencesList(context, ref, dateFormat, l10n),
         ],
@@ -60,7 +60,7 @@ class UserAbsencesSection extends ConsumerWidget {
             const SizedBox(width: 12),
             Text(
               '${user.absenceCount} ${l10n.translate('total')}',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 14, color: context.textSecondary),
             ),
           ],
         ),
@@ -74,13 +74,13 @@ class UserAbsencesSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmpty(AppLocalizations l10n) {
+  Widget _buildEmpty(BuildContext context, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Center(
         child: Text(
           l10n.translate('no_absences'),
-          style: TextStyle(color: Colors.grey[500]),
+          style: TextStyle(color: context.textSecondary),
         ),
       ),
     );
@@ -233,14 +233,14 @@ class _AbsenceTile extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Expanded(child: _buildContent(l10n)),
+          Expanded(child: _buildContent(context, l10n)),
           _buildTrailing(context, ref, l10n),
         ],
       ),
     );
   }
 
-  Widget _buildContent(AppLocalizations l10n) {
+  Widget _buildContent(BuildContext context, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -249,10 +249,10 @@ class _AbsenceTile extends ConsumerWidget {
             Expanded(
               child: Text(
                 absence.meetingTitle,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
             ),
@@ -262,12 +262,12 @@ class _AbsenceTile extends ConsumerWidget {
         const SizedBox(height: 4),
         Text(
           '${l10n.translate('meeting_date')}: ${dateFormat.format(absence.meetingDate)}',
-          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+          style: TextStyle(fontSize: 11, color: context.textSecondary),
         ),
         if (absence.reason != null && absence.reason!.isNotEmpty)
           Text(
             '${l10n.translate('reason')}: ${absence.reason}',
-            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 11, color: context.textSecondary),
           ),
       ],
     );

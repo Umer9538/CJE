@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../controllers/admin/admin_controller.dart';
+import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../core/core.dart';
 import '../../../../models/models.dart';
 
@@ -21,15 +23,19 @@ class _UserStatusActionsState extends ConsumerState<UserStatusActions> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final currentUser = ref.watch(currentUserProvider);
+    final isSuperadmin = currentUser?.role == UserRole.superadmin;
+    final isOwnAccount = currentUser?.id == widget.user.id;
+    final isTargetSuperadmin = widget.user.role == UserRole.superadmin;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -61,6 +67,19 @@ class _UserStatusActionsState extends ConsumerState<UserStatusActions> {
               isLoading: _isLoading,
               onTap: _reactivateUser,
             ),
+          // Delete button - only visible to Superadmin and cannot delete self or other Superadmins
+          if (isSuperadmin && !isOwnAccount && !isTargetSuperadmin) ...[
+            const SizedBox(height: 12),
+            const Divider(),
+            const SizedBox(height: 12),
+            _ActionButton(
+              icon: Icons.delete_forever,
+              label: l10n.translate('delete_user_permanently'),
+              color: Colors.red,
+              isLoading: _isLoading,
+              onTap: _deleteUserPermanently,
+            ),
+          ],
         ],
       ),
     );
@@ -168,6 +187,92 @@ class _UserStatusActionsState extends ConsumerState<UserStatusActions> {
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _deleteUserPermanently() async {
+    final l10n = AppLocalizations.of(context);
+
+    // Show strong warning confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            const SizedBox(width: 8),
+            Text(l10n.translate('delete_user_title')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.translate('delete_user_warning'),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Text(l10n.translate('delete_user_confirmation')),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                widget.user.fullName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.translate('cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.translate('delete_permanently')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+
+    final success = await ref
+        .read(adminControllerProvider.notifier)
+        .deleteUserPermanently(widget.user.id);
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.translate('user_deleted_successfully')),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Navigate back since user no longer exists
+        context.pop();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.translate('error_deleting_user')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

@@ -40,8 +40,12 @@ class _UserRoleSelectorState extends ConsumerState<UserRoleSelector> {
     final l10n = AppLocalizations.of(context);
     final currentUser = ref.watch(currentUserProvider);
 
+    // SECURITY: Check if this is the superadmin account (by role OR by email pattern)
+    final isSuperadminAccount = widget.user.role == UserRole.superadmin ||
+        widget.user.email.toLowerCase().contains('superadmin');
+
     // SECURITY: Don't show role selector at all for Superadmin accounts (unless current user is Superadmin)
-    if (widget.user.role == UserRole.superadmin && currentUser?.role != UserRole.superadmin) {
+    if (isSuperadminAccount && currentUser?.role != UserRole.superadmin) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

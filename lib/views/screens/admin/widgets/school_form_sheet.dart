@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/schools/school_controller.dart';
 import '../../../../core/core.dart';
 import '../../../../models/models.dart';
@@ -20,8 +22,19 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _shortNameController;
   late final TextEditingController _addressController;
-  late final TextEditingController _cityController;
+  String? _selectedCity;
   bool _isLoading = false;
+
+  // Romanian counties (42 total)
+  final List<String> _cities = [
+    'Alba', 'Arad', 'Argeș', 'Bacău', 'Bihor', 'Bistrița-Năsăud',
+    'Botoșani', 'Brașov', 'Brăila', 'București', 'Buzău', 'Caraș-Severin',
+    'Călărași', 'Cluj', 'Constanța', 'Covasna', 'Dâmbovița', 'Dolj',
+    'Galați', 'Giurgiu', 'Gorj', 'Harghita', 'Hunedoara', 'Ialomița',
+    'Iași', 'Ilfov', 'Maramureș', 'Mehedinți', 'Mureș', 'Neamț',
+    'Olt', 'Prahova', 'Satu Mare', 'Sălaj', 'Sibiu', 'Suceava',
+    'Teleorman', 'Timiș', 'Tulcea', 'Vaslui', 'Vâlcea', 'Vrancea',
+  ];
 
   bool get isEditing => widget.school != null;
 
@@ -31,7 +44,20 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
     _nameController = TextEditingController(text: widget.school?.name);
     _shortNameController = TextEditingController(text: widget.school?.shortName);
     _addressController = TextEditingController(text: widget.school?.address);
-    _cityController = TextEditingController(text: widget.school?.city);
+    // Pre-select city: use school's city if editing, otherwise initialize later in didChangeDependencies
+    _selectedCity = widget.school?.city;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Pre-select the BEX user's city if not editing and no city selected yet
+    if (!isEditing && _selectedCity == null) {
+      final currentUser = ref.read(currentUserProvider);
+      if (currentUser?.city != null && currentUser!.city!.isNotEmpty) {
+        _selectedCity = currentUser.city;
+      }
+    }
   }
 
   @override
@@ -39,7 +65,6 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
     _nameController.dispose();
     _shortNameController.dispose();
     _addressController.dispose();
-    _cityController.dispose();
     super.dispose();
   }
 
@@ -61,10 +86,10 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
             children: [
               Text(
                 isEditing ? l10n.translate('edit_school') : l10n.translate('add_school'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.goldColor,
                 ),
               ),
               const SizedBox(height: 24),
@@ -72,6 +97,7 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
               const SizedBox(height: 16),
               _buildShortNameField(l10n),
               const SizedBox(height: 16),
+              // Always show city field - pre-selected for BEX users from their profile
               _buildCityField(l10n),
               const SizedBox(height: 16),
               _buildAddressField(l10n),
@@ -84,13 +110,35 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
     );
   }
 
+  InputDecoration _inputDecoration(BuildContext context, String label, String hint) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      labelStyle: TextStyle(color: context.textSecondary),
+      hintStyle: TextStyle(color: context.textSecondary.withValues(alpha: 0.6)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: context.borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: context.borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: context.goldColor, width: 2),
+      ),
+    );
+  }
+
   Widget _buildNameField(AppLocalizations l10n) {
     return TextFormField(
       controller: _nameController,
-      decoration: InputDecoration(
-        labelText: l10n.translate('school_name'),
-        hintText: 'e.g., Colegiul National Mircea cel Batran',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      style: TextStyle(color: context.textPrimary),
+      decoration: _inputDecoration(
+        context,
+        l10n.translate('school_name'),
+        'e.g., Colegiul National Mircea cel Batran',
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -104,10 +152,11 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
   Widget _buildShortNameField(AppLocalizations l10n) {
     return TextFormField(
       controller: _shortNameController,
-      decoration: InputDecoration(
-        labelText: l10n.translate('short_name'),
-        hintText: 'e.g., CNMB',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      style: TextStyle(color: context.textPrimary),
+      decoration: _inputDecoration(
+        context,
+        l10n.translate('short_name'),
+        'e.g., CNMB',
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -119,23 +168,39 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
   }
 
   Widget _buildCityField(AppLocalizations l10n) {
-    return TextFormField(
-      controller: _cityController,
-      decoration: InputDecoration(
-        labelText: l10n.translate('city'),
-        hintText: 'e.g., Constanta',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    return DropdownButtonFormField<String>(
+      value: _selectedCity,
+      style: TextStyle(color: context.textPrimary),
+      dropdownColor: context.cardColor,
+      decoration: _inputDecoration(
+        context,
+        l10n.translate('city'),
+        '${l10n.translate('select')} ${l10n.translate('city')}...',
       ),
+      items: _cities.map((city) {
+        return DropdownMenuItem(
+          value: city,
+          child: Text(city, style: TextStyle(color: context.textPrimary)),
+        );
+      }).toList(),
+      onChanged: (value) => setState(() => _selectedCity = value),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return l10n.translate('field_required');
+        }
+        return null;
+      },
     );
   }
 
   Widget _buildAddressField(AppLocalizations l10n) {
     return TextFormField(
       controller: _addressController,
-      decoration: InputDecoration(
-        labelText: l10n.translate('address'),
-        hintText: 'e.g., Str. Mihai Viteazu Nr. 10',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      style: TextStyle(color: context.textPrimary),
+      decoration: _inputDecoration(
+        context,
+        l10n.translate('address'),
+        'e.g., Str. Mihai Viteazu Nr. 10',
       ),
       maxLines: 2,
     );
@@ -169,10 +234,29 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
     final controller = ref.read(schoolControllerProvider.notifier);
     final l10n = AppLocalizations.of(context);
+    final currentUser = ref.read(currentUserProvider);
+
+    // Always use the selected city from the dropdown (pre-selected for BEX users)
+    final cityValue = _selectedCity;
+
+    // Validate city is set
+    if (cityValue == null || cityValue.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.translate('city_required')),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    debugPrint('SchoolFormSheet: Creating school with city: "$cityValue" (length: ${cityValue.length})');
+    debugPrint('SchoolFormSheet: User city from profile: "${currentUser?.city}" | Selected city: "$cityValue"');
+
+    setState(() => _isLoading = true);
+
     bool success;
 
     if (isEditing) {
@@ -180,17 +264,19 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
         name: _nameController.text.trim(),
         shortName: _shortNameController.text.trim(),
         address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-        city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
+        city: cityValue,
       );
+      debugPrint('SchoolFormSheet: Updating school ${widget.school!.id} with city: "$cityValue"');
       success = await controller.updateSchool(updatedSchool);
     } else {
       final id = await controller.createSchool(
         name: _nameController.text.trim(),
         shortName: _shortNameController.text.trim(),
         address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-        city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
+        city: cityValue,
       );
       success = id != null;
+      debugPrint('SchoolFormSheet: School created with id: $id, city: "$cityValue", success: $success');
     }
 
     setState(() => _isLoading = false);
