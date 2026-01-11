@@ -59,24 +59,24 @@ class _EditAnnouncementScreenState
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Icon(Icons.close, color: AppColors.navy, size: 20),
+            child: Icon(Icons.close, color: context.iconColor, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           l10n.translate('edit_announcement'),
-          style: const TextStyle(
-            color: AppColors.navy,
+          style: TextStyle(
+            color: context.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -106,10 +106,10 @@ class _EditAnnouncementScreenState
             // Type selector
             Text(
               l10n.translate('announcement_type'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -120,6 +120,7 @@ class _EditAnnouncementScreenState
                     title: l10n.translate('school'),
                     icon: Icons.school_rounded,
                     isSelected: _selectedType == AnnouncementType.school,
+                    isDark: Theme.of(context).brightness == Brightness.dark,
                     onTap: () =>
                         setState(() => _selectedType = AnnouncementType.school),
                   ),
@@ -131,6 +132,7 @@ class _EditAnnouncementScreenState
                     icon: Icons.account_balance_rounded,
                     isSelected: _selectedType == AnnouncementType.county,
                     isDisabled: !canCreateCounty,
+                    isDark: Theme.of(context).brightness == Brightness.dark,
                     onTap: canCreateCounty
                         ? () => setState(
                             () => _selectedType = AnnouncementType.county)
@@ -144,20 +146,21 @@ class _EditAnnouncementScreenState
             // Title field
             Text(
               l10n.translate('title'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _titleController,
+              style: TextStyle(color: context.textPrimary),
               decoration: InputDecoration(
                 hintText: l10n.translate('announcement_title_hint'),
-                hintStyle: TextStyle(color: Colors.grey[400]),
+                hintStyle: TextStyle(color: context.textSecondary),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
@@ -191,21 +194,22 @@ class _EditAnnouncementScreenState
             // Content field
             Text(
               l10n.translate('content'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _contentController,
               maxLines: 8,
+              style: TextStyle(color: context.textPrimary),
               decoration: InputDecoration(
                 hintText: l10n.translate('announcement_content_hint'),
-                hintStyle: TextStyle(color: Colors.grey[400]),
+                hintStyle: TextStyle(color: context.textSecondary),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
@@ -240,7 +244,7 @@ class _EditAnnouncementScreenState
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -251,12 +255,12 @@ class _EditAnnouncementScreenState
                     decoration: BoxDecoration(
                       color: _isPinned
                           ? AppColors.gold.withValues(alpha: 0.15)
-                          : Colors.grey.withValues(alpha: 0.1),
+                          : context.textSecondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       Icons.push_pin_rounded,
-                      color: _isPinned ? AppColors.gold : Colors.grey,
+                      color: _isPinned ? AppColors.gold : context.textSecondary,
                       size: 22,
                     ),
                   ),
@@ -267,10 +271,10 @@ class _EditAnnouncementScreenState
                       children: [
                         Text(
                           l10n.translate('pin_announcement'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -278,7 +282,7 @@ class _EditAnnouncementScreenState
                           l10n.translate('pin_announcement_desc'),
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -384,6 +388,7 @@ class _TypeCard extends StatelessWidget {
   final IconData icon;
   final bool isSelected;
   final bool isDisabled;
+  final bool isDark;
   final VoidCallback? onTap;
 
   const _TypeCard({
@@ -391,6 +396,7 @@ class _TypeCard extends StatelessWidget {
     required this.icon,
     required this.isSelected,
     this.isDisabled = false,
+    this.isDark = false,
     this.onTap,
   });
 
@@ -402,14 +408,16 @@ class _TypeCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.gold.withValues(alpha: 0.15) : Colors.white,
+          color: isSelected
+              ? AppColors.gold.withValues(alpha: 0.15)
+              : context.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? AppColors.gold
                 : isDisabled
-                    ? Colors.grey.shade200
-                    : Colors.grey.shade300,
+                    ? (isDark ? Colors.grey.shade700 : Colors.grey.shade200)
+                    : context.borderColor,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -419,10 +427,10 @@ class _TypeCard extends StatelessWidget {
               icon,
               size: 32,
               color: isDisabled
-                  ? Colors.grey.shade300
+                  ? (isDark ? Colors.grey.shade600 : Colors.grey.shade300)
                   : isSelected
                       ? AppColors.gold
-                      : AppColors.navy,
+                      : (isDark ? AppColors.gold : AppColors.navy),
             ),
             const SizedBox(height: 8),
             Text(
@@ -431,10 +439,10 @@ class _TypeCard extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: isDisabled
-                    ? Colors.grey.shade400
+                    ? (isDark ? Colors.grey.shade600 : Colors.grey.shade400)
                     : isSelected
                         ? AppColors.gold
-                        : AppColors.navy,
+                        : context.textPrimary,
               ),
             ),
           ],

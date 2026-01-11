@@ -24,6 +24,8 @@ class _CreateAnnouncementScreenState
   final _contentController = TextEditingController();
 
   AnnouncementType _selectedType = AnnouncementType.school;
+  String? _selectedSchoolId;
+  String? _selectedSchoolName;
   bool _isPinned = false;
   bool _isLoading = false;
   bool _isUploading = false;
@@ -58,24 +60,24 @@ class _CreateAnnouncementScreenState
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Icon(Icons.close, color: AppColors.navy, size: 20),
+            child: Icon(Icons.close, color: context.iconColor, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           l10n.translate('create_announcement'),
-          style: const TextStyle(
-            color: AppColors.navy,
+          style: TextStyle(
+            color: context.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -105,10 +107,10 @@ class _CreateAnnouncementScreenState
             // Type selector
             Text(
               l10n.translate('announcement_type'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -138,15 +140,30 @@ class _CreateAnnouncementScreenState
                 ),
               ],
             ),
+
+            // School dropdown (only for BEX/Superadmin when School type is selected)
+            if (_selectedType == AnnouncementType.school && canCreateCounty) ...[
+              const SizedBox(height: 16),
+              Text(
+                l10n.translate('select_school'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildSchoolDropdown(context, l10n),
+            ],
             const SizedBox(height: 24),
 
             // Title field
             Text(
               l10n.translate('title'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -154,16 +171,16 @@ class _CreateAnnouncementScreenState
               controller: _titleController,
               decoration: InputDecoration(
                 hintText: l10n.translate('announcement_title_hint'),
-                hintStyle: TextStyle(color: Colors.grey[400]),
+                hintStyle: TextStyle(color: context.textSecondary),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -190,10 +207,10 @@ class _CreateAnnouncementScreenState
             // Content field
             Text(
               l10n.translate('content'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -202,16 +219,16 @@ class _CreateAnnouncementScreenState
               maxLines: 8,
               decoration: InputDecoration(
                 hintText: l10n.translate('announcement_content_hint'),
-                hintStyle: TextStyle(color: Colors.grey[400]),
+                hintStyle: TextStyle(color: context.textSecondary),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
@@ -239,7 +256,7 @@ class _CreateAnnouncementScreenState
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -250,12 +267,12 @@ class _CreateAnnouncementScreenState
                     decoration: BoxDecoration(
                       color: _isPinned
                           ? AppColors.gold.withValues(alpha: 0.15)
-                          : Colors.grey.withValues(alpha: 0.1),
+                          : context.textSecondary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       Icons.push_pin_rounded,
-                      color: _isPinned ? AppColors.gold : Colors.grey,
+                      color: _isPinned ? AppColors.gold : context.textSecondary,
                       size: 22,
                     ),
                   ),
@@ -266,10 +283,10 @@ class _CreateAnnouncementScreenState
                       children: [
                         Text(
                           l10n.translate('pin_announcement'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -277,7 +294,7 @@ class _CreateAnnouncementScreenState
                           l10n.translate('pin_announcement_desc'),
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -302,10 +319,10 @@ class _CreateAnnouncementScreenState
             // Featured Image Section
             Text(
               l10n.translate('featured_image'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -322,10 +339,10 @@ class _CreateAnnouncementScreenState
             // Attachments Section
             Text(
               l10n.translate('attachments'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -344,13 +361,13 @@ class _CreateAnnouncementScreenState
               const SizedBox(height: 16),
               LinearProgressIndicator(
                 value: _uploadProgress,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: context.borderColor,
                 valueColor: const AlwaysStoppedAnimation<Color>(AppColors.gold),
               ),
               const SizedBox(height: 8),
               Text(
                 '${(_uploadProgress * 100).toStringAsFixed(0)}% ${l10n.translate('uploading')}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 12, color: context.textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -395,8 +412,8 @@ class _CreateAnnouncementScreenState
               child: OutlinedButton(
                 onPressed: _isLoading ? null : _handleSaveDraft,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.navy,
-                  side: const BorderSide(color: AppColors.navy),
+                  foregroundColor: AppColors.gold,
+                  side: const BorderSide(color: AppColors.gold),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
@@ -410,7 +427,7 @@ class _CreateAnnouncementScreenState
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 100), // Extra padding for bottom navigation bar
           ],
         ),
       ),
@@ -427,24 +444,24 @@ class _CreateAnnouncementScreenState
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Colors.grey.shade200,
+            color: context.borderColor,
             style: BorderStyle.solid,
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: _isUploading ? Colors.grey : AppColors.navy, size: 22),
+            Icon(icon, color: _isUploading ? context.textSecondary : context.textPrimary, size: 22),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: _isUploading ? Colors.grey : AppColors.navy,
+                color: _isUploading ? context.textSecondary : context.textPrimary,
               ),
             ),
           ],
@@ -491,9 +508,9 @@ class _CreateAnnouncementScreenState
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: context.borderColor),
       ),
       child: Row(
         children: [
@@ -501,12 +518,12 @@ class _CreateAnnouncementScreenState
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.1),
+              color: context.textPrimary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               _getFileIcon(file.extension ?? ''),
-              color: AppColors.navy,
+              color: context.textPrimary,
               size: 20,
             ),
           ),
@@ -517,17 +534,17 @@ class _CreateAnnouncementScreenState
               children: [
                 Text(
                   file.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   _formatFileSize(file.size),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
                 ),
               ],
             ),
@@ -554,6 +571,10 @@ class _CreateAnnouncementScreenState
       case 'ppt':
       case 'pptx':
         return Icons.slideshow;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return Icons.image;
       default:
         return Icons.attach_file;
     }
@@ -563,6 +584,94 @@ class _CreateAnnouncementScreenState
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  Widget _buildSchoolDropdown(BuildContext context, AppLocalizations l10n) {
+    final schoolsAsync = ref.watch(activeSchoolsProvider);
+
+    return schoolsAsync.when(
+      data: (schools) {
+        if (schools.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.borderColor),
+            ),
+            child: Text(
+              l10n.translate('no_schools_available'),
+              style: TextStyle(color: context.textSecondary),
+            ),
+          );
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: context.cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: context.borderColor),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedSchoolId,
+              hint: Text(
+                l10n.translate('select_school'),
+                style: TextStyle(color: context.textSecondary),
+              ),
+              isExpanded: true,
+              borderRadius: BorderRadius.circular(16),
+              dropdownColor: context.cardColor,
+              items: schools.map((school) {
+                return DropdownMenuItem<String>(
+                  value: school.id,
+                  child: Text(
+                    school.shortName.isNotEmpty ? school.shortName : school.name,
+                    style: TextStyle(color: context.textPrimary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                final school = schools.firstWhere((s) => s.id == value);
+                setState(() {
+                  _selectedSchoolId = value;
+                  _selectedSchoolName = school.name;
+                });
+              },
+            ),
+          ),
+        );
+      },
+      loading: () => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: context.borderColor),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+          ),
+        ),
+      ),
+      error: (e, _) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+        ),
+        child: Text(
+          l10n.translate('error_loading_schools'),
+          style: TextStyle(color: Colors.red[400]),
+        ),
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -582,7 +691,7 @@ class _CreateAnnouncementScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking image: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error_picking_image')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -594,7 +703,7 @@ class _CreateAnnouncementScreenState
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'],
+        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'],
         allowMultiple: true,
       );
 
@@ -611,7 +720,7 @@ class _CreateAnnouncementScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking file: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error_picking_file')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -686,6 +795,22 @@ class _CreateAnnouncementScreenState
   Future<void> _handlePublish() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final l10n = AppLocalizations.of(context);
+    final user = ref.read(currentUserProvider);
+    final canCreateCounty = user != null &&
+        (user.role == UserRole.bex || user.role == UserRole.superadmin);
+
+    // Validate school selection for BEX/Superadmin when School type is selected
+    if (_selectedType == AnnouncementType.school && canCreateCounty && _selectedSchoolId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.translate('select_school')),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _isUploading = _selectedImage != null || _selectedAttachments.isNotEmpty;
@@ -715,6 +840,8 @@ class _CreateAnnouncementScreenState
       imageUrl: imageUrl,
       attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
       publishImmediately: true,
+      schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
+      schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
     );
 
     // Pin the announcement if needed
@@ -753,6 +880,10 @@ class _CreateAnnouncementScreenState
       return;
     }
 
+    final user = ref.read(currentUserProvider);
+    final canCreateCounty = user != null &&
+        (user.role == UserRole.bex || user.role == UserRole.superadmin);
+
     setState(() {
       _isLoading = true;
       _isUploading = _selectedImage != null || _selectedAttachments.isNotEmpty;
@@ -782,6 +913,8 @@ class _CreateAnnouncementScreenState
       imageUrl: imageUrl,
       attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
       publishImmediately: false,
+      schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
+      schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
     );
 
     // Pin the announcement if needed
@@ -826,14 +959,14 @@ class _TypeCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.gold.withValues(alpha: 0.15) : Colors.white,
+          color: isSelected ? AppColors.gold.withValues(alpha: 0.15) : context.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? AppColors.gold
                 : isDisabled
-                    ? Colors.grey.shade200
-                    : Colors.grey.shade300,
+                    ? context.borderColor
+                    : context.borderColor,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -843,10 +976,10 @@ class _TypeCard extends StatelessWidget {
               icon,
               size: 32,
               color: isDisabled
-                  ? Colors.grey.shade300
+                  ? context.textSecondary.withValues(alpha: 0.5)
                   : isSelected
                       ? AppColors.gold
-                      : AppColors.navy,
+                      : context.textPrimary,
             ),
             const SizedBox(height: 8),
             Text(
@@ -855,10 +988,10 @@ class _TypeCard extends StatelessWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: isDisabled
-                    ? Colors.grey.shade400
+                    ? context.textSecondary.withValues(alpha: 0.5)
                     : isSelected
                         ? AppColors.gold
-                        : AppColors.navy,
+                        : context.textPrimary,
               ),
             ),
           ],
