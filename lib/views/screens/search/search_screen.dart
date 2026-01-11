@@ -255,22 +255,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
+                color: context.goldColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.search_rounded,
                 size: 48,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 24),
             Text(
               l10n.translate('search_title'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -380,22 +380,22 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
+                color: context.goldColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.search_off_rounded,
                 size: 40,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 24),
             Text(
               l10n.translate('no_results'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -563,7 +563,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       case SearchResultType.document:
         return const Color(0xFFEF4444);
       case SearchResultType.user:
-        return AppColors.navy;
+        return const Color(0xFF6B7280); // Grey for users - visible in both themes
     }
   }
 
@@ -602,11 +602,11 @@ class _SearchResultCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -620,10 +620,10 @@ class _SearchResultCard extends StatelessWidget {
                 children: [
                   Text(
                     result.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

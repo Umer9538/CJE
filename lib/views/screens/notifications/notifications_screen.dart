@@ -106,22 +106,22 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
+                color: context.goldColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.notifications_none_rounded,
                 size: 48,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 24),
             Text(
               l10n.translate('no_notifications'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -197,26 +197,28 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   void _showClearAllDialog() {
     final l10n = AppLocalizations.of(context);
+    // Capture ScaffoldMessenger before dialog to avoid context issues
+    final messenger = ScaffoldMessenger.of(context);
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text(l10n.translate('clear_all_notifications')),
         content: Text(l10n.translate('clear_all_notifications_desc')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(l10n.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               final success = await ref
                   .read(notificationControllerProvider.notifier)
                   .deleteAllNotifications();
 
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     content: Text(success
                         ? l10n.translate('notifications_cleared')
@@ -270,7 +272,7 @@ class _NotificationCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: notification.isRead
-                ? Colors.white
+                ? context.cardColor
                 : AppColors.gold.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
             border: notification.isRead
@@ -318,7 +320,7 @@ class _NotificationCard extends StatelessWidget {
                               fontWeight: notification.isRead
                                   ? FontWeight.w500
                                   : FontWeight.w600,
-                              color: AppColors.navy,
+                              color: context.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
