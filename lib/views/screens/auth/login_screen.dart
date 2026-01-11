@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
@@ -27,6 +28,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _errorMessage;
   int _titleTapCount = 0;
 
+  // SharedPreferences keys for remember me
+  static const String _keyRememberMe = 'remember_me';
+  static const String _keySavedEmail = 'saved_email';
+  static const String _keySavedPassword = 'saved_password';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -34,6 +46,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _emailFocusNode.dispose();
     _passwordFocusNode.dispose();
     super.dispose();
+  }
+
+  /// Load saved credentials if remember me was checked
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final rememberMe = prefs.getBool(_keyRememberMe) ?? false;
+
+      if (rememberMe) {
+        final savedEmail = prefs.getString(_keySavedEmail) ?? '';
+        final savedPassword = prefs.getString(_keySavedPassword) ?? '';
+
+        setState(() {
+          _rememberMe = true;
+          _emailController.text = savedEmail;
+          _passwordController.text = savedPassword;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading saved credentials: $e');
+    }
+  }
+
+  /// Save credentials to SharedPreferences
+  Future<void> _saveCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      if (_rememberMe) {
+        await prefs.setBool(_keyRememberMe, true);
+        await prefs.setString(_keySavedEmail, _emailController.text.trim());
+        await prefs.setString(_keySavedPassword, _passwordController.text);
+      } else {
+        // Clear saved credentials if remember me is unchecked
+        await _clearCredentials();
+      }
+    } catch (e) {
+      debugPrint('Error saving credentials: $e');
+    }
+  }
+
+  /// Clear saved credentials from SharedPreferences
+  Future<void> _clearCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyRememberMe);
+      await prefs.remove(_keySavedEmail);
+      await prefs.remove(_keySavedPassword);
+    } catch (e) {
+      debugPrint('Error clearing credentials: $e');
+    }
   }
 
   Future<void> _handleEmailLogin() async {
@@ -52,8 +115,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
 
-      if (!result.success) {
-        setState(() => _errorMessage = result.errorMessage);
+      if (result.success) {
+        // Save credentials if remember me is checked
+        await _saveCredentials();
+      } else {
+        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
       }
     }
   }
@@ -70,9 +136,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() => _isGoogleLoading = false);
 
       if (!result.success) {
-        setState(() => _errorMessage = result.errorMessage);
+        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
       }
     }
+  }
+
+  /// Get localized error message based on error code
+  String _getLocalizedAuthError(String? errorCode) {
+    final l10n = AppLocalizations.of(context);
+    final key = 'auth_error_${errorCode?.replaceAll('-', '_') ?? 'default'}';
+    final translation = l10n.translate(key);
+    // If translation returns the key itself, use the default error message
+    if (translation == key) {
+      return l10n.translate('auth_error_default');
+    }
+    return translation;
   }
 
   @override
@@ -102,7 +180,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       } else if (_titleTapCount >= 3) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${5 - _titleTapCount} more taps for admin setup'),
+                            content: Text(l10n.translate('admin_setup_taps').replaceAll('{count}', '${5 - _titleTapCount}')),
                             duration: const Duration(seconds: 1),
                           ),
                         );
@@ -159,7 +237,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Email Label
                   Text(
-                    'Email Address',
+                    l10n.translate('email_address'),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -177,7 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.next,
                     style: TextStyle(color: context.textPrimary),
                     onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
-                    decoration: _inputDecoration(context, 'Email address...'),
+                    decoration: _inputDecoration(context, l10n.translate('email_hint')),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return l10n.translate('field_required');
@@ -192,7 +270,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Password Label
                   Text(
-                    'Password',
+                    l10n.translate('password'),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -210,7 +288,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.done,
                     style: TextStyle(color: context.textPrimary),
                     onFieldSubmitted: (_) => _handleEmailLogin(),
-                    decoration: _inputDecoration(context, 'Password...').copyWith(
+                    decoration: _inputDecoration(context, l10n.translate('password_hint')).copyWith(
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -241,7 +319,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             height: 20,
                             child: Checkbox(
                               value: _rememberMe,
-                              onChanged: (value) => setState(() => _rememberMe = value ?? false),
+                              onChanged: (value) {
+                                setState(() => _rememberMe = value ?? false);
+                                // Clear credentials immediately if unchecked
+                                if (!_rememberMe) {
+                                  _clearCredentials();
+                                }
+                              },
                               shape: const CircleBorder(),
                               side: BorderSide(color: context.textSecondary),
                               activeColor: AppColors.gold,
@@ -357,23 +441,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   _SocialButton(
                     icon: 'G',
                     iconColor: Colors.red,
-                    label: 'Continue with Google',
+                    label: l10n.translate('continue_with_google'),
                     isLoading: _isGoogleLoading,
                     onPressed: _isLoading ? null : _handleGoogleLogin,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // LinkedIn Sign In Button (placeholder)
-                  _SocialButton(
-                    icon: 'in',
-                    iconColor: const Color(0xFF0077B5),
-                    label: 'Continue with LinkedIn',
-                    onPressed: () {
-                      // LinkedIn sign in - not implemented
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('LinkedIn sign in coming soon')),
-                      );
-                    },
                   ),
                   const SizedBox(height: 24),
                 ],

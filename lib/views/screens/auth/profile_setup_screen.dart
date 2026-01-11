@@ -310,35 +310,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ),
                 const SizedBox(height: AppSizes.spacing16),
 
-                // City dropdown (required)
-                DropdownButtonFormField<String>(
-                  decoration: InputDecoration(
-                    labelText: l10n.translate('city'),
-                    prefixIcon: const Icon(Icons.location_city_outlined),
-                  ),
-                  items: _cities.map((city) {
-                    return DropdownMenuItem(
-                      value: city,
-                      child: Text(city),
-                    );
-                  }).toList(),
-                  onChanged: _isLoading
-                      ? null
-                      : (value) {
-                          setState(() {
-                            _selectedCity = value;
-                            _selectedSchoolId = null; // Reset school when city changes
-                            _selectedSchoolName = null;
-                            _cityPasswordController.clear();
-                          });
-                        },
-                  validator: (value) {
-                    if (value == null) {
-                      return l10n.translate('city_required');
-                    }
-                    return null;
-                  },
-                ),
+                // City dropdown (required) - Searchable
+                _buildSearchableCityField(l10n, theme),
                 const SizedBox(height: AppSizes.spacing16),
 
                 // City password (required)
@@ -489,6 +462,68 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Builds a searchable city selection field
+  Widget _buildSearchableCityField(AppLocalizations l10n, ThemeData theme) {
+    return FormField<String>(
+      initialValue: _selectedCity,
+      validator: (value) {
+        if (_selectedCity == null) {
+          return l10n.translate('city_required');
+        }
+        return null;
+      },
+      builder: (FormFieldState<String> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: _isLoading ? null : () => _showCitySearchSheet(l10n),
+              borderRadius: BorderRadius.circular(AppSizes.radiusMD),
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: l10n.translate('city'),
+                  prefixIcon: const Icon(Icons.location_city_outlined),
+                  suffixIcon: const Icon(Icons.search),
+                  errorText: state.hasError ? state.errorText : null,
+                ),
+                child: Text(
+                  _selectedCity ?? '${l10n.translate('select')} ${l10n.translate('city')}...',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: _selectedCity != null
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Shows a bottom sheet with searchable city list
+  void _showCitySearchSheet(AppLocalizations l10n) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CitySearchSheet(
+        cities: _cities,
+        selectedCity: _selectedCity,
+        l10n: l10n,
+        onCitySelected: (city) {
+          setState(() {
+            _selectedCity = city;
+            _selectedSchoolId = null; // Reset school when city changes
+            _selectedSchoolName = null;
+            _cityPasswordController.clear();
+          });
+        },
       ),
     );
   }

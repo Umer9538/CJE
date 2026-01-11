@@ -81,15 +81,15 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Email de verificare trimis!'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).translate('verification_email_resent')),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.errorMessage ?? 'Eroare la trimitere'),
+            content: Text(result.errorMessage ?? AppLocalizations.of(context).translate('error_sending_email')),
             backgroundColor: Colors.red,
           ),
         );

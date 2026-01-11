@@ -131,22 +131,22 @@ class PendingApprovalScreen extends ConsumerWidget {
                           vertical: AppSizes.paddingSM,
                         ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.tertiaryContainer,
+                          color: Colors.orange.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(AppSizes.radiusFull),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.pending,
                               size: 16,
-                              color: theme.colorScheme.tertiary,
+                              color: Colors.orange,
                             ),
                             const SizedBox(width: AppSizes.spacing4),
                             Text(
                               l10n.translate('status_pending'),
                               style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.tertiary,
+                                color: Colors.orange.shade700,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

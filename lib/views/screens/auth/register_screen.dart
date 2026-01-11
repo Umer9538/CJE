@@ -9,46 +9,62 @@ import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
 
-/// Provider to fetch schools list filtered by county
-final schoolsByCountyProvider = FutureProvider.family<List<SchoolModel>, String?>((ref, county) async {
+/// Provider to fetch schools list filtered by county - REAL-TIME UPDATES
+/// Uses real-time snapshots() stream to automatically update when schools are added
+/// Firestore rules allow public read on schools collection for registration
+final schoolsByCountyProvider = StreamProvider.family<List<SchoolModel>, String?>((ref, county) {
   if (county == null || county.isEmpty) {
-    return [];
+    return Stream.value([]);
   }
 
-  try {
-    debugPrint('schoolsByCountyProvider: Fetching schools for county: $county');
+  debugPrint('schoolsByCountyProvider: Setting up REAL-TIME stream for county: $county');
+  final countyLower = county.toLowerCase().trim();
 
-    // Simple query without orderBy to avoid index requirements
-    final snapshot = await FirebaseFirestore.instance
-        .collection('schools')
-        .where('city', isEqualTo: county)
-        .get();
+  // Use snapshots() for real-time updates - schools collection allows public read
+  return FirebaseFirestore.instance
+      .collection('schools')
+      .snapshots()
+      .map((snapshot) {
+        debugPrint('schoolsByCountyProvider: Received snapshot with ${snapshot.docs.length} docs');
 
-    // Filter active schools and sort in memory
-    final schools = snapshot.docs
-        .map((doc) => SchoolModel.fromFirestore(doc))
-        .where((school) => school.isActive)
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+        final allSchools = snapshot.docs
+            .map((doc) {
+              try {
+                return SchoolModel.fromFirestore(doc);
+              } catch (e) {
+                debugPrint('Error parsing school doc ${doc.id}: $e');
+                return null;
+              }
+            })
+            .whereType<SchoolModel>()
+            .toList();
 
-    debugPrint('schoolsByCountyProvider: Found ${schools.length} schools for $county');
-    for (var school in schools) {
-      debugPrint('  - ${school.name} (${school.shortName}) id=${school.id}');
-    }
+        // Filter by city (case-insensitive, trimmed) and active status
+        final schools = allSchools
+            .where((school) => school.isActive)
+            .where((school) {
+              final schoolCity = school.city?.toLowerCase().trim();
+              if (schoolCity == null) return false;
+              return schoolCity == countyLower ||
+                     schoolCity.contains(countyLower) ||
+                     countyLower.contains(schoolCity);
+            })
+            .toList()
+          ..sort((a, b) => a.name.compareTo(b.name));
 
-    // If no schools in database for this county, return sample schools for development
-    if (schools.isEmpty) {
-      debugPrint('schoolsByCountyProvider: No schools found, using sample schools');
-      return _getSampleSchools(county);
-    }
+        debugPrint('schoolsByCountyProvider: Found ${schools.length} schools matching "$county"');
 
-    return schools;
-  } catch (e) {
-    // Return sample schools if Firebase fails (for development)
-    debugPrint('schoolsByCountyProvider: Error fetching schools: $e');
-    debugPrint('schoolsByCountyProvider: Using sample schools as fallback');
-    return _getSampleSchools(county);
-  }
+        if (schools.isNotEmpty) {
+          return schools;
+        } else {
+          debugPrint('schoolsByCountyProvider: No schools found, using sample schools');
+          return _getSampleSchools(county);
+        }
+      })
+      .handleError((e) {
+        debugPrint('schoolsByCountyProvider: Stream error: $e');
+        return _getSampleSchools(county);
+      });
 });
 
 /// Sample schools for development/testing - filtered by county
@@ -331,7 +347,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       } else if (_titleTapCount >= 3) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${5 - _titleTapCount} more taps for admin setup'),
+                            content: Text(l10n.translate('admin_setup_taps').replaceAll('{count}', '${5 - _titleTapCount}')),
                             duration: const Duration(seconds: 1),
                           ),
                         );
@@ -504,7 +520,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // City Dropdown (Required)
+                  // City Dropdown (Required) - Searchable
                   Text(
                     l10n.translate('city'),
                     style: TextStyle(
@@ -514,30 +530,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    decoration: _inputDecoration('${l10n.translate('select')} ${l10n.translate('city')}...'),
-                    items: _cities.map((city) {
-                      return DropdownMenuItem(
-                        value: city,
-                        child: Text(city),
-                      );
-                    }).toList(),
-                    onChanged: _isLoading || _isGoogleLoading
-                        ? null
-                        : (value) {
-                            setState(() {
-                              _selectedCity = value;
-                              _selectedSchoolId = null; // Reset school when city changes
-                              _cityPasswordController.clear(); // Clear password when city changes
-                            });
-                          },
-                    validator: (value) {
-                      if (value == null) {
-                        return l10n.translate('city_required');
-                      }
-                      return null;
-                    },
-                  ),
+                  _buildSearchableCityField(l10n),
                   const SizedBox(height: 16),
 
                   // City Password (Required - provided by admin)
@@ -834,6 +827,96 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
+  /// Builds a searchable city selection field
+  Widget _buildSearchableCityField(AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDisabled = _isLoading || _isGoogleLoading;
+
+    return FormField<String>(
+      initialValue: _selectedCity,
+      validator: (value) {
+        if (_selectedCity == null) {
+          return l10n.translate('city_required');
+        }
+        return null;
+      },
+      builder: (FormFieldState<String> state) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              onTap: isDisabled ? null : () => _showCitySearchSheet(l10n),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[900] : Colors.grey[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: state.hasError ? context.errorColor : context.borderColor,
+                    width: state.hasError ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _selectedCity ?? '${l10n.translate('select')} ${l10n.translate('city')}...',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: _selectedCity != null
+                              ? context.textPrimary
+                              : context.textSecondary,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.search,
+                      color: context.textSecondary,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (state.hasError)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 12),
+                child: Text(
+                  state.errorText!,
+                  style: TextStyle(
+                    color: context.errorColor,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Shows a bottom sheet with searchable city list
+  void _showCitySearchSheet(AppLocalizations l10n) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CitySearchSheet(
+        cities: _cities,
+        selectedCity: _selectedCity,
+        l10n: l10n,
+        onCitySelected: (city) {
+          setState(() {
+            _selectedCity = city;
+            _selectedSchoolId = null; // Reset school when city changes
+            _cityPasswordController.clear(); // Clear password when city changes
+          });
+        },
+      ),
+    );
+  }
+
   InputDecoration _inputDecoration(String hint, {Widget? suffixIcon}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
@@ -959,6 +1042,173 @@ class _SocialButton extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Bottom sheet widget for searching and selecting a city
+/// Public so it can be reused in profile_setup_screen
+class CitySearchSheet extends StatefulWidget {
+  final List<String> cities;
+  final String? selectedCity;
+  final AppLocalizations l10n;
+  final ValueChanged<String> onCitySelected;
+
+  const CitySearchSheet({
+    super.key,
+    required this.cities,
+    required this.selectedCity,
+    required this.l10n,
+    required this.onCitySelected,
+  });
+
+  @override
+  State<CitySearchSheet> createState() => _CitySearchSheetState();
+}
+
+class _CitySearchSheetState extends State<CitySearchSheet> {
+  late TextEditingController _searchController;
+  late List<String> _filteredCities;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _filteredCities = widget.cities;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterCities(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCities = widget.cities;
+      } else {
+        final queryLower = query.toLowerCase();
+        _filteredCities = widget.cities
+            .where((city) => city.toLowerCase().contains(queryLower))
+            .toList();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[400],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Title
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              '${widget.l10n.translate('select')} ${widget.l10n.translate('city')}',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
+
+          // Search field
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _searchController,
+              autofocus: true,
+              style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              decoration: InputDecoration(
+                hintText: '${widget.l10n.translate('search')}...',
+                hintStyle: TextStyle(color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.grey[500]),
+                        onPressed: () {
+                          _searchController.clear();
+                          _filterCities('');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: isDark ? Colors.grey[900] : Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              ),
+              onChanged: _filterCities,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // City list
+          Expanded(
+            child: _filteredCities.isEmpty
+                ? Center(
+                    child: Text(
+                      widget.l10n.translate('no_results'),
+                      style: TextStyle(color: Colors.grey[500]),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: _filteredCities.length,
+                    itemBuilder: (context, index) {
+                      final city = _filteredCities[index];
+                      final isSelected = city == widget.selectedCity;
+
+                      return ListTile(
+                        title: Text(
+                          city,
+                          style: TextStyle(
+                            color: isDark ? Colors.white : Colors.black,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check_circle, color: AppColors.gold)
+                            : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        tileColor: isSelected
+                            ? AppColors.gold.withValues(alpha: 0.1)
+                            : null,
+                        onTap: () {
+                          widget.onCitySelected(city);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
