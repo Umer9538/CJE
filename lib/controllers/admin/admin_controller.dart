@@ -11,14 +11,85 @@ import '../auth/auth_controller.dart';
 
 const _uuid = Uuid();
 
+/// List of all Romanian counties (judete)
+const List<String> romanianCounties = [
+  'Alba',
+  'Arad',
+  'Argeș',
+  'Bacău',
+  'Bihor',
+  'Bistrița-Năsăud',
+  'Botoșani',
+  'Brașov',
+  'Brăila',
+  'București',
+  'Buzău',
+  'Caraș-Severin',
+  'Călărași',
+  'Cluj',
+  'Constanța',
+  'Covasna',
+  'Dâmbovița',
+  'Dolj',
+  'Galați',
+  'Giurgiu',
+  'Gorj',
+  'Harghita',
+  'Hunedoara',
+  'Ialomița',
+  'Iași',
+  'Ilfov',
+  'Maramureș',
+  'Mehedinți',
+  'Mureș',
+  'Neamț',
+  'Olt',
+  'Prahova',
+  'Satu Mare',
+  'Sălaj',
+  'Sibiu',
+  'Suceava',
+  'Teleorman',
+  'Timiș',
+  'Tulcea',
+  'Vaslui',
+  'Vâlcea',
+  'Vrancea',
+];
+
+/// Selected county for Superadmin to filter content
+/// null means "All Counties" (no filtering)
+final selectedCountyProvider = StateProvider<String?>((ref) => null);
+
+/// Effective county to use for content filtering
+/// - For Superadmin: uses selectedCountyProvider (null = all counties)
+/// - For BEX: uses their assigned county (user.city)
+/// - For other users: uses their assigned county (user.city)
+final effectiveCountyProvider = Provider<String?>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return null;
+
+  // Superadmin can switch counties
+  if (user.role == UserRole.superadmin) {
+    final selectedCounty = ref.watch(selectedCountyProvider);
+    // If null, Superadmin sees all content (no county filter)
+    return selectedCounty;
+  }
+
+  // All other users see content from their county
+  return user.city;
+});
+
 /// User repository provider
 final adminUserRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository();
 });
 
 /// All users provider - use sparingly, fetches ALL users
+/// Uses ref.watch to automatically refresh when user state changes
 final allUsersProvider = FutureProvider<List<UserModel>>((ref) async {
-  final currentUser = ref.read(currentUserProvider); // Use read to avoid rebuilds
+  // Watch currentUserProvider to auto-refresh when user changes (login/logout)
+  final currentUser = ref.watch(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
@@ -71,16 +142,39 @@ final usersByRoleProvider = FutureProvider.family<List<UserModel>, UserRole>((re
 });
 
 /// Pending users provider
+/// Uses ref.watch to automatically refresh when user state changes
+/// - SchoolRep: sees only pending users from their school
+/// - BEX: sees only pending users from their county
+/// - Superadmin: sees all pending users (or filtered by selected county)
 final pendingUsersProvider = FutureProvider<List<UserModel>>((ref) async {
-  final currentUser = ref.read(currentUserProvider);
+  // Watch currentUserProvider to auto-refresh when user changes (login/logout)
+  final currentUser = ref.watch(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
 
   final repository = ref.read(adminUserRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
   try {
+    // Determine filtering based on user role:
+    // - SchoolRep: filter by their school
+    // - BEX: filter by their county (city field)
+    // - Superadmin: uses selected county (null = all pending users)
+    String? schoolId;
+    String? countyId;
+
+    if (currentUser.role == UserRole.schoolRep) {
+      schoolId = currentUser.schoolId;
+    } else if (currentUser.role == UserRole.bex) {
+      countyId = currentUser.city; // BEX sees only their county's pending users
+    } else if (currentUser.role == UserRole.superadmin) {
+      countyId = effectiveCounty; // Superadmin uses selected county
+    }
+
     return await repository.getPendingUsers(
-      schoolId: currentUser.role == UserRole.schoolRep ? currentUser.schoolId : null,
+      schoolId: schoolId,
+      countyId: countyId,
     ).timeout(
       const Duration(seconds: 15),
       onTimeout: () => <UserModel>[],
@@ -102,8 +196,10 @@ final adminUserProvider = FutureProvider.family<UserModel?, String>((ref, userId
 });
 
 /// Filtered users provider
+/// Uses ref.watch to automatically refresh when user state changes
 final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>((ref, filter) async {
-  final currentUser = ref.read(currentUserProvider);
+  // Watch currentUserProvider to auto-refresh when user changes (login/logout)
+  final currentUser = ref.watch(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
@@ -116,8 +212,17 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
     if (filter.role != null) {
       users = await repository.getUsersByRole(filter.role!);
     } else if (filter.status == UserStatus.pending) {
+      // Apply same filtering as pendingUsersProvider
+      String? schoolId;
+      String? countyId;
+      if (currentUser.role == UserRole.schoolRep) {
+        schoolId = currentUser.schoolId;
+      } else if (currentUser.role == UserRole.bex) {
+        countyId = currentUser.city;
+      }
       users = await repository.getPendingUsers(
-        schoolId: currentUser.role == UserRole.schoolRep ? currentUser.schoolId : null,
+        schoolId: schoolId,
+        countyId: countyId,
       );
     } else {
       users = await repository.getAllUsers();
@@ -221,10 +326,38 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
   /// Change user role
   /// Note: Cannot promote users to superadmin - only one superadmin allowed
-  Future<bool> changeUserRole(String userId, UserRole newRole) async {
+  /// SECURITY: Cannot change Superadmin's role - only Superadmin can modify Superadmin
+  /// SECURITY: BEX cannot modify other BEX users - only Superadmin can
+  /// For department role, also pass the department type
+  Future<bool> changeUserRole(String userId, UserRole newRole, {DepartmentType? department}) async {
     debugPrint('AdminController.changeUserRole: canChangeRoles=$canChangeRoles');
     if (!canChangeRoles) {
       debugPrint('AdminController.changeUserRole: Permission denied');
+      return false;
+    }
+
+    final currentUser = _ref.read(currentUserProvider);
+    if (currentUser == null) {
+      debugPrint('AdminController.changeUserRole: No current user');
+      return false;
+    }
+
+    // SECURITY: Get target user to check their role
+    final targetUser = await _repository.getUserById(userId);
+    if (targetUser == null) {
+      debugPrint('AdminController.changeUserRole: Target user not found');
+      return false;
+    }
+
+    // SECURITY: Superadmin accounts can ONLY be modified by themselves (not by BEX)
+    if (targetUser.role == UserRole.superadmin && currentUser.role != UserRole.superadmin) {
+      debugPrint('AdminController.changeUserRole: SECURITY BLOCK - Cannot modify Superadmin account');
+      return false;
+    }
+
+    // SECURITY: BEX accounts can only be modified by Superadmin
+    if (targetUser.role == UserRole.bex && currentUser.role != UserRole.superadmin) {
+      debugPrint('AdminController.changeUserRole: SECURITY BLOCK - Only Superadmin can modify BEX accounts');
       return false;
     }
 
@@ -234,10 +367,16 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
       return false;
     }
 
+    // Department role requires a department type
+    if (newRole == UserRole.department && department == null) {
+      debugPrint('AdminController.changeUserRole: Department role requires department type');
+      return false;
+    }
+
     state = const AsyncValue.loading();
 
     debugPrint('AdminController.changeUserRole: Calling repository...');
-    final success = await _repository.changeUserRole(userId, newRole);
+    final success = await _repository.changeUserRole(userId, newRole, department: department);
     debugPrint('AdminController.changeUserRole: Repository returned $success');
 
     if (success) {
@@ -286,8 +425,28 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Suspend user
+  /// SECURITY: Cannot suspend Superadmin or BEX (only Superadmin can)
   Future<bool> suspendUser(String userId) async {
     if (!canManageUsers) return false;
+
+    final currentUser = _ref.read(currentUserProvider);
+    if (currentUser == null) return false;
+
+    // SECURITY: Get target user to check their role
+    final targetUser = await _repository.getUserById(userId);
+    if (targetUser == null) return false;
+
+    // SECURITY: Superadmin cannot be suspended by anyone except themselves
+    if (targetUser.role == UserRole.superadmin && currentUser.role != UserRole.superadmin) {
+      debugPrint('suspendUser: SECURITY BLOCK - Cannot suspend Superadmin');
+      return false;
+    }
+
+    // SECURITY: BEX can only be suspended by Superadmin
+    if (targetUser.role == UserRole.bex && currentUser.role != UserRole.superadmin) {
+      debugPrint('suspendUser: SECURITY BLOCK - Only Superadmin can suspend BEX');
+      return false;
+    }
 
     state = const AsyncValue.loading();
 
@@ -304,8 +463,28 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Reactivate suspended user
+  /// SECURITY: Cannot reactivate Superadmin or BEX (only Superadmin can)
   Future<bool> reactivateUser(String userId) async {
     if (!canManageUsers) return false;
+
+    final currentUser = _ref.read(currentUserProvider);
+    if (currentUser == null) return false;
+
+    // SECURITY: Get target user to check their role
+    final targetUser = await _repository.getUserById(userId);
+    if (targetUser == null) return false;
+
+    // SECURITY: Superadmin can only be reactivated by Superadmin
+    if (targetUser.role == UserRole.superadmin && currentUser.role != UserRole.superadmin) {
+      debugPrint('reactivateUser: SECURITY BLOCK - Cannot reactivate Superadmin');
+      return false;
+    }
+
+    // SECURITY: BEX can only be reactivated by Superadmin
+    if (targetUser.role == UserRole.bex && currentUser.role != UserRole.superadmin) {
+      debugPrint('reactivateUser: SECURITY BLOCK - Only Superadmin can reactivate BEX');
+      return false;
+    }
 
     state = const AsyncValue.loading();
 
@@ -334,6 +513,48 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
       _invalidateProviders(userId);
     } else {
       state = AsyncValue.error('Failed to update user', StackTrace.current);
+    }
+
+    return success;
+  }
+
+  /// Delete user permanently (Superadmin only)
+  /// This permanently removes the user account from the database
+  Future<bool> deleteUserPermanently(String userId) async {
+    final currentUser = _ref.read(currentUserProvider);
+    if (currentUser == null) return false;
+
+    // SECURITY: Only Superadmin can permanently delete users
+    if (currentUser.role != UserRole.superadmin) {
+      debugPrint('deleteUserPermanently: SECURITY BLOCK - Only Superadmin can delete users');
+      return false;
+    }
+
+    // SECURITY: Cannot delete yourself
+    if (currentUser.id == userId) {
+      debugPrint('deleteUserPermanently: SECURITY BLOCK - Cannot delete your own account');
+      return false;
+    }
+
+    // SECURITY: Get target user to check their role
+    final targetUser = await _repository.getUserById(userId);
+    if (targetUser == null) return false;
+
+    // SECURITY: Cannot delete other Superadmins
+    if (targetUser.role == UserRole.superadmin) {
+      debugPrint('deleteUserPermanently: SECURITY BLOCK - Cannot delete Superadmin accounts');
+      return false;
+    }
+
+    state = const AsyncValue.loading();
+
+    final success = await _repository.deleteUser(userId);
+
+    if (success) {
+      state = const AsyncValue.data(null);
+      _invalidateProviders(userId);
+    } else {
+      state = AsyncValue.error('Failed to delete user', StackTrace.current);
     }
 
     return success;
@@ -495,6 +716,69 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     return success;
   }
 
+  // ==================== DIRECT USER CREATION ====================
+
+  /// Create user directly in Firestore (without Firebase Auth)
+  /// This is used by admins to add users without getting logged out
+  /// The user will need to use "Forgot Password" to set their password
+  Future<String?> createUserDirectly({
+    required String email,
+    required String fullName,
+    required String schoolId,
+    required String? schoolName,
+    required String phoneNumber,
+    required String city,
+    required UserRole role,
+    String? className,
+  }) async {
+    if (!canManageUsers) return null;
+
+    state = const AsyncValue.loading();
+
+    try {
+      // Check if email already exists
+      final existingUser = await _repository.getUserByEmail(email);
+      if (existingUser != null) {
+        state = AsyncValue.error('Email already exists', StackTrace.current);
+        return null;
+      }
+
+      // Create user model
+      final userModel = UserModel(
+        id: '', // Will be set by Firestore auto-ID
+        email: email.toLowerCase(),
+        fullName: fullName,
+        phoneNumber: phoneNumber,
+        city: city,
+        role: role,
+        status: UserStatus.pending,
+        schoolId: schoolId,
+        schoolName: schoolName,
+        className: className,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // Create in Firestore with auto-generated ID
+      final userId = await _repository.createUserWithAutoId(userModel);
+
+      if (userId != null) {
+        state = const AsyncValue.data(null);
+        _ref.invalidate(allUsersProvider);
+        _ref.invalidate(pendingUsersProvider);
+        _ref.invalidate(filteredUsersProvider);
+        return userId;
+      } else {
+        state = AsyncValue.error('Failed to create user', StackTrace.current);
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error creating user directly: $e');
+      state = AsyncValue.error('Error: $e', StackTrace.current);
+      return null;
+    }
+  }
+
   // ==================== CSV IMPORT ====================
 
   /// Import users from CSV content
@@ -584,7 +868,7 @@ final canChangeRolesProvider = Provider<bool>((ref) {
   return user.role == UserRole.bex || user.role == UserRole.superadmin;
 });
 
-/// Users by school provider
+/// Users by school provider (one-time fetch)
 final usersBySchoolProvider = FutureProvider.family<List<UserModel>, String>((ref, schoolId) async {
   final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
@@ -600,6 +884,17 @@ final usersBySchoolProvider = FutureProvider.family<List<UserModel>, String>((re
   } catch (e) {
     return <UserModel>[];
   }
+});
+
+/// Users by school stream provider (real-time updates)
+final usersBySchoolStreamProvider = StreamProvider.family<List<UserModel>, String>((ref, schoolId) {
+  final currentUser = ref.read(currentUserProvider);
+  if (currentUser == null) {
+    return Stream.value(<UserModel>[]);
+  }
+
+  final repository = ref.read(adminUserRepositoryProvider);
+  return repository.getUsersBySchoolStream(schoolId);
 });
 
 // ==================== ACTIVITY PROVIDERS ====================
