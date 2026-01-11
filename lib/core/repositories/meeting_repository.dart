@@ -22,12 +22,13 @@ class MeetingRepository {
   Future<List<MeetingModel>> getMeetings({
     MeetingType? type,
     String? schoolId,
+    String? countyId,
     DepartmentType? department,
     bool upcomingOnly = false,
     int limit = 20,
   }) async {
     try {
-      debugPrint('getMeetings: type=$type, department=$department');
+      debugPrint('getMeetings: type=$type, department=$department, countyId=$countyId');
       // Simple query without orderBy to avoid index requirement
       final snapshot = await _collection.get();
       debugPrint('getMeetings: fetched ${snapshot.docs.length} total docs from Firebase');
@@ -36,11 +37,20 @@ class MeetingRepository {
       List<MeetingModel> meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
           .where((m) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
+              if (m.countyId != countyId) return false;
+            }
             if (type != null && m.type != type) {
               debugPrint('getMeetings: filtering out ${m.title} - type mismatch: ${m.type} != $type');
               return false;
             }
-            if (schoolId != null && m.type == MeetingType.school && m.schoolId != schoolId) return false;
+            // School filtering:
+            // - County-level meetings (m.schoolId == null) are visible to all in this county
+            // - School-specific meetings are only visible to users from that school
+            if (schoolId != null && m.schoolId != null && m.schoolId != schoolId) return false;
             if (department != null && m.department != department) {
               debugPrint('getMeetings: filtering out ${m.title} - department mismatch: ${m.department} != $department');
               return false;
@@ -68,6 +78,7 @@ class MeetingRepository {
   Stream<List<MeetingModel>> getMeetingsStream({
     MeetingType? type,
     String? schoolId,
+    String? countyId,
     bool upcomingOnly = false,
     int limit = 20,
   }) {
@@ -77,8 +88,17 @@ class MeetingRepository {
       List<MeetingModel> meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
           .where((m) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
+              if (m.countyId != countyId) return false;
+            }
             if (type != null && m.type != type) return false;
-            if (schoolId != null && m.type == MeetingType.school && m.schoolId != schoolId) return false;
+            // School filtering:
+            // - County-level meetings (m.schoolId == null) are visible to all in this county
+            // - School-specific meetings are only visible to users from that school
+            if (schoolId != null && m.schoolId != null && m.schoolId != schoolId) return false;
             if (upcomingOnly && m.dateTime.isBefore(now)) return false;
             return true;
           })
@@ -171,6 +191,7 @@ class MeetingRepository {
   /// Get upcoming meetings for home screen
   Future<List<MeetingModel>> getUpcomingMeetings({
     String? schoolId,
+    String? countyId,
     int limit = 5,
   }) async {
     try {
@@ -180,13 +201,23 @@ class MeetingRepository {
       final now = DateTime.now();
       List<MeetingModel> meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
-          .where((m) => m.dateTime.isAfter(now)) // Filter upcoming
+          .where((m) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
+              if (m.countyId != countyId) return false;
+            }
+            return m.dateTime.isAfter(now); // Filter upcoming
+          })
           .toList();
 
-      // Filter by school if needed (for school-specific meetings)
+      // School filtering:
+      // - County-level meetings (m.schoolId == null) are visible to all in this county
+      // - School-specific meetings are only visible to users from that school
       if (schoolId != null) {
         meetings = meetings.where((m) =>
-            m.type != MeetingType.school || m.schoolId == schoolId).toList();
+            m.schoolId == null || m.schoolId == schoolId).toList();
       }
 
       // Sort by dateTime ascending (soonest first)
@@ -200,8 +231,8 @@ class MeetingRepository {
   }
 
   /// Get next meeting
-  Future<MeetingModel?> getNextMeeting({String? schoolId}) async {
-    final meetings = await getUpcomingMeetings(schoolId: schoolId, limit: 1);
+  Future<MeetingModel?> getNextMeeting({String? schoolId, String? countyId}) async {
+    final meetings = await getUpcomingMeetings(schoolId: schoolId, countyId: countyId, limit: 1);
     return meetings.isNotEmpty ? meetings.first : null;
   }
 
@@ -248,8 +279,19 @@ class MeetingRepository {
     }
   }
 
+  /// Delete attendance record
+  Future<bool> deleteAttendance(String attendanceId) async {
+    try {
+      await _attendanceCollection.doc(attendanceId).delete();
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting attendance: $e');
+      return false;
+    }
+  }
+
   /// Get meetings for a specific date
-  Future<List<MeetingModel>> getMeetingsByDate(DateTime date) async {
+  Future<List<MeetingModel>> getMeetingsByDate(DateTime date, {String? schoolId, String? countyId}) async {
     try {
       final startOfDay = DateTime(date.year, date.month, date.day);
       final endOfDay = startOfDay.add(const Duration(days: 1));
@@ -257,12 +299,27 @@ class MeetingRepository {
       // Get all meetings and filter in memory to avoid composite index requirement
       final snapshot = await _collection.get();
 
-      final meetings = snapshot.docs
+      var meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
-          .where((m) =>
-              m.dateTime.isAfter(startOfDay.subtract(const Duration(seconds: 1))) &&
-              m.dateTime.isBefore(endOfDay))
+          .where((m) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
+              if (m.countyId != countyId) return false;
+            }
+            return m.dateTime.isAfter(startOfDay.subtract(const Duration(seconds: 1))) &&
+                m.dateTime.isBefore(endOfDay);
+          })
           .toList();
+
+      // School filtering:
+      // - County-level meetings (m.schoolId == null) are visible to all in this county
+      // - School-specific meetings are only visible to users from that school
+      if (schoolId != null) {
+        meetings = meetings.where((m) =>
+            m.schoolId == null || m.schoolId == schoolId).toList();
+      }
 
       // Sort by dateTime
       meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));

@@ -165,14 +165,14 @@ class UserRepository {
     }
   }
 
-  /// Get users by school
+  /// Get users by school (all users, not just active)
   Future<List<UserModel>> getUsersBySchool(String schoolId) async {
     try {
       // Get all users and filter in memory to avoid composite index requirement
       final snapshot = await _usersCollection.get();
       final users = snapshot.docs
           .map((doc) => UserModel.fromFirestore(doc))
-          .where((user) => user.schoolId == schoolId && user.status == UserStatus.active)
+          .where((user) => user.schoolId == schoolId)
           .toList();
       users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
       return users;
@@ -180,6 +180,20 @@ class UserRepository {
       debugPrint('Error getting users by school: $e');
       return [];
     }
+  }
+
+  /// Get users by school as real-time stream
+  Stream<List<UserModel>> getUsersBySchoolStream(String schoolId) {
+    return _usersCollection
+        .where('schoolId', isEqualTo: schoolId)
+        .snapshots()
+        .map((snapshot) {
+      final users = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .toList();
+      users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
+      return users;
+    });
   }
 
   /// Get users by role
@@ -225,7 +239,10 @@ class UserRepository {
   }
 
   /// Get pending users (for admin approval)
-  Future<List<UserModel>> getPendingUsers({String? schoolId}) async {
+  /// - SchoolRep: sees only pending users from their school
+  /// - BEX: sees only pending users from their county
+  /// - Superadmin: sees all pending users
+  Future<List<UserModel>> getPendingUsers({String? schoolId, String? countyId}) async {
     try {
       // Get all users and filter in memory to avoid composite index requirement
       final snapshot = await _usersCollection.get();
@@ -234,6 +251,12 @@ class UserRepository {
           .where((user) => user.status == UserStatus.pending)
           .toList();
 
+      // Filter by county first (for BEX users)
+      if (countyId != null && countyId.isNotEmpty) {
+        users = users.where((user) => user.city == countyId).toList();
+      }
+
+      // Then filter by school (for SchoolRep users)
       if (schoolId != null) {
         users = users.where((user) => user.schoolId == schoolId).toList();
       }
@@ -281,8 +304,8 @@ class UserRepository {
     }
   }
 
-  /// Search users by name
-  Future<List<UserModel>> searchUsers(String query) async {
+  /// Search users by name (optionally filtered by county)
+  Future<List<UserModel>> searchUsers(String query, {String? countyId}) async {
     try {
       // Get all users and search in memory to avoid composite index requirement
       final queryLower = query.toLowerCase();
@@ -290,14 +313,38 @@ class UserRepository {
       final users = snapshot.docs
           .map((doc) => UserModel.fromFirestore(doc))
           .where((user) => user.status == UserStatus.active)
-          .where((user) => user.fullName.toLowerCase().contains(queryLower) ||
-              user.email.toLowerCase().contains(queryLower))
+          .where((user) {
+            // Filter by county if specified
+            if (countyId != null && countyId.isNotEmpty) {
+              if (user.city != countyId) return false;
+            }
+            return user.fullName.toLowerCase().contains(queryLower) ||
+                user.email.toLowerCase().contains(queryLower);
+          })
           .take(20)
           .toList();
       users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
       return users;
     } catch (e) {
       debugPrint('Error searching users: $e');
+      return [];
+    }
+  }
+
+  /// Get active users from a specific county (for adding meeting participants)
+  Future<List<UserModel>> getUsersByCounty(String countyId, {int limit = 50}) async {
+    try {
+      final snapshot = await _usersCollection.get();
+      final users = snapshot.docs
+          .map((doc) => UserModel.fromFirestore(doc))
+          .where((user) => user.status == UserStatus.active)
+          .where((user) => user.city == countyId)
+          .take(limit)
+          .toList();
+      users.sort((a, b) => a.fullName.toLowerCase().compareTo(b.fullName.toLowerCase()));
+      return users;
+    } catch (e) {
+      debugPrint('Error getting users by county: $e');
       return [];
     }
   }

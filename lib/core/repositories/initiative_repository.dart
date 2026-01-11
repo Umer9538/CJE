@@ -18,10 +18,14 @@ class InitiativeRepository {
   CollectionReference<Map<String, dynamic>> get _commentsCollection =>
       _firestore.collection('initiative_comments');
 
+  CollectionReference<Map<String, dynamic>> get _votesCollection =>
+      _firestore.collection('initiative_votes');
+
   /// Get all initiatives
   Future<List<InitiativeModel>> getInitiatives({
     InitiativeStatus? status,
     String? schoolId,
+    String? countyId,
     String? authorId,
     int limit = 20,
   }) async {
@@ -32,8 +36,17 @@ class InitiativeRepository {
       List<InitiativeModel> initiatives = snapshot.docs
           .map((doc) => InitiativeModel.fromFirestore(doc))
           .where((i) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && i.countyId != null && i.countyId!.isNotEmpty) {
+              if (i.countyId != countyId) return false;
+            }
             if (status != null && i.status != status) return false;
-            if (schoolId != null && i.schoolId != schoolId) return false;
+            // School filtering:
+            // - County-level initiatives (i.schoolId == null) are visible to all in this county
+            // - School-specific initiatives are only visible to users from that school
+            if (schoolId != null && i.schoolId != null && i.schoolId != schoolId) return false;
             if (authorId != null && i.authorId != authorId) return false;
             return true;
           })
@@ -53,6 +66,7 @@ class InitiativeRepository {
   Stream<List<InitiativeModel>> getInitiativesStream({
     InitiativeStatus? status,
     String? schoolId,
+    String? countyId,
     int limit = 20,
   }) {
     // Simple stream without composite queries
@@ -60,8 +74,17 @@ class InitiativeRepository {
       List<InitiativeModel> initiatives = snapshot.docs
           .map((doc) => InitiativeModel.fromFirestore(doc))
           .where((i) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && i.countyId != null && i.countyId!.isNotEmpty) {
+              if (i.countyId != countyId) return false;
+            }
             if (status != null && i.status != status) return false;
-            if (schoolId != null && i.schoolId != schoolId) return false;
+            // School filtering:
+            // - County-level initiatives (i.schoolId == null) are visible to all in this county
+            // - School-specific initiatives are only visible to users from that school
+            if (schoolId != null && i.schoolId != null && i.schoolId != schoolId) return false;
             return true;
           })
           .toList();
@@ -167,6 +190,28 @@ class InitiativeRepository {
     }
   }
 
+  /// Update initiative voting settings (status and minimum voting role)
+  Future<bool> updateInitiativeVotingSettings(
+    String id,
+    InitiativeStatus status,
+    UserRole minimumVotingRole,
+  ) async {
+    try {
+      Map<String, dynamic> updates = {
+        'status': status.toFirestore(),
+        'minimumVotingRole': minimumVotingRole.toFirestore(),
+        'votingStartedAt': Timestamp.now(),
+        'updatedAt': Timestamp.now(),
+      };
+
+      await _collection.doc(id).update(updates);
+      return true;
+    } catch (e) {
+      debugPrint('Error updating voting settings: $e');
+      return false;
+    }
+  }
+
   /// Support/unsupport initiative
   Future<bool> toggleSupport(String initiativeId, String userId) async {
     try {
@@ -209,11 +254,24 @@ class InitiativeRepository {
     }
   }
 
-  /// Vote on initiative
-  Future<bool> vote(String initiativeId, String vote) async {
+  /// Vote on initiative (with duplicate prevention and voter tracking)
+  Future<bool> vote({
+    required String initiativeId,
+    required String voteType,
+    required String voterId,
+    required String voterName,
+    String? voterSchoolId,
+    String? voterSchoolName,
+  }) async {
     try {
+      // Check if user already voted
+      final existingVote = await _votesCollection
+          .where('initiativeId', isEqualTo: initiativeId)
+          .where('voterId', isEqualTo: voterId)
+          .get();
+
       String field;
-      switch (vote) {
+      switch (voteType) {
         case 'for':
           field = 'votesFor';
           break;
@@ -227,10 +285,68 @@ class InitiativeRepository {
           return false;
       }
 
-      await _collection.doc(initiativeId).update({
-        field: FieldValue.increment(1),
-        'updatedAt': Timestamp.now(),
-      });
+      if (existingVote.docs.isNotEmpty) {
+        // User already voted - update their vote
+        final oldVote = existingVote.docs.first;
+        final oldVoteType = oldVote.data()['voteType'] as String;
+
+        if (oldVoteType == voteType) {
+          // Same vote, no change needed
+          return true;
+        }
+
+        // Decrement old vote count
+        String oldField;
+        switch (oldVoteType) {
+          case 'for':
+            oldField = 'votesFor';
+            break;
+          case 'against':
+            oldField = 'votesAgainst';
+            break;
+          case 'abstain':
+            oldField = 'votesAbstain';
+            break;
+          default:
+            oldField = '';
+        }
+
+        // Update vote record
+        await oldVote.reference.update({
+          'voteType': voteType,
+          'createdAt': Timestamp.now(),
+        });
+
+        // Update initiative counts (decrement old, increment new)
+        if (oldField.isNotEmpty) {
+          await _collection.doc(initiativeId).update({
+            oldField: FieldValue.increment(-1),
+            field: FieldValue.increment(1),
+            'updatedAt': Timestamp.now(),
+          });
+        }
+      } else {
+        // New vote - create vote record
+        final vote = InitiativeVote(
+          id: '',
+          initiativeId: initiativeId,
+          voterId: voterId,
+          voterName: voterName,
+          voterSchoolId: voterSchoolId,
+          voterSchoolName: voterSchoolName,
+          voteType: voteType,
+          createdAt: DateTime.now(),
+        );
+
+        await _votesCollection.add(vote.toFirestore());
+
+        // Increment vote count
+        await _collection.doc(initiativeId).update({
+          field: FieldValue.increment(1),
+          'updatedAt': Timestamp.now(),
+        });
+      }
+
       return true;
     } catch (e) {
       debugPrint('Error voting: $e');
@@ -238,9 +354,60 @@ class InitiativeRepository {
     }
   }
 
+  /// Get all votes for an initiative (for admin visibility)
+  Future<List<InitiativeVote>> getVotes(String initiativeId) async {
+    try {
+      final snapshot = await _votesCollection
+          .where('initiativeId', isEqualTo: initiativeId)
+          .get();
+
+      final votes = snapshot.docs
+          .map((doc) => InitiativeVote.fromFirestore(doc))
+          .toList();
+
+      // Sort by createdAt descending
+      votes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return votes;
+    } catch (e) {
+      debugPrint('Error getting votes: $e');
+      return [];
+    }
+  }
+
+  /// Get votes stream for an initiative
+  Stream<List<InitiativeVote>> getVotesStream(String initiativeId) {
+    return _votesCollection
+        .where('initiativeId', isEqualTo: initiativeId)
+        .snapshots()
+        .map((snapshot) {
+      final votes = snapshot.docs
+          .map((doc) => InitiativeVote.fromFirestore(doc))
+          .toList();
+      votes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return votes;
+    });
+  }
+
+  /// Check if user has voted on initiative
+  Future<String?> getUserVote(String initiativeId, String userId) async {
+    try {
+      final snapshot = await _votesCollection
+          .where('initiativeId', isEqualTo: initiativeId)
+          .where('voterId', isEqualTo: userId)
+          .get();
+
+      if (snapshot.docs.isEmpty) return null;
+      return snapshot.docs.first.data()['voteType'] as String?;
+    } catch (e) {
+      debugPrint('Error getting user vote: $e');
+      return null;
+    }
+  }
+
   /// Get recent initiatives for home screen
   Future<List<InitiativeModel>> getRecentInitiatives({
     String? schoolId,
+    String? countyId,
     int limit = 5,
   }) async {
     try {
@@ -256,7 +423,20 @@ class InitiativeRepository {
 
       List<InitiativeModel> initiatives = snapshot.docs
           .map((doc) => InitiativeModel.fromFirestore(doc))
-          .where((initiative) => validStatuses.contains(initiative.status))
+          .where((initiative) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && initiative.countyId != null && initiative.countyId!.isNotEmpty) {
+              if (initiative.countyId != countyId) return false;
+            }
+            if (!validStatuses.contains(initiative.status)) return false;
+            // School filtering:
+            // - County-level initiatives (schoolId == null) are visible to all in this county
+            // - School-specific initiatives are only visible to users from that school
+            if (schoolId != null && initiative.schoolId != null && initiative.schoolId != schoolId) return false;
+            return true;
+          })
           .toList();
 
       // Sort by createdAt descending
@@ -300,18 +480,23 @@ class InitiativeRepository {
   }
 
   /// Get comments stream
-  Stream<List<InitiativeComment>> getCommentsStream(String initiativeId) {
-    // Simple stream without composite queries
-    return _commentsCollection.snapshots().map((snapshot) {
-      final comments = snapshot.docs
-          .map((doc) => InitiativeComment.fromFirestore(doc))
-          .where((c) => c.initiativeId == initiativeId)
-          .toList();
+  Stream<List<InitiativeComment>> getCommentsStream(String initiativeId) async* {
+    try {
+      // Simple stream without composite queries
+      await for (final snapshot in _commentsCollection.snapshots()) {
+        final comments = snapshot.docs
+            .map((doc) => InitiativeComment.fromFirestore(doc))
+            .where((c) => c.initiativeId == initiativeId)
+            .toList();
 
-      // Sort by createdAt ascending
-      comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-      return comments;
-    });
+        // Sort by createdAt ascending
+        comments.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        yield comments;
+      }
+    } catch (e) {
+      debugPrint('Error in comments stream: $e');
+      yield <InitiativeComment>[];
+    }
   }
 
   /// Delete comment

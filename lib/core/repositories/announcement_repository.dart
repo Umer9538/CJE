@@ -19,6 +19,7 @@ class AnnouncementRepository {
   Future<List<AnnouncementModel>> getAnnouncements({
     AnnouncementType? type,
     String? schoolId,
+    String? countyId,
     int limit = 20,
   }) async {
     try {
@@ -29,6 +30,12 @@ class AnnouncementRepository {
           .map((doc) => AnnouncementModel.fromFirestore(doc))
           .where((a) => a.isPublished)
           .where((a) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && a.countyId != null && a.countyId!.isNotEmpty) {
+              if (a.countyId != countyId) return false;
+            }
             if (type != null && a.type != type) return false;
             if (type == AnnouncementType.school && schoolId != null) {
               return a.schoolId == schoolId;
@@ -51,6 +58,7 @@ class AnnouncementRepository {
   Stream<List<AnnouncementModel>> getAnnouncementsStream({
     AnnouncementType? type,
     String? schoolId,
+    String? countyId,
     int limit = 20,
   }) {
     // Simple stream without composite queries
@@ -59,6 +67,12 @@ class AnnouncementRepository {
           .map((doc) => AnnouncementModel.fromFirestore(doc))
           .where((a) => a.isPublished)
           .where((a) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && a.countyId != null && a.countyId!.isNotEmpty) {
+              if (a.countyId != countyId) return false;
+            }
             if (type != null && a.type != type) return false;
             if (type == AnnouncementType.school && schoolId != null) {
               return a.schoolId == schoolId;
@@ -180,6 +194,7 @@ class AnnouncementRepository {
   /// Get recent announcements for home screen
   Future<List<AnnouncementModel>> getRecentAnnouncements({
     String? schoolId,
+    String? countyId,
     int limit = 5,
   }) async {
     try {
@@ -190,6 +205,12 @@ class AnnouncementRepository {
           .map((doc) => AnnouncementModel.fromFirestore(doc))
           .where((announcement) => announcement.isPublished)
           .where((announcement) {
+            // County filtering:
+            // - Content with NULL countyId is visible to everyone (legacy/global content)
+            // - Content with countyId is only visible to users from that county
+            if (countyId != null && countyId.isNotEmpty && announcement.countyId != null && announcement.countyId!.isNotEmpty) {
+              if (announcement.countyId != countyId) return false;
+            }
             // Include county announcements or school announcements matching user's school
             if (announcement.type == AnnouncementType.county) return true;
             if (announcement.type == AnnouncementType.school && schoolId != null) {
