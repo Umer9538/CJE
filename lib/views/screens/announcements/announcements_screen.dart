@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../../routes/route_names.dart';
 import 'announcement_detail_screen.dart';
 import 'create_announcement_screen.dart';
 
@@ -90,7 +92,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
       ),
       floatingActionButton: canCreate
           ? Padding(
-              padding: const EdgeInsets.only(bottom: 80),
+              padding: const EdgeInsets.only(bottom: 100),
               child: FloatingActionButton.extended(
                 heroTag: 'fab_announcements',
                 onPressed: () => _navigateToCreate(context),
@@ -105,48 +107,82 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    final currentUser = ref.watch(currentUserProvider);
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
+          // Back button
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(backRoute);
+              }
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.shadowColor,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(Icons.arrow_back_rounded, color: context.iconColor, size: 22),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
           Text(
             l10n.translate('announcements'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.goldColor,
             ),
           ),
           const Spacer(),
           _buildIconButton(
+            context: context,
             icon: Icons.search_rounded,
-            onTap: () {
-              // TODO: Implement search
-            },
+            onTap: () => context.push(RouteNames.search),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildIconButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildIconButton({required BuildContext context, required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 46,
         height: 46,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Icon(icon, color: AppColors.navy, size: 22),
+        child: Icon(icon, color: context.iconColor, size: 22),
       ),
     );
   }
@@ -155,11 +191,11 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -167,11 +203,11 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
       ),
       child: TabBar(
         controller: _tabController,
-        labelColor: AppColors.navy,
-        unselectedLabelColor: Colors.grey[400],
+        labelColor: context.textPrimary,
+        unselectedLabelColor: context.textSecondary,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: AppColors.gold.withValues(alpha: 0.15),
+          color: context.goldColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
         ),
         dividerColor: Colors.transparent,
@@ -215,30 +251,30 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: 0.1),
+              color: context.goldColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.campaign_outlined,
               size: 48,
-              color: AppColors.gold,
+              color: context.goldColor,
             ),
           ),
           const SizedBox(height: 24),
           Text(
             l10n.translate('no_announcements'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Check back later for updates',
+            l10n.translate('check_back_later'),
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -251,19 +287,19 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          Icon(Icons.error_outline, size: 64, color: context.errorColor),
           const SizedBox(height: 16),
           Text(
-            'Failed to load announcements',
-            style: TextStyle(color: Colors.grey[600]),
+            l10n.translate('failed_to_load_announcements'),
+            style: TextStyle(color: context.textSecondary),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () => ref.invalidate(announcementsProvider),
             icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+            label: Text(l10n.translate('retry')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.gold,
+              backgroundColor: context.goldColor,
               foregroundColor: AppColors.navy,
             ),
           ),
@@ -312,11 +348,11 @@ class _AnnouncementCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -336,9 +372,9 @@ class _AnnouncementCard extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     height: 160,
-                    color: AppColors.navy.withValues(alpha: 0.1),
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported_outlined, size: 40, color: AppColors.navy),
+                    color: context.textSecondary.withValues(alpha: 0.1),
+                    child: Center(
+                      child: Icon(Icons.image_not_supported_outlined, size: 40, color: context.textSecondary),
                     ),
                   ),
                 ),
@@ -352,46 +388,50 @@ class _AnnouncementCard extends StatelessWidget {
                   // Type badge and date
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isCounty
-                              ? AppColors.gold.withValues(alpha: 0.15)
-                              : AppColors.navy.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          isCounty ? l10n.translate('county') : announcement.schoolName ?? l10n.translate('school'),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: isCounty ? AppColors.gold : AppColors.navy,
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isCounty
+                                ? context.goldColor.withValues(alpha: 0.15)
+                                : context.textSecondary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isCounty ? l10n.translate('county') : announcement.schoolName ?? l10n.translate('school'),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isCounty ? context.goldColor : context.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),
                       if (announcement.isPinned) ...[
                         const SizedBox(width: 8),
-                        Icon(Icons.push_pin_rounded, size: 14, color: Colors.grey[400]),
+                        Icon(Icons.push_pin_rounded, size: 14, color: context.textSecondary),
                       ],
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       Text(
                         dateFormat.format(announcement.publishedAt ?? announcement.createdAt),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[400],
+                          color: context.textSecondary,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
 
-                  // Title
+                  // Title (with translation support)
                   Text(
-                    announcement.title,
-                    style: const TextStyle(
+                    announcement.getTitle(Localizations.localeOf(context).languageCode),
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                       height: 1.3,
                     ),
                     maxLines: 2,
@@ -399,12 +439,12 @@ class _AnnouncementCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
 
-                  // Preview text
+                  // Preview text (with translation support)
                   Text(
-                    announcement.previewText,
+                    _getPreviewText(announcement, Localizations.localeOf(context).languageCode),
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.grey[600],
+                      color: context.textSecondary,
                       height: 1.5,
                     ),
                     maxLines: 2,
@@ -417,7 +457,7 @@ class _AnnouncementCard extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 14,
-                        backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+                        backgroundColor: context.goldColor.withValues(alpha: 0.1),
                         backgroundImage: announcement.authorPhotoUrl != null
                             ? NetworkImage(announcement.authorPhotoUrl!)
                             : null,
@@ -426,10 +466,10 @@ class _AnnouncementCard extends StatelessWidget {
                                 announcement.authorName.isNotEmpty
                                     ? announcement.authorName[0].toUpperCase()
                                     : '?',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.navy,
+                                  color: context.goldColor,
                                 ),
                               )
                             : null,
@@ -441,18 +481,18 @@ class _AnnouncementCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: Colors.grey[600],
+                            color: context.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      Icon(Icons.visibility_outlined, size: 14, color: Colors.grey[400]),
+                      Icon(Icons.visibility_outlined, size: 14, color: context.textSecondary),
                       const SizedBox(width: 4),
                       Text(
                         '${announcement.viewCount}',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[400],
+                          color: context.textSecondary,
                         ),
                       ),
                     ],
@@ -464,5 +504,15 @@ class _AnnouncementCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Get preview text in the specified language
+  String _getPreviewText(AnnouncementModel announcement, String languageCode) {
+    final summary = announcement.getSummary(languageCode);
+    if (summary != null && summary.isNotEmpty) return summary;
+
+    final content = announcement.getContent(languageCode);
+    if (content.length <= 150) return content;
+    return '${content.substring(0, 150)}...';
   }
 }
