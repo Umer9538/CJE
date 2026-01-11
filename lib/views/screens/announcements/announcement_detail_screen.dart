@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
@@ -8,7 +9,7 @@ import '../../../models/models.dart';
 import 'edit_announcement_screen.dart';
 
 /// Detail screen for viewing a single announcement
-class AnnouncementDetailScreen extends ConsumerWidget {
+class AnnouncementDetailScreen extends ConsumerStatefulWidget {
   final AnnouncementModel announcement;
 
   const AnnouncementDetailScreen({
@@ -17,15 +18,36 @@ class AnnouncementDetailScreen extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AnnouncementDetailScreen> createState() => _AnnouncementDetailScreenState();
+}
+
+class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScreen> {
+  bool _viewTracked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Track view count when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(announcementControllerProvider.notifier).trackView(widget.announcement.id);
+      if (mounted) {
+        setState(() {
+          _viewTracked = true;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
     final dateFormat = DateFormat('MMMM d, yyyy • h:mm a');
-    final isCounty = announcement.type == AnnouncementType.county;
+    final isCounty = widget.announcement.type == AnnouncementType.county;
 
     // Check if user can edit/delete
     final canEdit = user != null &&
-        (user.id == announcement.authorId ||
+        (user.id == widget.announcement.authorId ||
             user.role == UserRole.bex ||
             user.role == UserRole.superadmin);
 
@@ -35,7 +57,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
         slivers: [
           // App Bar with image
           SliverAppBar(
-            expandedHeight: announcement.imageUrl != null ? 300 : 120,
+            expandedHeight: widget.announcement.imageUrl != null ? 300 : 120,
             pinned: true,
             backgroundColor: AppColors.navy,
             leading: IconButton(
@@ -64,7 +86,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                     if (value == 'edit') {
                       _handleEdit(context);
                     } else if (value == 'delete') {
-                      _handleDelete(context, ref);
+                      _handleDelete(context);
                     }
                   },
                   itemBuilder: (context) => [
@@ -95,12 +117,12 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                 ),
             ],
             flexibleSpace: FlexibleSpaceBar(
-              background: announcement.imageUrl != null
+              background: widget.announcement.imageUrl != null
                   ? Stack(
                       fit: StackFit.expand,
                       children: [
                         Image.network(
-                          announcement.imageUrl!,
+                          widget.announcement.imageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => Container(
                             color: AppColors.navy,
@@ -146,9 +168,9 @@ class AnnouncementDetailScreen extends ConsumerWidget {
             child: Transform.translate(
               offset: const Offset(0, -20),
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF8F9FE),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                decoration: BoxDecoration(
+                  color: context.scaffoldBackgroundColor,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -158,27 +180,31 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                       // Type badge and pinned indicator
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isCounty
-                                  ? AppColors.gold.withValues(alpha: 0.15)
-                                  : AppColors.navy.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              isCounty ? 'CJE' : announcement.schoolName ?? 'School',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: isCounty ? AppColors.gold : AppColors.navy,
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isCounty
+                                    ? context.goldColor.withValues(alpha: 0.15)
+                                    : context.textSecondary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                isCounty ? 'CJE' : widget.announcement.schoolName ?? 'School',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isCounty ? context.goldColor : context.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ),
-                          if (announcement.isPinned) ...[
+                          if (widget.announcement.isPinned) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -214,13 +240,13 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 16),
 
-                      // Title
+                      // Title (with translation support)
                       Text(
-                        announcement.title,
-                        style: const TextStyle(
+                        widget.announcement.getTitle(Localizations.localeOf(context).languageCode),
+                        style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                           height: 1.3,
                         ),
                       ),
@@ -230,11 +256,11 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.cardColor,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: context.shadowColor,
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -244,19 +270,19 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                           children: [
                             CircleAvatar(
                               radius: 24,
-                              backgroundColor: AppColors.navy.withValues(alpha: 0.1),
-                              backgroundImage: announcement.authorPhotoUrl != null
-                                  ? NetworkImage(announcement.authorPhotoUrl!)
+                              backgroundColor: context.goldColor.withValues(alpha: 0.1),
+                              backgroundImage: widget.announcement.authorPhotoUrl != null
+                                  ? NetworkImage(widget.announcement.authorPhotoUrl!)
                                   : null,
-                              child: announcement.authorPhotoUrl == null
+                              child: widget.announcement.authorPhotoUrl == null
                                   ? Text(
-                                      announcement.authorName.isNotEmpty
-                                          ? announcement.authorName[0].toUpperCase()
+                                      widget.announcement.authorName.isNotEmpty
+                                          ? widget.announcement.authorName[0].toUpperCase()
                                           : '?',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: AppColors.navy,
+                                        color: context.goldColor,
                                       ),
                                     )
                                   : null,
@@ -267,21 +293,21 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    announcement.authorName,
-                                    style: const TextStyle(
+                                    widget.announcement.authorName,
+                                    style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.navy,
+                                      color: context.textPrimary,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     dateFormat.format(
-                                      announcement.publishedAt ?? announcement.createdAt,
+                                      widget.announcement.publishedAt ?? widget.announcement.createdAt,
                                     ),
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: Colors.grey[500],
+                                      color: context.textSecondary,
                                     ),
                                   ),
                                 ],
@@ -292,15 +318,15 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                                 Icon(
                                   Icons.visibility_outlined,
                                   size: 18,
-                                  color: Colors.grey[400],
+                                  color: context.textSecondary,
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${announcement.viewCount}',
+                                  '${widget.announcement.viewCount + (_viewTracked ? 1 : 0)}',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
-                                    color: Colors.grey[500],
+                                    color: context.textSecondary,
                                   ),
                                 ),
                               ],
@@ -310,45 +336,45 @@ class AnnouncementDetailScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 24),
 
-                      // Content
+                      // Content (with translation support)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.cardColor,
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
+                              color: context.shadowColor,
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
                         child: Text(
-                          announcement.content,
+                          widget.announcement.getContent(Localizations.localeOf(context).languageCode),
                           style: TextStyle(
                             fontSize: 16,
-                            color: Colors.grey[800],
+                            color: context.textPrimary,
                             height: 1.7,
                           ),
                         ),
                       ),
 
                       // Attachments if any
-                      if (announcement.attachmentUrls.isNotEmpty) ...[
+                      if (widget.announcement.attachmentUrls.isNotEmpty) ...[
                         const SizedBox(height: 24),
                         Text(
                           l10n.translate('attachments'),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ...announcement.attachmentUrls.map(
-                          (url) => _buildAttachmentItem(url),
+                        ...widget.announcement.attachmentUrls.map(
+                          (url) => _buildAttachmentItem(context, url),
                         ),
                       ],
 
@@ -364,64 +390,122 @@ class AnnouncementDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAttachmentItem(String url) {
-    final fileName = url.split('/').last.split('?').first;
+  Widget _buildAttachmentItem(BuildContext context, String url) {
+    // Decode URL-encoded filename
+    final rawFileName = url.split('/').last.split('?').first;
+    final fileName = Uri.decodeComponent(rawFileName);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+    return GestureDetector(
+      onTap: () => _openAttachment(context, url),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.textSecondary.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.goldColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.attach_file_rounded,
+                color: context.goldColor,
+                size: 20,
+              ),
             ),
-            child: const Icon(
-              Icons.attach_file_rounded,
-              color: AppColors.navy,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                fileName,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: context.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Icon(
+              Icons.download_rounded,
+              color: context.goldColor,
               size: 20,
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              fileName,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: AppColors.navy,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Icon(
-            Icons.download_rounded,
-            color: Colors.grey[400],
-            size: 20,
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _openAttachment(BuildContext context, String url) async {
+    final l10n = AppLocalizations.of(context);
+    final uri = Uri.parse(url);
+
+    try {
+      // Try to launch the URL directly - Firebase Storage URLs work in browser
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        // Fallback: try with inAppWebView mode
+        final launchedInApp = await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+        );
+        if (!launchedInApp && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.translate('cannot_open_file')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // If launching fails, try opening in app web view as fallback
+      try {
+        final launchedInApp = await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+        );
+        if (!launchedInApp && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.translate('cannot_open_file')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e2) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.translate('error_opening_file')),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _handleEdit(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => EditAnnouncementScreen(announcement: announcement),
+        builder: (_) => EditAnnouncementScreen(announcement: widget.announcement),
       ),
     );
   }
 
-  void _handleDelete(BuildContext context, WidgetRef ref) {
+  void _handleDelete(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
     showDialog(
@@ -438,7 +522,7 @@ class AnnouncementDetailScreen extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               final controller = ref.read(announcementControllerProvider.notifier);
-              final success = await controller.deleteAnnouncement(announcement.id);
+              final success = await controller.deleteAnnouncement(widget.announcement.id);
               if (success && context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
