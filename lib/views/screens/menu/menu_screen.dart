@@ -512,6 +512,65 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
               ],
             ),
           ),
+          const SizedBox(height: 24),
+          // Logout button
+          _buildLogoutButton(context, l10n, ref),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton(BuildContext context, AppLocalizations l10n, WidgetRef ref) {
+    return GestureDetector(
+      onTap: () => _showLogoutConfirmation(context, l10n, ref),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.logout_rounded, color: Colors.red[400], size: 20),
+            const SizedBox(width: 10),
+            Text(
+              l10n.translate('logout'),
+              style: TextStyle(
+                color: Colors.red[400],
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutConfirmation(BuildContext context, AppLocalizations l10n, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.translate('logout')),
+        content: Text(l10n.translate('logout_confirmation')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.translate('cancel')),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(authControllerProvider.notifier).signOut();
+            },
+            child: Text(
+              l10n.translate('logout'),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
         ],
       ),
     );
