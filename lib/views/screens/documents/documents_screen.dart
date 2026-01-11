@@ -35,16 +35,16 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
             _selectedCategory = null; // All
             break;
           case 1:
-            _selectedCategory = DocumentCategory.statutElevului;
-            break;
-          case 2:
             _selectedCategory = DocumentCategory.regulamente;
             break;
+          case 2:
+            _selectedCategory = DocumentCategory.ghiduri;
+            break;
           case 3:
-            _selectedCategory = DocumentCategory.metodologii;
+            _selectedCategory = DocumentCategory.utile;
             break;
           case 4:
-            _selectedCategory = DocumentCategory.formulare;
+            _selectedCategory = DocumentCategory.rapoarte;
             break;
         }
       });
@@ -62,14 +62,21 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     final l10n = AppLocalizations.of(context);
     final currentUser = ref.watch(currentUserProvider);
 
+    // Check if user is admin (can see non-public documents)
+    final isAdmin = currentUser?.role == UserRole.bex ||
+                    currentUser?.role == UserRole.superadmin ||
+                    currentUser?.role == UserRole.schoolRep;
+
     // Filter documents by user's school
     // - County-level documents (schoolId == null) are visible to all
     // - School-specific documents are only visible to users of that school
+    // - Admins/SchoolRep can see all documents (public and non-public)
     final documentsAsync = ref.watch(
       documentsProvider(DocumentFilter(
         category: _selectedCategory,
         schoolId: currentUser?.schoolId,
         includeCountyDocs: true, // Always show county-level documents
+        publicOnly: !isAdmin, // Admins see all, others only public
       )),
     );
 
@@ -90,9 +97,38 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
             // Content
             Expanded(
               child: documentsAsync.when(
-                data: (documents) => documents.isEmpty
-                    ? _buildEmptyState(context, l10n)
-                    : _buildDocumentsList(documents),
+                data: (documents) => RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(documentsProvider);
+                  },
+                  color: AppColors.gold,
+                  child: documents.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            if (canUpload) _buildUploadCard(context, l10n),
+                            _buildEmptyState(context, l10n),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          itemCount: documents.length + (canUpload ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (canUpload && index == 0) {
+                              return _buildUploadCard(context, l10n);
+                            }
+                            final docIndex = canUpload ? index - 1 : index;
+                            final document = documents[docIndex];
+                            return _DocumentCard(
+                              document: document,
+                              onTap: () => _openDocument(document),
+                              onDownload: () => _downloadDocument(document),
+                              onDelete: () => _deleteDocument(document),
+                            );
+                          },
+                        ),
+                ),
                 loading: () => const Center(
                   child: CircularProgressIndicator(color: AppColors.gold),
                 ),
@@ -119,28 +155,42 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    final currentUser = ref.watch(currentUserProvider);
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          // Back button - navigate to home
+          // Back button - navigate to home or BEX dashboard
           GestureDetector(
-            onTap: () => context.go(RouteNames.home),
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(backRoute);
+              }
+            },
             child: Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.shadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Icon(Icons.arrow_back_rounded, color: context.textPrimary, size: 22),
+              child: Center(
+                child: Icon(Icons.arrow_back_rounded, color: context.iconColor, size: 22),
+              ),
             ),
           ),
           const SizedBox(width: 16),
@@ -149,14 +199,15 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: context.textPrimary,
+              color: context.goldColor,
             ),
           ),
           const Spacer(),
           _buildIconButton(
+            context,
             icon: Icons.search_rounded,
             onTap: () {
-              // TODO: Implement search
+              context.push(RouteNames.search);
             },
           ),
         ],
@@ -164,7 +215,8 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     );
   }
 
-  Widget _buildIconButton({
+  Widget _buildIconButton(
+    BuildContext context, {
     required IconData icon,
     required VoidCallback onTap,
   }) {
@@ -174,17 +226,17 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Icon(icon, color: context.textPrimary, size: 20),
+        child: Icon(icon, color: context.iconColor, size: 20),
       ),
     );
   }
@@ -193,11 +245,11 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -206,12 +258,12 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
       child: TabBar(
         controller: _tabController,
         isScrollable: true,
-        labelColor: AppColors.navy,
-        unselectedLabelColor: Colors.grey,
+        labelColor: context.textPrimary,
+        unselectedLabelColor: context.textSecondary,
         labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
         indicator: BoxDecoration(
-          color: AppColors.gold.withValues(alpha: 0.2),
+          color: context.goldColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
@@ -219,11 +271,84 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
         padding: const EdgeInsets.all(6),
         tabs: [
           Tab(text: l10n.translate('all')),
-          Tab(text: l10n.translate('statut')),
-          Tab(text: l10n.translate('regulations')),
-          Tab(text: l10n.translate('methodologies')),
-          Tab(text: l10n.translate('forms')),
+          Tab(text: l10n.translate('regulamente')),
+          Tab(text: l10n.translate('ghiduri')),
+          Tab(text: l10n.translate('utile')),
+          Tab(text: l10n.translate('rapoarte')),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUploadCard(BuildContext context, AppLocalizations l10n) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: GestureDetector(
+        onTap: () => _showUploadInfo(context),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.gold, AppColors.gold.withValues(alpha: 0.8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.gold.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.cloud_upload_rounded,
+                  color: AppColors.navy,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.translate('upload_document'),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      l10n.translate('upload_document_desc'),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.navy.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_rounded,
+                color: AppColors.navy,
+                size: 24,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -239,13 +364,13 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
+                color: context.goldColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.folder_open_rounded,
                 size: 48,
-                color: Colors.grey[400],
+                color: context.goldColor,
               ),
             ),
             const SizedBox(height: 24),
@@ -279,7 +404,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            Icon(Icons.error_outline, size: 48, color: context.errorColor),
             const SizedBox(height: 16),
             Text(
               l10n.translate('error_loading'),
@@ -353,15 +478,49 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
 
   Future<void> _openDocument(DocumentModel document) async {
     final uri = Uri.parse(document.fileUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      // Track download
-      ref.read(documentControllerProvider.notifier).trackDownload(document.id);
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+    try {
+      // Try to launch the URL directly - Firebase Storage URLs work in browser
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launched) {
+        // Track download
+        ref.read(documentControllerProvider.notifier).trackDownload(document.id);
+      } else {
+        // Fallback: try with inAppWebView mode
+        final launchedInApp = await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
         );
+        if (launchedInApp) {
+          ref.read(documentControllerProvider.notifier).trackDownload(document.id);
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+          );
+        }
+      }
+    } catch (e) {
+      // If launching fails, try opening in app web view as fallback
+      try {
+        final launchedInApp = await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+        );
+        if (launchedInApp) {
+          ref.read(documentControllerProvider.notifier).trackDownload(document.id);
+        } else if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+          );
+        }
+      } catch (e2) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+          );
+        }
       }
     }
   }
@@ -370,11 +529,15 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     await _openDocument(document);
   }
 
-  void _showUploadInfo(BuildContext context) {
-    Navigator.push(
+  void _showUploadInfo(BuildContext context) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const UploadDocumentScreen()),
     );
+    // Refresh documents after returning from upload screen
+    if (mounted) {
+      ref.invalidate(documentsProvider);
+    }
   }
 }
 
@@ -404,11 +567,11 @@ class _DocumentCard extends ConsumerWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -463,7 +626,7 @@ class _DocumentCard extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          document.category.displayName,
+                          AppLocalizations.of(context).translate(document.category.name),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -472,7 +635,7 @@ class _DocumentCard extends ConsumerWidget {
                         ),
                       ),
                       Text(
-                        document.fileType.displayName,
+                        document.fileType.displayName, // File type is just PDF, DOCX, etc - no translation needed
                         style: TextStyle(fontSize: 11, color: context.textSecondary),
                       ),
                       Text(
@@ -489,7 +652,7 @@ class _DocumentCard extends ConsumerWidget {
                   // Issuer row
                   Row(
                     children: [
-                      Icon(Icons.person_outline_rounded, size: 12, color: Colors.grey[400]),
+                      Icon(Icons.person_outline_rounded, size: 12, color: context.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -500,11 +663,11 @@ class _DocumentCard extends ConsumerWidget {
                         ),
                       ),
                       if (document.downloadCount > 0) ...[
-                        Icon(Icons.download_rounded, size: 12, color: Colors.grey[400]),
+                        Icon(Icons.download_rounded, size: 12, color: context.textSecondary),
                         const SizedBox(width: 2),
                         Text(
                           '${document.downloadCount}',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                          style: TextStyle(fontSize: 11, color: context.textSecondary),
                         ),
                       ],
                     ],
@@ -523,12 +686,12 @@ class _DocumentCard extends ConsumerWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppColors.gold.withValues(alpha: 0.12),
+                      color: context.goldColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.download_rounded,
-                      color: AppColors.gold,
+                      color: context.goldColor,
                       size: 18,
                     ),
                   ),

@@ -30,6 +30,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
 
   DocumentCategory _selectedCategory = DocumentCategory.regulamente;
   bool _isPublic = true;
+  UserRole? _minimumRole; // Minimum role to view when not public
   late bool _isSchoolDocument;
   late bool _isDepartmentDocument;
   bool _isLoading = false;
@@ -39,6 +40,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
   PlatformFile? _selectedFile;
   String? _uploadedFileUrl;
   final List<String> _tags = [];
+
+  // School selection for BEX/Superadmin when creating school documents
+  String? _selectedSchoolId;
+  String? _selectedSchoolName;
 
   @override
   void initState() {
@@ -77,7 +82,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking file: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error_picking_file')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -124,7 +129,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error uploading file: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error_uploading_file')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -198,10 +203,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
             // File picker
             Text(
               l10n.translate('select_file'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -210,12 +215,12 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.cardColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _selectedFile != null
                         ? AppColors.gold
-                        : Colors.grey.withValues(alpha: 0.3),
+                        : context.borderColor,
                     width: _selectedFile != null ? 2 : 1,
                     strokeAlign: BorderSide.strokeAlignInside,
                   ),
@@ -243,10 +248,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                               children: [
                                 Text(
                                   _selectedFile!.name,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.navy,
+                                    color: context.textPrimary,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -256,7 +261,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                                   _formatFileSize(_selectedFile!.size),
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[500],
+                                    color: context.textSecondary,
                                   ),
                                 ),
                               ],
@@ -289,7 +294,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                             l10n.translate('tap_to_select_file'),
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color: context.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -298,7 +303,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                             'PDF, DOC, XLS, PPT, Images',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[400],
+                              color: context.textSecondary,
                             ),
                           ),
                         ],
@@ -319,7 +324,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 '${(_uploadProgress * 100).toStringAsFixed(0)}% uploaded',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[500],
+                  color: context.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -330,10 +335,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
             // Category selection
             Text(
               l10n.translate('category'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -347,18 +352,18 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.gold : Colors.white,
+                      color: isSelected ? AppColors.gold : context.cardColor,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppColors.gold : Colors.grey.withValues(alpha: 0.3),
+                        color: isSelected ? AppColors.gold : context.borderColor,
                       ),
                     ),
                     child: Text(
-                      category.displayName,
+                      l10n.translate(category.name), // Use localized name
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? AppColors.navy : Colors.grey[600],
+                        color: isSelected ? AppColors.navy : context.textSecondary,
                       ),
                     ),
                   ),
@@ -370,10 +375,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
             // Title
             Text(
               l10n.translate('title'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -383,9 +388,14 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 hintText: l10n.translate('document_title_hint'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -399,10 +409,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
             // Description
             Text(
               '${l10n.translate('description')} (${l10n.translate('optional')})',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -412,9 +422,14 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 hintText: l10n.translate('document_description_hint'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
               ),
               maxLines: 3,
             ),
@@ -423,10 +438,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
             // Tags
             Text(
               l10n.translate('tags'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -439,9 +454,14 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                       hintText: l10n.translate('add_tag'),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: context.borderColor),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: context.borderColor),
                       ),
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: context.cardColor,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                     onSubmitted: (_) => _addTag(),
@@ -466,11 +486,11 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 children: _tags.map((tag) {
                   return Chip(
                     label: Text(tag),
-                    deleteIcon: const Icon(Icons.close, size: 16),
+                    deleteIcon: Icon(Icons.close, size: 16, color: context.textPrimary),
                     onDeleted: () => _removeTag(tag),
-                    backgroundColor: AppColors.navy.withValues(alpha: 0.1),
-                    labelStyle: const TextStyle(
-                      color: AppColors.navy,
+                    backgroundColor: AppColors.gold.withValues(alpha: 0.15),
+                    labelStyle: TextStyle(
+                      color: context.textPrimary,
                       fontSize: 12,
                     ),
                   );
@@ -483,19 +503,88 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: SwitchListTile(
-                title: Text(l10n.translate('public_document')),
-                subtitle: Text(
-                  l10n.translate('public_document_desc'),
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                value: _isPublic,
-                onChanged: (value) => setState(() => _isPublic = value),
-                activeColor: AppColors.gold,
-                contentPadding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SwitchListTile(
+                    title: Text(l10n.translate('public_document')),
+                    subtitle: Text(
+                      l10n.translate('public_document_desc'),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
+                    ),
+                    value: _isPublic,
+                    onChanged: (value) => setState(() {
+                      _isPublic = value;
+                      // Reset minimum role when making public
+                      if (value) {
+                        _minimumRole = null;
+                      }
+                    }),
+                    activeColor: AppColors.gold,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  // Role dropdown when not public
+                  if (!_isPublic) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.translate('minimum_role_required'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: context.scaffoldBackgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: context.borderColor),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<UserRole>(
+                          value: _minimumRole,
+                          isExpanded: true,
+                          hint: Text(
+                            l10n.translate('select_minimum_role'),
+                            style: TextStyle(color: context.textSecondary),
+                          ),
+                          dropdownColor: context.cardColor,
+                          items: [
+                            UserRole.student,
+                            UserRole.classRep,
+                            UserRole.schoolRep,
+                            UserRole.department,
+                            UserRole.bex,
+                          ].map((role) {
+                            return DropdownMenuItem<UserRole>(
+                              value: role,
+                              child: Text(
+                                _getLocalizedRoleName(role, l10n),
+                                style: TextStyle(color: context.textPrimary),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) => setState(() => _minimumRole = value),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.translate('minimum_role_hint'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -514,27 +603,45 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                   });
                 }
 
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: SwitchListTile(
-                    title: Text(l10n.translate('school_document')),
-                    subtitle: Text(
-                      isSchoolRep
-                          ? l10n.translate('school_document_required')
-                          : l10n.translate('school_document_desc'),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                return Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: context.cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: SwitchListTile(
+                        title: Text(l10n.translate('school_document')),
+                        subtitle: Text(
+                          isSchoolRep
+                              ? l10n.translate('school_document_required')
+                              : l10n.translate('school_document_desc'),
+                          style: TextStyle(fontSize: 12, color: context.textSecondary),
+                        ),
+                        value: _isSchoolDocument,
+                        onChanged: isSchoolRep
+                            ? null // SchoolRep can't toggle - always school document
+                            : (value) {
+                                setState(() {
+                                  _isSchoolDocument = value;
+                                  // Clear school selection when toggling off
+                                  if (!value) {
+                                    _selectedSchoolId = null;
+                                    _selectedSchoolName = null;
+                                  }
+                                });
+                              },
+                        activeColor: AppColors.gold,
+                        contentPadding: EdgeInsets.zero,
+                      ),
                     ),
-                    value: _isSchoolDocument,
-                    onChanged: isSchoolRep
-                        ? null // SchoolRep can't toggle - always school document
-                        : (value) => setState(() => _isSchoolDocument = value),
-                    activeColor: AppColors.gold,
-                    contentPadding: EdgeInsets.zero,
-                  ),
+                    // School dropdown for BEX/Superadmin when school document is selected
+                    if (_isSchoolDocument && canUploadCounty) ...[
+                      const SizedBox(height: 16),
+                      _buildSchoolDropdown(context, l10n),
+                    ],
+                  ],
                 );
               },
             ),
@@ -587,6 +694,23 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+  String _getLocalizedRoleName(UserRole role, AppLocalizations l10n) {
+    switch (role) {
+      case UserRole.student:
+        return l10n.translate('student');
+      case UserRole.classRep:
+        return l10n.translate('class_representative');
+      case UserRole.schoolRep:
+        return l10n.translate('school_representative');
+      case UserRole.department:
+        return l10n.translate('department_member');
+      case UserRole.bex:
+        return l10n.translate('bex_member');
+      case UserRole.superadmin:
+        return l10n.translate('super_admin');
+    }
+  }
+
   IconData _getFileIcon() {
     if (_selectedFile == null) return Icons.description;
     final ext = _getExtension(_selectedFile!.name).toLowerCase();
@@ -635,9 +759,104 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
     }
   }
 
+  /// Build school dropdown for BEX/Superadmin users
+  Widget _buildSchoolDropdown(BuildContext context, AppLocalizations l10n) {
+    final schoolsAsync = ref.watch(activeSchoolsProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.translate('select_school'),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: context.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          schoolsAsync.when(
+            data: (schools) {
+              if (schools.isEmpty) {
+                return Text(
+                  l10n.translate('no_schools_available'),
+                  style: TextStyle(color: context.textSecondary),
+                );
+              }
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: context.borderColor),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedSchoolId,
+                    hint: Text(
+                      l10n.translate('select_school'),
+                      style: TextStyle(color: context.textSecondary),
+                    ),
+                    dropdownColor: context.cardColor,
+                    style: TextStyle(color: context.textPrimary),
+                    icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
+                    items: schools.map((school) {
+                      return DropdownMenuItem<String>(
+                        value: school.id,
+                        child: Text(
+                          school.name,
+                          style: TextStyle(color: context.textPrimary),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        final selectedSchool = schools.firstWhere((s) => s.id == value);
+                        setState(() {
+                          _selectedSchoolId = value;
+                          _selectedSchoolName = selectedSchool.name;
+                        });
+                      }
+                    },
+                  ),
+                ),
+              );
+            },
+            loading: () => const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            error: (_, __) => Text(
+              l10n.translate('error_loading_schools'),
+              style: TextStyle(color: context.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleUpload() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedFile == null) return;
+
+    // Validate school selection for BEX/Superadmin when school document is selected
+    final canUploadCounty = ref.read(canUploadCountyDocumentsProvider);
+    if (_isSchoolDocument && canUploadCounty && _selectedSchoolId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).translate('please_select_school')),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -660,9 +879,12 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
       fileUrl: fileUrl,
       fileSizeBytes: _selectedFile!.size,
       isPublic: _isPublic,
+      minimumRole: _isPublic ? null : _minimumRole,
       isSchoolDocument: _isSchoolDocument,
       isDepartmentDocument: _isDepartmentDocument,
       tags: _tags.isEmpty ? null : _tags,
+      schoolId: _selectedSchoolId,
+      schoolName: _selectedSchoolName,
     );
 
     setState(() => _isLoading = false);
