@@ -325,6 +325,7 @@ class TranslationIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final settings = ref.watch(translationSettingsProvider);
 
     if (!settings.isEnabled || !isTranslated) {
@@ -350,7 +351,7 @@ class TranslationIndicator extends ConsumerWidget {
           ),
           const SizedBox(width: 4),
           Text(
-            'Tradus',
+            l10n.translate('translated'),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: Theme.of(context).colorScheme.onPrimaryContainer,
                 ),
@@ -367,13 +368,14 @@ class TranslationSettingsTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final settings = ref.watch(translationSettingsProvider);
 
     return Column(
       children: [
         SwitchListTile(
-          title: const Text('Traducere automată'),
-          subtitle: const Text('Traduce automat conținutul în limba ta'),
+          title: Text(l10n.translate('auto_translation')),
+          subtitle: Text(l10n.translate('auto_translation_desc')),
           secondary: const Icon(Icons.translate),
           value: settings.isEnabled,
           onChanged: (value) {
@@ -382,41 +384,43 @@ class TranslationSettingsTile extends ConsumerWidget {
         ),
         if (settings.isEnabled) ...[
           ListTile(
-            title: const Text('Furnizor traducere'),
-            subtitle: Text(_getProviderName(settings.provider)),
+            title: Text(l10n.translate('translation_provider')),
+            subtitle: Text(_getProviderName(settings.provider, l10n)),
             leading: const Icon(Icons.cloud),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showProviderDialog(context, ref),
+            onTap: () => _showProviderDialog(context, ref, l10n),
           ),
           if (settings.provider != TranslationProvider.none)
             ListTile(
-              title: const Text('Cheie API'),
+              title: Text(l10n.translate('api_key')),
               subtitle: Text(
-                settings.apiKey != null ? '••••••••' : 'Nu este configurată',
+                settings.apiKey != null ? '••••••••' : l10n.translate('not_configured'),
               ),
               leading: const Icon(Icons.key),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showApiKeyDialog(context, ref),
+              onTap: () => _showApiKeyDialog(context, ref, l10n),
             ),
         ],
       ],
     );
   }
 
-  String _getProviderName(TranslationProvider provider) {
+  String _getProviderName(TranslationProvider provider, AppLocalizations l10n) {
     switch (provider) {
       case TranslationProvider.google:
         return 'Google Cloud Translation';
       case TranslationProvider.deepL:
         return 'DeepL';
       case TranslationProvider.libre:
-        return 'LibreTranslate (Gratuit)';
+        return l10n.translate('libretranslate_free');
+      case TranslationProvider.mlKit:
+        return l10n.translate('firebase_ml_offline');
       case TranslationProvider.none:
-        return 'Dezactivat';
+        return l10n.translate('disabled');
     }
   }
 
-  void _showProviderDialog(BuildContext context, WidgetRef ref) {
+  void _showProviderDialog(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true, // Show above bottom navigation bar
@@ -435,7 +439,7 @@ class TranslationSettingsTile extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.all(AppSizes.paddingMD),
                       child: Text(
-                        'Selectează furnizorul',
+                        l10n.translate('select_provider'),
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
@@ -451,7 +455,7 @@ class TranslationSettingsTile extends ConsumerWidget {
                                       ? Icons.public
                                       : Icons.block,
                         ),
-                        title: Text(_getProviderName(provider)),
+                        title: Text(_getProviderName(provider, l10n)),
                         trailing: isSelected
                             ? Icon(Icons.check_circle,
                                 color: Theme.of(context).colorScheme.primary)
@@ -473,18 +477,18 @@ class TranslationSettingsTile extends ConsumerWidget {
     );
   }
 
-  void _showApiKeyDialog(BuildContext context, WidgetRef ref) {
+  void _showApiKeyDialog(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     final settings = ref.read(translationSettingsProvider);
     final controller = TextEditingController(text: settings.apiKey ?? '');
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cheie API'),
+        title: Text(l10n.translate('api_key')),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'Introdu cheia API',
+          decoration: InputDecoration(
+            labelText: l10n.translate('enter_api_key'),
             hintText: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
           ),
           obscureText: true,
@@ -492,7 +496,7 @@ class TranslationSettingsTile extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Anulează'),
+            child: Text(l10n.translate('cancel')),
           ),
           FilledButton(
             onPressed: () {
@@ -501,7 +505,7 @@ class TranslationSettingsTile extends ConsumerWidget {
                   .setApiKey(controller.text.isNotEmpty ? controller.text : null);
               Navigator.pop(context);
             },
-            child: const Text('Salvează'),
+            child: Text(l10n.translate('save')),
           ),
         ],
       ),

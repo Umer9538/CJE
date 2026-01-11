@@ -10,6 +10,7 @@ class ThemeToggleButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     // Watch theme mode to rebuild on change
     ref.watch(themeModeProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -22,7 +23,7 @@ class ThemeToggleButton extends ConsumerWidget {
       onPressed: () {
         ref.read(themeModeProvider.notifier).toggle();
       },
-      tooltip: isDark ? 'Activează tema deschisă' : 'Activează tema întunecată',
+      tooltip: isDark ? l10n.translate('enable_light_theme') : l10n.translate('enable_dark_theme'),
     );
   }
 }
@@ -33,24 +34,25 @@ class ThemeModeSelector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final themeMode = ref.watch(themeModeProvider);
 
     return SegmentedButton<ThemeMode>(
-      segments: const [
+      segments: [
         ButtonSegment<ThemeMode>(
           value: ThemeMode.system,
-          icon: Icon(Icons.settings_suggest_rounded),
-          label: Text('Sistem'),
+          icon: const Icon(Icons.settings_suggest_rounded),
+          label: Text(l10n.translate('system')),
         ),
         ButtonSegment<ThemeMode>(
           value: ThemeMode.light,
-          icon: Icon(Icons.light_mode_rounded),
-          label: Text('Deschis'),
+          icon: const Icon(Icons.light_mode_rounded),
+          label: Text(l10n.translate('light')),
         ),
         ButtonSegment<ThemeMode>(
           value: ThemeMode.dark,
-          icon: Icon(Icons.dark_mode_rounded),
-          label: Text('Întunecat'),
+          icon: const Icon(Icons.dark_mode_rounded),
+          label: Text(l10n.translate('dark')),
         ),
       ],
       selected: {themeMode},
@@ -68,6 +70,7 @@ class ThemeSettingsTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final themeMode = ref.watch(themeModeProvider);
 
     String themeName;
@@ -75,31 +78,31 @@ class ThemeSettingsTile extends ConsumerWidget {
 
     switch (themeMode) {
       case ThemeMode.system:
-        themeName = 'Sistem';
+        themeName = l10n.translate('system');
         themeIcon = Icons.settings_suggest_rounded;
         break;
       case ThemeMode.light:
-        themeName = 'Temă deschisă';
+        themeName = l10n.translate('light_theme');
         themeIcon = Icons.light_mode_rounded;
         break;
       case ThemeMode.dark:
-        themeName = 'Temă întunecată';
+        themeName = l10n.translate('dark_theme');
         themeIcon = Icons.dark_mode_rounded;
         break;
     }
 
     return ListTile(
       leading: Icon(themeIcon),
-      title: const Text('Aspect'),
+      title: Text(l10n.translate('appearance')),
       subtitle: Text(themeName),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
-        _showThemeBottomSheet(context, ref);
+        _showThemeBottomSheet(context, ref, l10n);
       },
     );
   }
 
-  void _showThemeBottomSheet(BuildContext context, WidgetRef ref) {
+  void _showThemeBottomSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     showModalBottomSheet(
       context: context,
       useRootNavigator: true, // Show above bottom navigation bar
@@ -118,15 +121,15 @@ class ThemeSettingsTile extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.all(AppSizes.paddingMD),
                       child: Text(
-                        'Selectează aspectul',
+                        l10n.translate('select_appearance'),
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
                     _buildThemeOption(
                       context: context,
                       ref: ref,
-                      title: 'Sistem',
-                      subtitle: 'Urmează setările dispozitivului',
+                      title: l10n.translate('system'),
+                      subtitle: l10n.translate('follow_device_settings'),
                       icon: Icons.settings_suggest_rounded,
                       mode: ThemeMode.system,
                       currentMode: themeMode,
@@ -138,8 +141,8 @@ class ThemeSettingsTile extends ConsumerWidget {
                     _buildThemeOption(
                       context: context,
                       ref: ref,
-                      title: 'Temă deschisă',
-                      subtitle: 'Aspect luminos',
+                      title: l10n.translate('light_theme'),
+                      subtitle: l10n.translate('light_appearance'),
                       icon: Icons.light_mode_rounded,
                       mode: ThemeMode.light,
                       currentMode: themeMode,
@@ -151,8 +154,8 @@ class ThemeSettingsTile extends ConsumerWidget {
                     _buildThemeOption(
                       context: context,
                       ref: ref,
-                      title: 'Temă întunecată',
-                      subtitle: 'Aspect întunecat',
+                      title: l10n.translate('dark_theme'),
+                      subtitle: l10n.translate('dark_appearance'),
                       icon: Icons.dark_mode_rounded,
                       mode: ThemeMode.dark,
                       currentMode: themeMode,
