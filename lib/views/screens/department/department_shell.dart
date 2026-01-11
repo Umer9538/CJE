@@ -1,19 +1,21 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/core.dart';
-import 'department_dashboard_screen.dart';
-import 'department_meetings_screen.dart';
-import 'department_documents_screen.dart';
-import 'department_members_screen.dart';
-import 'department_more_screen.dart';
+import '../home/home_screen.dart';
+import '../announcements/announcements_screen.dart';
+import '../ideas/ideas_screen.dart';
+import '../meetings/meetings_screen.dart';
+import '../menu/menu_screen.dart';
 
 /// Department Shell - Main navigation for Department users
-/// Department-specific features:
-/// - Dashboard (overview, quick actions)
-/// - Meetings (Department meetings only)
-/// - Documents (Department documents)
-/// - Members (View department members)
+/// Same navigation structure as main app:
+/// - Home
+/// - Announcements
+/// - Ideas (Initiatives + Polls)
+/// - Meetings
+/// - Menu
 class DepartmentShell extends ConsumerStatefulWidget {
   const DepartmentShell({super.key});
 
@@ -25,17 +27,16 @@ class _DepartmentShellState extends ConsumerState<DepartmentShell> {
   int _currentIndex = 0;
 
   final List<Widget> _screens = const [
-    DepartmentDashboardScreen(),
-    DepartmentMeetingsScreen(),
-    DepartmentDocumentsScreen(),
-    DepartmentMembersScreen(),
-    DepartmentMoreScreen(),
+    HomeScreen(),
+    AnnouncementsScreen(),
+    IdeasScreen(),
+    MeetingsScreen(),
+    MenuScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-
     // Clamp index to valid range (safety for hot reload)
     final safeIndex = _currentIndex.clamp(0, _screens.length - 1);
 
@@ -44,52 +45,90 @@ class _DepartmentShellState extends ConsumerState<DepartmentShell> {
         index: safeIndex,
         children: _screens,
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: context.cardColor,
-          boxShadow: [
-            BoxShadow(
-              color: context.shadowColor,
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+      extendBody: true,
+      bottomNavigationBar: _FloatingBottomNav(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        labels: [
+          l10n.translate('home'),
+          l10n.translate('announcements'),
+          l10n.translate('ideas'),
+          l10n.translate('meetings'),
+          l10n.translate('menu'),
+        ],
+      ),
+    );
+  }
+}
+
+/// Floating Bottom Navigation Bar - Same style as main shell
+class _FloatingBottomNav extends StatelessWidget {
+  final int currentIndex;
+  final Function(int) onTap;
+  final List<String> labels;
+
+  const _FloatingBottomNav({
+    required this.currentIndex,
+    required this.onTap,
+    required this.labels,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+    final navBgColor = isDark ? AppColors.cardDark : AppColors.navy;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            height: 72,
+            decoration: BoxDecoration(
+              color: navBgColor.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: navBgColor.withValues(alpha: 0.3),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _NavItem(
-                  icon: Icons.dashboard_rounded,
-                  label: l10n.translate('dashboard'),
-                  isSelected: _currentIndex == 0,
-                  onTap: () => setState(() => _currentIndex = 0),
+                  icon: Icons.home_rounded,
+                  label: labels[0],
+                  isSelected: currentIndex == 0,
+                  onTap: () => onTap(0),
                 ),
                 _NavItem(
-                  icon: Icons.event_rounded,
-                  label: l10n.translate('meetings'),
-                  isSelected: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
+                  icon: Icons.campaign_rounded,
+                  label: labels[1],
+                  isSelected: currentIndex == 1,
+                  onTap: () => onTap(1),
                 ),
                 _NavItem(
-                  icon: Icons.folder_rounded,
-                  label: l10n.translate('documents'),
-                  isSelected: _currentIndex == 2,
-                  onTap: () => setState(() => _currentIndex = 2),
+                  icon: Icons.lightbulb_rounded,
+                  label: labels[2],
+                  isSelected: currentIndex == 2,
+                  onTap: () => onTap(2),
                 ),
                 _NavItem(
-                  icon: Icons.people_rounded,
-                  label: l10n.translate('members'),
-                  isSelected: _currentIndex == 3,
-                  onTap: () => setState(() => _currentIndex = 3),
+                  icon: Icons.groups_rounded,
+                  label: labels[3],
+                  isSelected: currentIndex == 3,
+                  onTap: () => onTap(3),
                 ),
                 _NavItem(
-                  icon: Icons.more_horiz_rounded,
-                  label: l10n.translate('more'),
-                  isSelected: _currentIndex == 4,
-                  onTap: () => setState(() => _currentIndex = 4),
+                  icon: Icons.menu_rounded,
+                  label: labels[4],
+                  isSelected: currentIndex == 4,
+                  onTap: () => onTap(4),
                 ),
               ],
             ),
@@ -118,28 +157,39 @@ class _NavItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.badgeDepartmentBg.withValues(alpha: 0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
+      child: SizedBox(
+        width: 56,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isSelected ? context.textPrimary : context.textSecondary,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.gold.withValues(alpha: 0.2)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                color: isSelected ? AppColors.gold : Colors.white.withValues(alpha: 0.5),
+                size: 22,
+              ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
               style: TextStyle(
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? context.textPrimary : context.textSecondary,
+                color: isSelected ? AppColors.gold : Colors.white.withValues(alpha: 0.5),
+                fontSize: 9,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

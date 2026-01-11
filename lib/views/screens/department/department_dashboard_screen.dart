@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../../routes/route_names.dart';
+import '../calendar/calendar_screen.dart';
 import '../meetings/create_meeting_screen.dart';
 import '../documents/upload_document_screen.dart';
 
@@ -20,7 +23,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
-        statusBarColor: Color(0xFF92400E), // Amber-800
+        statusBarColor: AppColors.navy,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
       ),
@@ -28,8 +31,11 @@ class DepartmentDashboardScreen extends ConsumerWidget {
         backgroundColor: context.scaffoldBackgroundColor,
         body: RefreshIndicator(
           onRefresh: () async {
+            // Invalidate all data providers to refresh dashboard data in real-time
             ref.invalidate(departmentMeetingsProvider);
             ref.invalidate(departmentMembersProvider);
+            ref.invalidate(announcementsProvider);
+            ref.invalidate(pollsProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -39,10 +45,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                 // Header with department color
                 _buildHeader(context, user, l10n),
 
-                // Stats Cards
-                _buildStatsSection(context, ref, l10n, user),
-
-                // Quick Actions
+                // Quick Actions (2x2 grid layout)
                 _buildQuickActionsSection(context, l10n, user),
 
                 // Upcoming Meetings
@@ -62,7 +65,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      color: const Color(0xFF92400E), // Amber-800
+      color: AppColors.navy,
       child: SafeArea(
         bottom: false,
         left: false,
@@ -95,7 +98,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.badgeDepartmentBg,
+                        color: AppColors.gold,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -103,23 +106,45 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF92400E),
+                          color: AppColors.navy,
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
+              // Calendar Button
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                ),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
               Container(
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: AppColors.gold.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(
                   _getDepartmentIcon(user?.department),
-                  color: AppColors.badgeDepartmentBg,
+                  color: AppColors.gold,
                   size: 28,
                 ),
               ),
@@ -143,61 +168,9 @@ class DepartmentDashboardScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildStatsSection(BuildContext context, WidgetRef ref, AppLocalizations l10n, UserModel? user) {
-    final meetingsAsync = ref.watch(departmentMeetingsProvider);
-    final membersAsync = ref.watch(departmentMembersProvider);
-
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.translate('overview'),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: context.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.people_rounded,
-                  label: l10n.translate('members'),
-                  value: membersAsync.when(
-                    data: (members) => members.length.toString(),
-                    loading: () => '...',
-                    error: (_, __) => '0',
-                  ),
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.event_rounded,
-                  label: l10n.translate('meetings'),
-                  value: meetingsAsync.when(
-                    data: (meetings) => meetings.length.toString(),
-                    loading: () => '...',
-                    error: (_, __) => '0',
-                  ),
-                  color: Colors.indigo,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildQuickActionsSection(BuildContext context, AppLocalizations l10n, UserModel? user) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -210,13 +183,14 @@ class DepartmentDashboardScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 16),
+          // First row - using brand colors (Navy/Gold)
           Row(
             children: [
               Expanded(
                 child: _QuickActionButton(
-                  icon: Icons.event_rounded,
+                  icon: Icons.groups_rounded,
                   label: l10n.translate('new_meeting'),
-                  color: Colors.indigo,
+                  color: AppColors.gold,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -232,7 +206,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                 child: _QuickActionButton(
                   icon: Icons.upload_file_rounded,
                   label: l10n.translate('upload_document'),
-                  color: Colors.teal,
+                  color: AppColors.navy,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -240,6 +214,32 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                         isDepartmentDocument: true,
                       ),
                     ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Second row
+          Row(
+            children: [
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.folder_rounded,
+                  label: l10n.translate('documents'),
+                  color: AppColors.gold,
+                  onTap: () => context.push(RouteNames.documents),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _QuickActionButton(
+                  icon: Icons.calendar_month_rounded,
+                  label: l10n.translate('calendar'),
+                  color: AppColors.navy,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CalendarScreen()),
                   ),
                 ),
               ),
@@ -275,7 +275,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                 },
                 child: Text(
                   l10n.translate('see_all'),
-                  style: const TextStyle(color: AppColors.badgeDepartmentText),
+                  style: const TextStyle(color: AppColors.gold),
                 ),
               ),
             ],
@@ -315,77 +315,10 @@ class DepartmentDashboardScreen extends ConsumerWidget {
             loading: () => const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: CircularProgressIndicator(color: AppColors.badgeDepartmentText),
+                child: CircularProgressIndicator(color: AppColors.gold),
               ),
             ),
-            error: (e, _) => Center(child: Text('Error: $e')),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: context.shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: context.textPrimary,
-                  ),
-                ),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.textSecondary,
-                  ),
-                ),
-              ],
-            ),
+            error: (e, _) => Center(child: Text(l10n.translate('error_loading'))),
           ),
         ],
       ),
@@ -411,37 +344,40 @@ class _QuickActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: context.cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: context.shadowColor,
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
         child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: context.textPrimary,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -478,17 +414,17 @@ class _MeetingCard extends StatelessWidget {
             width: 50,
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.badgeDepartmentBg.withValues(alpha: 0.5),
+              color: AppColors.gold.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               children: [
                 Text(
                   DateFormat('dd').format(meeting.dateTime),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF92400E),
+                    color: context.goldColor,
                   ),
                 ),
                 Text(
