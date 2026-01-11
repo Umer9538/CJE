@@ -49,44 +49,45 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
             isSupportingAsync: isSupportingAsync,
           ),
         const SizedBox(height: 24),
-        _buildCommentsHeader(l10n),
+        _buildCommentsHeader(context, l10n),
         const SizedBox(height: 12),
         if (canComment)
-          _buildCommentInput(l10n),
+          _buildCommentInput(context, l10n),
         if (canComment)
           const SizedBox(height: 16),
-        _buildCommentsList(commentsAsync, l10n),
-        const SizedBox(height: 32),
+        _buildCommentsList(context, commentsAsync, l10n),
+        const SizedBox(height: 100),
       ],
     );
   }
 
-  Widget _buildCommentsHeader(AppLocalizations l10n) {
+  Widget _buildCommentsHeader(BuildContext context, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
-        const Icon(Icons.comment_rounded, size: 20, color: AppColors.navy),
+        Icon(Icons.comment_rounded, size: 20, color: isDark ? AppColors.gold : AppColors.navy),
         const SizedBox(width: 8),
         Text(
           l10n.translate('comments'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildCommentInput(AppLocalizations l10n) {
+  Widget _buildCommentInput(BuildContext context, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -97,9 +98,10 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
           Expanded(
             child: TextField(
               controller: _commentController,
+              style: TextStyle(color: context.textPrimary),
               decoration: InputDecoration(
                 hintText: l10n.translate('write_comment'),
-                hintStyle: TextStyle(color: Colors.grey[400]),
+                hintStyle: TextStyle(color: context.textSecondary),
                 border: InputBorder.none,
               ),
               maxLines: null,
@@ -121,12 +123,13 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
   }
 
   Widget _buildCommentsList(
+    BuildContext context,
     AsyncValue<List<InitiativeComment>> commentsAsync,
     AppLocalizations l10n,
   ) {
     return commentsAsync.when(
       data: (comments) => comments.isEmpty
-          ? _buildEmptyComments(l10n)
+          ? _buildEmptyComments(context, l10n)
           : Column(
               children: comments
                   .map((c) => InitiativeCommentCard(comment: c))
@@ -141,13 +144,13 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
       error: (_, __) => Center(
         child: Text(
           l10n.translate('error_loading_comments'),
-          style: TextStyle(color: Colors.grey[500]),
+          style: TextStyle(color: context.textSecondary),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyComments(AppLocalizations l10n) {
+  Widget _buildEmptyComments(BuildContext context, AppLocalizations l10n) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -156,12 +159,12 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
             Icon(
               Icons.chat_bubble_outline_rounded,
               size: 48,
-              color: Colors.grey[300],
+              color: context.textSecondary,
             ),
             const SizedBox(height: 12),
             Text(
               l10n.translate('no_comments_yet'),
-              style: TextStyle(color: Colors.grey[500]),
+              style: TextStyle(color: context.textSecondary),
             ),
           ],
         ),
@@ -203,11 +206,11 @@ class _SupportSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -217,8 +220,14 @@ class _SupportSection extends ConsumerWidget {
         children: [
           _buildSupportIcon(),
           const SizedBox(width: 16),
-          Expanded(child: _buildSupportCount(l10n)),
-          _buildSupportButton(ref, l10n),
+          Expanded(
+            child: _buildSupportCount(context, l10n),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            flex: 0,
+            child: _buildSupportButton(context, ref, l10n),
+          ),
         ],
       ),
     );
@@ -239,27 +248,32 @@ class _SupportSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildSupportCount(AppLocalizations l10n) {
+  Widget _buildSupportCount(BuildContext context, AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           '${initiative.supportCount}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
+          maxLines: 1,
         ),
         Text(
           l10n.translate('supporters'),
-          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          style: TextStyle(fontSize: 14, color: context.textSecondary),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
   }
 
-  Widget _buildSupportButton(WidgetRef ref, AppLocalizations l10n) {
+  Widget _buildSupportButton(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return isSupportingAsync.when(
       data: (isSupporting) => ElevatedButton.icon(
         onPressed: () => _toggleSupport(ref),
@@ -271,8 +285,8 @@ class _SupportSection extends ConsumerWidget {
           isSupporting ? l10n.translate('supported') : l10n.translate('support'),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: isSupporting ? AppColors.gold : Colors.grey.shade200,
-          foregroundColor: isSupporting ? AppColors.navy : Colors.grey[700],
+          backgroundColor: isSupporting ? AppColors.gold : (isDark ? Colors.grey[800] : Colors.grey.shade200),
+          foregroundColor: isSupporting ? AppColors.navy : context.textPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
@@ -280,12 +294,39 @@ class _SupportSection extends ConsumerWidget {
           ),
         ),
       ),
-      loading: () => const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(strokeWidth: 2),
+      loading: () => ElevatedButton.icon(
+        onPressed: null, // Disabled while loading
+        icon: const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        label: Text(l10n.translate('support')),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDark ? Colors.grey[800] : Colors.grey.shade200,
+          foregroundColor: context.textPrimary,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
       ),
-      error: (_, __) => const SizedBox(),
+      // Show button on error too - user can still try to support
+      error: (_, __) => ElevatedButton.icon(
+        onPressed: () => _toggleSupport(ref),
+        icon: const Icon(Icons.favorite_outline_rounded, size: 18),
+        label: Text(l10n.translate('support')),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isDark ? Colors.grey[800] : Colors.grey.shade200,
+          foregroundColor: context.textPrimary,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
     );
   }
 

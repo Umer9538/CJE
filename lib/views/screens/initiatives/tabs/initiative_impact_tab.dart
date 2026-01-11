@@ -27,15 +27,15 @@ class InitiativeImpactTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _buildImpactHeader(l10n),
+        _buildImpactHeader(context, l10n),
         const SizedBox(height: 16),
-        _buildImpactContent(),
+        _buildImpactContent(context),
         const SizedBox(height: 32),
       ],
     );
   }
 
-  Widget _buildImpactHeader(AppLocalizations l10n) {
+  Widget _buildImpactHeader(BuildContext context, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -54,7 +54,7 @@ class InitiativeImpactTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -73,10 +73,10 @@ class InitiativeImpactTab extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             l10n.translate('expected_impact'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.textPrimary,
             ),
           ),
         ],
@@ -84,15 +84,15 @@ class InitiativeImpactTab extends StatelessWidget {
     );
   }
 
-  Widget _buildImpactContent() {
+  Widget _buildImpactContent(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -102,7 +102,7 @@ class InitiativeImpactTab extends StatelessWidget {
         initiative.impact!,
         style: TextStyle(
           fontSize: 15,
-          color: Colors.grey[700],
+          color: context.textSecondary,
           height: 1.7,
         ),
       ),

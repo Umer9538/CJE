@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
+import '../../../models/models.dart';
 
-/// Screen for creating a new initiative
+/// Screen for creating or editing an initiative
 class CreateInitiativeScreen extends ConsumerStatefulWidget {
-  const CreateInitiativeScreen({super.key});
+  /// Pass an existing initiative to edit, or null to create new
+  final InitiativeModel? initiative;
+
+  const CreateInitiativeScreen({super.key, this.initiative});
 
   @override
   ConsumerState<CreateInitiativeScreen> createState() =>
@@ -25,6 +29,33 @@ class _CreateInitiativeScreenState
 
   final List<String> _tags = [];
   bool _isLoading = false;
+
+  // Initiative type (school or county level)
+  InitiativeType _selectedType = InitiativeType.school;
+
+  // School selection for BEX/Superadmin
+  String? _selectedSchoolId;
+  String? _selectedSchoolName;
+
+  bool get _isEditing => widget.initiative != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill fields if editing
+    if (_isEditing) {
+      final initiative = widget.initiative!;
+      _titleController.text = initiative.title;
+      _descriptionController.text = initiative.description;
+      _problemController.text = initiative.problem ?? '';
+      _solutionController.text = initiative.solution ?? '';
+      _impactController.text = initiative.impact ?? '';
+      _tags.addAll(initiative.tags);
+      _selectedType = initiative.type;
+      _selectedSchoolId = initiative.schoolId;
+      _selectedSchoolName = initiative.schoolName;
+    }
+  }
 
   @override
   void dispose() {
@@ -50,24 +81,26 @@ class _CreateInitiativeScreenState
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Icon(Icons.close, color: AppColors.navy, size: 20),
+            child: Icon(Icons.close, color: context.iconColor, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          l10n.translate('create_initiative'),
-          style: const TextStyle(
-            color: AppColors.navy,
+          _isEditing
+              ? l10n.translate('edit_initiative')
+              : l10n.translate('create_initiative'),
+          style: TextStyle(
+            color: context.textPrimary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -97,8 +130,8 @@ class _CreateInitiativeScreenState
                       color: AppColors.gold.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.lightbulb_rounded,
+                    child: Icon(
+                      _isEditing ? Icons.edit_rounded : Icons.lightbulb_rounded,
                       color: AppColors.gold,
                       size: 20,
                     ),
@@ -106,10 +139,12 @@ class _CreateInitiativeScreenState
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Share your ideas to improve student life. Your initiative can make a difference!',
+                      _isEditing
+                          ? l10n.translate('edit_initiative_info')
+                          : 'Share your ideas to improve student life. Your initiative can make a difference!',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[700],
+                        color: context.textSecondary,
                         height: 1.4,
                       ),
                     ),
@@ -119,12 +154,21 @@ class _CreateInitiativeScreenState
             ),
             const SizedBox(height: 24),
 
+            // Initiative type selector
+            _buildTypeSelector(context, l10n),
+
+            // School selection for BEX/Superadmin (only for school-level initiatives)
+            if (_selectedType == InitiativeType.school)
+              _buildSchoolDropdown(context, l10n),
+
             // Title
-            _buildLabel(l10n.translate('initiative_title'), required: true),
+            _buildLabel(context, l10n.translate('initiative_title'), required: true),
             const SizedBox(height: 12),
             TextFormField(
               controller: _titleController,
+              style: TextStyle(color: context.textPrimary),
               decoration: _buildInputDecoration(
+                context,
                 l10n.translate('initiative_title_hint'),
               ),
               validator: (value) {
@@ -140,12 +184,14 @@ class _CreateInitiativeScreenState
             const SizedBox(height: 24),
 
             // Description
-            _buildLabel(l10n.translate('initiative_description'), required: true),
+            _buildLabel(context, l10n.translate('initiative_description'), required: true),
             const SizedBox(height: 12),
             TextFormField(
               controller: _descriptionController,
               maxLines: 4,
+              style: TextStyle(color: context.textPrimary),
               decoration: _buildInputDecoration(
+                context,
                 l10n.translate('initiative_description_hint'),
               ),
               validator: (value) {
@@ -161,48 +207,54 @@ class _CreateInitiativeScreenState
             const SizedBox(height: 24),
 
             // Problem
-            _buildLabel(l10n.translate('problem')),
+            _buildLabel(context, l10n.translate('problem')),
             const SizedBox(height: 12),
             TextFormField(
               controller: _problemController,
               maxLines: 3,
+              style: TextStyle(color: context.textPrimary),
               decoration: _buildInputDecoration(
+                context,
                 l10n.translate('problem_hint'),
               ),
             ),
             const SizedBox(height: 24),
 
             // Solution
-            _buildLabel(l10n.translate('solution')),
+            _buildLabel(context, l10n.translate('solution')),
             const SizedBox(height: 12),
             TextFormField(
               controller: _solutionController,
               maxLines: 3,
+              style: TextStyle(color: context.textPrimary),
               decoration: _buildInputDecoration(
+                context,
                 l10n.translate('solution_hint'),
               ),
             ),
             const SizedBox(height: 24),
 
             // Impact
-            _buildLabel(l10n.translate('impact')),
+            _buildLabel(context, l10n.translate('impact')),
             const SizedBox(height: 12),
             TextFormField(
               controller: _impactController,
               maxLines: 3,
+              style: TextStyle(color: context.textPrimary),
               decoration: _buildInputDecoration(
+                context,
                 l10n.translate('impact_hint'),
               ),
             ),
             const SizedBox(height: 24),
 
             // Tags
-            _buildLabel('Tags'),
+            _buildLabel(context, 'Tags'),
             const SizedBox(height: 12),
-            _buildTagsSection(),
+            _buildTagsSection(context),
             const SizedBox(height: 32),
 
-            // Submit button
+            // Submit/Update button
             SizedBox(
               height: 56,
               child: ElevatedButton(
@@ -225,7 +277,9 @@ class _CreateInitiativeScreenState
                         ),
                       )
                     : Text(
-                        l10n.translate('submit_initiative'),
+                        _isEditing
+                            ? l10n.translate('update_initiative')
+                            : l10n.translate('submit_initiative'),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -235,27 +289,28 @@ class _CreateInitiativeScreenState
             ),
             const SizedBox(height: 16),
 
-            // Save as draft
-            SizedBox(
-              height: 56,
-              child: OutlinedButton(
-                onPressed: _isLoading ? null : () => _handleSubmit(false),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.navy,
-                  side: const BorderSide(color: AppColors.navy),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+            // Save as draft (only for new initiatives or draft status)
+            if (!_isEditing || widget.initiative?.status == InitiativeStatus.draft)
+              SizedBox(
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : () => _handleSubmit(false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: context.textPrimary,
+                    side: BorderSide(color: context.borderColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                ),
-                child: Text(
-                  l10n.translate('save_as_draft'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  child: Text(
+                    l10n.translate('save_as_draft'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-            ),
             const SizedBox(height: 32),
           ],
         ),
@@ -263,15 +318,230 @@ class _CreateInitiativeScreenState
     );
   }
 
-  Widget _buildLabel(String text, {bool required = false}) {
+  /// Build school dropdown for BEX/Superadmin users
+  Widget _buildSchoolDropdown(BuildContext context, AppLocalizations l10n) {
+    final user = ref.watch(currentUserProvider);
+    if (user == null) return const SizedBox.shrink();
+
+    // Only show for BEX and Superadmin
+    if (user.role != UserRole.bex && user.role != UserRole.superadmin) {
+      return const SizedBox.shrink();
+    }
+
+    final schoolsAsync = ref.watch(activeSchoolsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(context, l10n.translate('select_school'), required: true),
+        const SizedBox(height: 12),
+        schoolsAsync.when(
+          data: (schools) {
+            if (schools.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: context.cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: isDark ? Border.all(color: Colors.grey[700]!) : null,
+                ),
+                child: Text(
+                  l10n.translate('no_schools_available'),
+                  style: TextStyle(color: context.textSecondary),
+                ),
+              );
+            }
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: isDark ? Border.all(color: Colors.grey[700]!) : null,
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _selectedSchoolId,
+                  hint: Text(
+                    l10n.translate('select_school'),
+                    style: TextStyle(color: context.textSecondary),
+                  ),
+                  dropdownColor: context.cardColor,
+                  style: TextStyle(color: context.textPrimary),
+                  icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
+                  items: schools.map((school) {
+                    return DropdownMenuItem<String>(
+                      value: school.id,
+                      child: Text(
+                        school.name,
+                        style: TextStyle(color: context.textPrimary),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      final selectedSchool = schools.firstWhere((s) => s.id == value);
+                      setState(() {
+                        _selectedSchoolId = value;
+                        _selectedSchoolName = selectedSchool.name;
+                      });
+                    }
+                  },
+                ),
+              ),
+            );
+          },
+          loading: () => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: isDark ? Border.all(color: Colors.grey[700]!) : null,
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (_, __) => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: isDark ? Border.all(color: Colors.grey[700]!) : null,
+            ),
+            child: Text(
+              l10n.translate('error_loading_schools'),
+              style: TextStyle(color: context.textSecondary),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  /// Build initiative type selector (School or County level)
+  Widget _buildTypeSelector(BuildContext context, AppLocalizations l10n) {
+    final user = ref.watch(currentUserProvider);
+    if (user == null) return const SizedBox.shrink();
+
+    // Only BEX and Superadmin can create county-level initiatives
+    final canCreateCountyInitiative =
+        user.role == UserRole.bex || user.role == UserRole.superadmin;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(context, l10n.translate('initiative_type')),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildTypeOption(
+                context: context,
+                title: l10n.translate('school'),
+                icon: Icons.school_rounded,
+                isSelected: _selectedType == InitiativeType.school,
+                onTap: () {
+                  setState(() => _selectedType = InitiativeType.school);
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildTypeOption(
+                context: context,
+                title: l10n.translate('county'),
+                icon: Icons.account_balance_rounded,
+                isSelected: _selectedType == InitiativeType.county,
+                isEnabled: canCreateCountyInitiative,
+                onTap: canCreateCountyInitiative
+                    ? () {
+                        setState(() {
+                          _selectedType = InitiativeType.county;
+                          // Clear school selection for county-level initiatives
+                          _selectedSchoolId = null;
+                          _selectedSchoolName = null;
+                        });
+                      }
+                    : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  /// Build a single type option button
+  Widget _buildTypeOption({
+    required BuildContext context,
+    required String title,
+    required IconData icon,
+    required bool isSelected,
+    bool isEnabled = true,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: isEnabled ? onTap : null,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.gold.withValues(alpha: 0.15)
+              : context.cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.gold : context.borderColor,
+            width: isSelected ? 2 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.gold.withValues(alpha: 0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Opacity(
+          opacity: isEnabled ? 1 : 0.5,
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? AppColors.gold : context.textSecondary,
+                size: 28,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected ? context.textPrimary : context.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(BuildContext context, String text, {bool required = false}) {
     return Row(
       children: [
         Text(
           text,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
         if (required)
@@ -287,19 +557,20 @@ class _CreateInitiativeScreenState
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint) {
+  InputDecoration _buildInputDecoration(BuildContext context, String hint) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400]),
+      hintStyle: TextStyle(color: context.textSecondary),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: context.cardColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderSide: isDark ? BorderSide(color: Colors.grey[700]!) : BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
+        borderSide: isDark ? BorderSide(color: Colors.grey[700]!) : BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -313,12 +584,14 @@ class _CreateInitiativeScreenState
     );
   }
 
-  Widget _buildTagsSection() {
+  Widget _buildTagsSection(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
+        border: isDark ? Border.all(color: Colors.grey[700]!) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +608,7 @@ class _CreateInitiativeScreenState
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.navy.withValues(alpha: 0.08),
+                    color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
@@ -343,10 +616,10 @@ class _CreateInitiativeScreenState
                     children: [
                       Text(
                         tag,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -355,7 +628,7 @@ class _CreateInitiativeScreenState
                         child: Icon(
                           Icons.close,
                           size: 14,
-                          color: Colors.grey[500],
+                          color: context.textSecondary,
                         ),
                       ),
                     ],
@@ -372,9 +645,10 @@ class _CreateInitiativeScreenState
               Expanded(
                 child: TextField(
                   controller: _tagController,
+                  style: TextStyle(color: context.textPrimary),
                   decoration: InputDecoration(
                     hintText: 'Add a tag...',
-                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    hintStyle: TextStyle(color: context.textSecondary),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                   ),
@@ -394,7 +668,7 @@ class _CreateInitiativeScreenState
             'Suggested:',
             style: TextStyle(
               fontSize: 12,
-              color: Colors.grey[500],
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -417,14 +691,14 @@ class _CreateInitiativeScreenState
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: isDark ? Colors.grey[800] : Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     '+ $tag',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[600],
+                      color: context.textSecondary,
                     ),
                   ),
                 ),
@@ -461,48 +735,117 @@ class _CreateInitiativeScreenState
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    final controller = ref.read(initiativeControllerProvider.notifier);
-    final id = await controller.createInitiative(
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      problem: _problemController.text.trim().isEmpty
-          ? null
-          : _problemController.text.trim(),
-      solution: _solutionController.text.trim().isEmpty
-          ? null
-          : _solutionController.text.trim(),
-      impact: _impactController.text.trim().isEmpty
-          ? null
-          : _impactController.text.trim(),
-      tags: _tags.isEmpty ? null : _tags,
-      submitImmediately: submitImmediately,
-    );
-
-    setState(() => _isLoading = false);
-
-    if (id != null && mounted) {
-      Navigator.pop(context);
+    // Validate school selection for BEX/Superadmin when school type is selected
+    final user = ref.read(currentUserProvider);
+    if (user != null &&
+        _selectedType == InitiativeType.school &&
+        (user.role == UserRole.bex || user.role == UserRole.superadmin) &&
+        _selectedSchoolId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            submitImmediately
-                ? AppLocalizations.of(context).translate('initiative_submitted')
-                : AppLocalizations.of(context).translate('draft_saved'),
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            AppLocalizations.of(context).translate('error_creating_initiative'),
-          ),
+          content: Text(AppLocalizations.of(context).translate('please_select_school')),
           backgroundColor: Colors.red,
         ),
       );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final controller = ref.read(initiativeControllerProvider.notifier);
+    final l10n = AppLocalizations.of(context);
+    bool success = false;
+
+    if (_isEditing) {
+      // Update existing initiative
+      final updatedInitiative = widget.initiative!.copyWith(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        problem: _problemController.text.trim().isEmpty
+            ? null
+            : _problemController.text.trim(),
+        solution: _solutionController.text.trim().isEmpty
+            ? null
+            : _solutionController.text.trim(),
+        impact: _impactController.text.trim().isEmpty
+            ? null
+            : _impactController.text.trim(),
+        type: _selectedType,
+        schoolId: _selectedType == InitiativeType.school ? _selectedSchoolId : null,
+        schoolName: _selectedType == InitiativeType.school ? _selectedSchoolName : null,
+        tags: _tags.isEmpty ? [] : _tags,
+        status: submitImmediately && widget.initiative!.status == InitiativeStatus.draft
+            ? InitiativeStatus.submitted
+            : widget.initiative!.status,
+        updatedAt: DateTime.now(),
+        submittedAt: submitImmediately && widget.initiative!.status == InitiativeStatus.draft
+            ? DateTime.now()
+            : widget.initiative!.submittedAt,
+      );
+
+      success = await controller.updateInitiative(updatedInitiative);
+
+      setState(() => _isLoading = false);
+
+      if (success && mounted) {
+        Navigator.pop(context, true); // Return true to indicate successful update
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.translate('initiative_updated')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.translate('error_updating_initiative')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else {
+      // Create new initiative
+      final id = await controller.createInitiative(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        problem: _problemController.text.trim().isEmpty
+            ? null
+            : _problemController.text.trim(),
+        solution: _solutionController.text.trim().isEmpty
+            ? null
+            : _solutionController.text.trim(),
+        impact: _impactController.text.trim().isEmpty
+            ? null
+            : _impactController.text.trim(),
+        tags: _tags.isEmpty ? null : _tags,
+        submitImmediately: submitImmediately,
+        type: _selectedType,
+        schoolId: _selectedType == InitiativeType.school ? _selectedSchoolId : null,
+        schoolName: _selectedType == InitiativeType.school ? _selectedSchoolName : null,
+      );
+
+      setState(() => _isLoading = false);
+
+      if (id != null && mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              submitImmediately
+                  ? l10n.translate('initiative_submitted')
+                  : l10n.translate('draft_saved'),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.translate('error_creating_initiative')),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 }

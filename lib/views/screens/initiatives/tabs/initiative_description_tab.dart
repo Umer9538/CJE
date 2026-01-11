@@ -23,6 +23,12 @@ class InitiativeDescriptionTab extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Rejection reason section - shown when initiative is rejected
+        if (initiative.status == InitiativeStatus.rejected &&
+            initiative.rejectionReason != null &&
+            initiative.rejectionReason!.isNotEmpty)
+          _buildRejectionReasonSection(context, l10n),
+
         // Management section for admins
         if (canApprove && !initiative.status.isFinal)
           InitiativeManagementSection(initiative: initiative),
@@ -54,7 +60,7 @@ class InitiativeDescriptionTab extends ConsumerWidget {
           ),
 
         // Tags
-        if (initiative.tags.isNotEmpty) _buildTags(),
+        if (initiative.tags.isNotEmpty) _buildTags(context),
 
         // Voting section
         if (_canVote(user)) ...[
@@ -67,7 +73,8 @@ class InitiativeDescriptionTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildTags() {
+  Widget _buildTags(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
@@ -77,15 +84,17 @@ class InitiativeDescriptionTab extends ConsumerWidget {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
+              color: isDark
+                  ? AppColors.gold.withValues(alpha: 0.15)
+                  : AppColors.navy.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               tag,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: AppColors.navy,
+                color: isDark ? AppColors.gold : AppColors.navy,
               ),
             ),
           );
@@ -102,5 +111,52 @@ class InitiativeDescriptionTab extends ConsumerWidget {
             user.role == UserRole.department ||
             user.role == UserRole.bex ||
             user.role == UserRole.superadmin);
+  }
+
+  Widget _buildRejectionReasonSection(BuildContext context, AppLocalizations l10n) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.red.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.cancel_rounded,
+                color: Colors.red,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                l10n.translate('rejection_reason'),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            initiative.rejectionReason!,
+            style: TextStyle(
+              fontSize: 14,
+              color: context.textPrimary,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

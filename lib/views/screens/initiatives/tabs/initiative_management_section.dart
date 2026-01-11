@@ -19,12 +19,12 @@ class InitiativeManagementSection extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -33,11 +33,11 @@ class InitiativeManagementSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(l10n),
+          _buildHeader(context, l10n),
           const SizedBox(height: 12),
           Text(
             _getManagementDescription(initiative.status),
-            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            style: TextStyle(fontSize: 13, color: context.textSecondary),
           ),
           const SizedBox(height: 16),
           _StatusActionButtons(initiative: initiative),
@@ -46,18 +46,19 @@ class InitiativeManagementSection extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(AppLocalizations l10n) {
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
-        const Icon(Icons.admin_panel_settings_rounded,
-            size: 20, color: AppColors.navy),
+        Icon(Icons.admin_panel_settings_rounded,
+            size: 20, color: isDark ? AppColors.gold : AppColors.navy),
         const SizedBox(width: 8),
         Text(
           l10n.translate('manage_initiative'),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
       ],
@@ -150,13 +151,124 @@ class _StatusActionButtons extends ConsumerWidget {
             label: l10n.translate('move_to_voting'),
             icon: Icons.how_to_vote_outlined,
             color: Colors.green,
-            onPressed: () => _moveToVoting(context, ref),
+            onPressed: () => _showVotingRoleDialog(context, ref, l10n),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(child: _RejectButton(initiative: initiative)),
       ],
     );
+  }
+
+  void _showVotingRoleDialog(
+      BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+    UserRole selectedRole = initiative.minimumVotingRole;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(l10n.translate('voting_permissions')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                l10n.translate('select_voting_role'),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: context.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: context.borderColor),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<UserRole>(
+                    isExpanded: true,
+                    value: selectedRole,
+                    dropdownColor: context.cardColor,
+                    style: TextStyle(color: context.textPrimary),
+                    items: [
+                      UserRole.student,
+                      UserRole.classRep,
+                      UserRole.schoolRep,
+                      UserRole.bex,
+                    ].map((role) {
+                      return DropdownMenuItem<UserRole>(
+                        value: role,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 10),
+                              decoration: BoxDecoration(
+                                color: role.badgeBackgroundColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            Text(
+                              '${role.displayName} ${l10n.translate('and_above')}',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() => selectedRole = value);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.translate('voting_role_hint'),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: context.textSecondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.translate('cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _moveToVotingWithRole(context, ref, selectedRole);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              child: Text(l10n.translate('start_voting')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _moveToVotingWithRole(
+      BuildContext context, WidgetRef ref, UserRole minimumRole) async {
+    final controller = ref.read(initiativeControllerProvider.notifier);
+    final success = await controller.moveToVotingWithRole(initiative.id, minimumRole);
+    _showResult(context, success, 'Moved to voting');
   }
 
   Widget _buildVotingButtons(
@@ -192,13 +304,6 @@ class _StatusActionButtons extends ConsumerWidget {
     _showResult(context, success, 'Moved to debate');
   }
 
-  Future<void> _moveToVoting(BuildContext context, WidgetRef ref) async {
-    final success = await ref
-        .read(initiativeControllerProvider.notifier)
-        .moveToVoting(initiative.id);
-    _showResult(context, success, 'Moved to voting');
-  }
-
   Future<void> _adopt(BuildContext context, WidgetRef ref) async {
     final success = await ref
         .read(initiativeControllerProvider.notifier)
@@ -210,7 +315,7 @@ class _StatusActionButtons extends ConsumerWidget {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? message : 'Action failed'),
+          content: Text(success ? message : AppLocalizations.of(context).translate('action_failed')),
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
@@ -313,7 +418,7 @@ class _RejectButton extends ConsumerWidget {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(success ? 'Rejected' : 'Failed'),
+                    content: Text(success ? l10n.translate('rejected') : l10n.translate('failed')),
                     backgroundColor: success ? Colors.orange : Colors.red,
                   ),
                 );
