@@ -59,5 +59,14 @@
 	</array>
 	<key>GIDClientID</key>
 	<string>317912008960-cjb36u6jg36pivd3psh4flas7tigbunp.apps.googleusercontent.com</string>
+	<!-- Push Notifications Background Modes -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	<!-- Firebase Messaging Auto Initialization -->
+	<key>FirebaseMessagingAutoInitEnabled</key>
+	<true/>
 </dict>
 </plist>
