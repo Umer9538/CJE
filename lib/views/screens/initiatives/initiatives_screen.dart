@@ -118,7 +118,7 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
       ),
       floatingActionButton: canCreate
           ? Padding(
-              padding: const EdgeInsets.only(bottom: 80),
+              padding: const EdgeInsets.only(bottom: 100),
               child: FloatingActionButton.extended(
                 heroTag: 'fab_initiatives',
                 onPressed: () => _navigateToCreate(context),
@@ -139,20 +139,20 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
         children: [
           Text(
             l10n.translate('initiatives'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.goldColor,
             ),
           ),
           const Spacer(),
-          _buildFilterButton(hasActiveFilters),
+          _buildFilterButton(context, hasActiveFilters),
         ],
       ),
     );
   }
 
-  Widget _buildFilterButton(bool hasActiveFilters) {
+  Widget _buildFilterButton(BuildContext context, bool hasActiveFilters) {
     return GestureDetector(
       onTap: _showFilterBottomSheet,
       child: Stack(
@@ -161,17 +161,17 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Icon(Icons.filter_list_rounded, color: AppColors.navy, size: 22),
+            child: Icon(Icons.filter_list_rounded, color: context.iconColor, size: 22),
           ),
           if (hasActiveFilters)
             Positioned(
@@ -180,8 +180,8 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
               child: Container(
                 width: 12,
                 height: 12,
-                decoration: const BoxDecoration(
-                  color: AppColors.gold,
+                decoration: BoxDecoration(
+                  color: context.goldColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -199,9 +199,9 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: ctx.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -214,7 +214,7 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: ctx.textSecondary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -227,10 +227,10 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
               children: [
                 Text(
                   l10n.translate('filter'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.navy,
+                    color: ctx.textPrimary,
                   ),
                 ),
                 if (_showOnlyMine || (_selectedSchoolId != null && !_showAllSchools))
@@ -323,11 +323,11 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -335,11 +335,11 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
       ),
       child: TabBar(
         controller: _tabController,
-        labelColor: AppColors.navy,
-        unselectedLabelColor: Colors.grey[400],
+        labelColor: context.textPrimary,
+        unselectedLabelColor: context.textSecondary,
         indicatorSize: TabBarIndicatorSize.tab,
         indicator: BoxDecoration(
-          color: AppColors.gold.withValues(alpha: 0.15),
+          color: context.goldColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(12),
         ),
         dividerColor: Colors.transparent,
@@ -370,6 +370,7 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
         itemBuilder: (context, index) {
           final initiative = initiatives[index];
           return _InitiativeCard(
+            key: ValueKey(initiative.id),
             initiative: initiative,
             onTap: () => _navigateToDetail(context, initiative),
           );
@@ -387,30 +388,30 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
             width: 100,
             height: 100,
             decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: 0.1),
+              color: context.goldColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.lightbulb_outline_rounded,
               size: 48,
-              color: AppColors.gold,
+              color: context.goldColor,
             ),
           ),
           const SizedBox(height: 24),
           Text(
             l10n.translate('no_initiatives'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: AppColors.navy,
+              color: context.goldColor,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Be the first to propose an initiative!',
+            l10n.translate('no_initiatives_desc'),
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -423,19 +424,19 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          Icon(Icons.error_outline, size: 64, color: context.errorColor),
           const SizedBox(height: 16),
           Text(
-            'Failed to load initiatives',
-            style: TextStyle(color: Colors.grey[600]),
+            l10n.translate('error_loading'),
+            style: TextStyle(color: context.textSecondary),
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: () => ref.invalidate(initiativesProvider),
             icon: const Icon(Icons.refresh),
-            label: const Text('Retry'),
+            label: Text(l10n.translate('retry')),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.gold,
+              backgroundColor: context.goldColor,
               foregroundColor: AppColors.navy,
             ),
           ),
@@ -464,17 +465,23 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
 }
 
 /// Initiative card widget
-class _InitiativeCard extends StatelessWidget {
+class _InitiativeCard extends ConsumerWidget {
   final InitiativeModel initiative;
   final VoidCallback onTap;
 
   const _InitiativeCard({
+    super.key,
     required this.initiative,
     required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch for real-time updates to this initiative (including supportCount)
+    final initiativeAsync = ref.watch(initiativeProvider(initiative.id));
+    final currentInitiative = initiativeAsync.valueOrNull ?? initiative;
+
+    final isSupportingAsync = ref.watch(isSupportingProvider(initiative.id));
     final dateFormat = DateFormat('MMM d, yyyy');
 
     return GestureDetector(
@@ -482,11 +489,11 @@ class _InitiativeCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -500,13 +507,13 @@ class _InitiativeCard extends StatelessWidget {
               // Status badge and date
               Row(
                 children: [
-                  _StatusBadge(status: initiative.status),
+                  _StatusBadge(status: currentInitiative.status),
                   const Spacer(),
                   Text(
-                    dateFormat.format(initiative.createdAt),
+                    dateFormat.format(currentInitiative.createdAt),
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[400],
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
@@ -515,11 +522,11 @@ class _InitiativeCard extends StatelessWidget {
 
               // Title
               Text(
-                initiative.title,
-                style: const TextStyle(
+                currentInitiative.title,
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                   height: 1.3,
                 ),
                 maxLines: 2,
@@ -529,10 +536,10 @@ class _InitiativeCard extends StatelessWidget {
 
               // Description preview
               Text(
-                initiative.description,
+                currentInitiative.description,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[600],
+                  color: context.textSecondary,
                   height: 1.5,
                 ),
                 maxLines: 2,
@@ -541,26 +548,26 @@ class _InitiativeCard extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Tags
-              if (initiative.tags.isNotEmpty) ...[
+              if (currentInitiative.tags.isNotEmpty) ...[
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: initiative.tags.take(3).map((tag) {
+                  children: currentInitiative.tags.take(3).map((tag) {
                     return Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.navy.withValues(alpha: 0.08),
+                        color: context.goldColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         tag,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: AppColors.navy,
+                          color: context.goldColor,
                         ),
                       ),
                     );
@@ -574,15 +581,15 @@ class _InitiativeCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 14,
-                    backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+                    backgroundColor: context.goldColor.withValues(alpha: 0.1),
                     child: Text(
-                      initiative.authorName.isNotEmpty
-                          ? initiative.authorName[0].toUpperCase()
+                      currentInitiative.authorName.isNotEmpty
+                          ? currentInitiative.authorName[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.navy,
+                        color: context.goldColor,
                       ),
                     ),
                   ),
@@ -592,56 +599,172 @@ class _InitiativeCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          initiative.authorName,
+                          currentInitiative.authorName,
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            color: Colors.grey[700],
+                            color: context.textSecondary,
                           ),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (initiative.schoolName != null)
+                        if (currentInitiative.schoolName != null)
                           Text(
-                            initiative.schoolName!,
+                            currentInitiative.schoolName!,
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey[500],
+                              color: context.textSecondary,
                             ),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.gold.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.favorite_rounded,
-                          size: 14,
-                          color: AppColors.gold,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${initiative.supportCount}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.gold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildSupportButton(context, ref, isSupportingAsync, currentInitiative),
                 ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSupportButton(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<bool> isSupportingAsync,
+    InitiativeModel currentInitiative,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    return isSupportingAsync.when(
+      data: (isSupporting) => GestureDetector(
+        behavior: HitTestBehavior.opaque, // Prevent tap from propagating to parent
+        onTap: () async {
+          // All users can support initiatives (heart button)
+          final success = await ref
+              .read(initiativeControllerProvider.notifier)
+              .toggleSupport(currentInitiative.id);
+          if (!success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(l10n.translate('error_updating_support')),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: isSupporting
+                ? AppColors.gold.withValues(alpha: 0.25)
+                : context.goldColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: isSupporting
+                ? Border.all(color: AppColors.gold, width: 1.5)
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSupporting
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_outline_rounded,
+                size: 14,
+                color: context.goldColor,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${currentInitiative.supportCount}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: context.goldColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      loading: () => Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: context.goldColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: context.goldColor,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${currentInitiative.supportCount}',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: context.goldColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+      error: (_, __) => GestureDetector(
+        behavior: HitTestBehavior.opaque, // Prevent tap from propagating to parent
+        onTap: () async {
+          // Retry on error
+          final success = await ref
+              .read(initiativeControllerProvider.notifier)
+              .toggleSupport(currentInitiative.id);
+          if (!success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(l10n.translate('error_updating_support')),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 6,
+          ),
+          decoration: BoxDecoration(
+            color: context.goldColor.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.favorite_outline_rounded,
+                size: 14,
+                color: context.goldColor,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${currentInitiative.supportCount}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: context.goldColor,
+                ),
               ),
             ],
           ),
@@ -752,10 +875,12 @@ class _FilterOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.gold.withValues(alpha: 0.1) : Colors.grey[50],
+          color: isSelected
+              ? context.goldColor.withValues(alpha: 0.1)
+              : context.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? AppColors.gold : Colors.grey[200]!,
+            color: isSelected ? context.goldColor : context.textSecondary.withValues(alpha: 0.3),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -766,13 +891,13 @@ class _FilterOption extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.gold.withValues(alpha: 0.2)
-                    : Colors.grey[200],
+                    ? context.goldColor.withValues(alpha: 0.2)
+                    : context.textSecondary.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
-                color: isSelected ? AppColors.gold : Colors.grey[600],
+                color: isSelected ? context.goldColor : context.textSecondary,
                 size: 22,
               ),
             ),
@@ -786,7 +911,7 @@ class _FilterOption extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? AppColors.navy : Colors.grey[800],
+                      color: isSelected ? context.textPrimary : context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -794,16 +919,16 @@ class _FilterOption extends StatelessWidget {
                     subtitle,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.grey[500],
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
               ),
             ),
             if (isSelected)
-              const Icon(
+              Icon(
                 Icons.check_circle_rounded,
-                color: AppColors.gold,
+                color: context.goldColor,
                 size: 24,
               ),
           ],
