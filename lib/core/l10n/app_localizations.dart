@@ -1260,6 +1260,7 @@ const Map<String, String> _roStrings = {
 
   // Admin Dashboard
   'all_counties': 'Toate județele',
+  'select_county_first': 'Selectează un județ din meniul principal pentru a vedea școlile',
   'statistics': 'Statistici',
   'total_users': 'Total utilizatori',
 
@@ -2451,6 +2452,7 @@ const Map<String, String> _enStrings = {
 
   // Admin Dashboard
   'all_counties': 'All Counties',
+  'select_county_first': 'Select a county from the main menu to see schools',
   'statistics': 'Statistics',
   'total_users': 'Total Users',
 

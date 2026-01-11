@@ -22,7 +22,8 @@ final allSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
   return repository.getAllSchools();
 });
 
-/// Active schools provider - filtered by county for non-superadmin users
+/// Active schools provider - filtered by county
+/// Superadmin must select a county first to see schools
 final activeSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
   final currentUser = ref.watch(currentUserProvider);
   if (currentUser == null) {
@@ -31,8 +32,7 @@ final activeSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
 
   final repository = ref.read(schoolRepositoryProvider);
 
-  // For Superadmin, use the selected county from effectiveCountyProvider
-  // For other users, filter by their city/county
+  // Use the effective county (selected county for Superadmin, user's city for others)
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   if (effectiveCounty != null) {
@@ -40,12 +40,8 @@ final activeSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
     return repository.getSchoolsByCity(effectiveCounty);
   }
 
-  // For Superadmin with "All Counties" selected, return all schools
-  if (currentUser.role == UserRole.superadmin) {
-    return repository.getActiveSchools();
-  }
-
-  // For other users without a county, return empty list
+  // If no county is selected (Superadmin with "All Counties"), return empty list
+  // User needs to select a specific county first
   return <SchoolModel>[];
 });
 

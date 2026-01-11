@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../controllers/admin/admin_controller.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
@@ -329,13 +330,40 @@ class _CreateInitiativeScreenState
     }
 
     final schoolsAsync = ref.watch(activeSchoolsProvider);
+    final selectedCounty = ref.watch(selectedCountyProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Check if Superadmin needs to select a county first
+    final isSuperadmin = user.role == UserRole.superadmin;
+    final needsCountySelection = isSuperadmin && selectedCounty == null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(context, l10n.translate('select_school'), required: true),
         const SizedBox(height: 12),
+        if (needsCountySelection)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: AppColors.gold, size: 20),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.translate('select_county_first'),
+                    style: TextStyle(color: context.textPrimary, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
         schoolsAsync.when(
           data: (schools) {
             if (schools.isEmpty) {

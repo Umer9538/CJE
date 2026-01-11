@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import '../../../controllers/admin/admin_controller.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 
@@ -588,6 +589,35 @@ class _CreateAnnouncementScreenState
 
   Widget _buildSchoolDropdown(BuildContext context, AppLocalizations l10n) {
     final schoolsAsync = ref.watch(activeSchoolsProvider);
+    final user = ref.watch(currentUserProvider);
+    final selectedCounty = ref.watch(selectedCountyProvider);
+
+    // Check if Superadmin needs to select a county first
+    final isSuperadmin = user?.role == UserRole.superadmin;
+    final needsCountySelection = isSuperadmin && selectedCounty == null;
+
+    if (needsCountySelection) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.gold.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.gold.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, color: AppColors.gold, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.translate('select_county_first'),
+                style: TextStyle(color: context.textPrimary, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return schoolsAsync.when(
       data: (schools) {
