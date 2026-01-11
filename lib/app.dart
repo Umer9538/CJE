@@ -25,6 +25,21 @@ class _CJEAppState extends ConsumerState<CJEApp> with WidgetsBindingObserver {
     _router = ref.read(appRouterProvider);
     // Add lifecycle observer to handle app resume
     WidgetsBinding.instance.addObserver(this);
+    // Set up FCM navigation callback for notification taps
+    _setupFcmNavigation();
+  }
+
+  /// Set up FCM navigation callback
+  void _setupFcmNavigation() {
+    FCMService().onNotificationTap = (route, data) {
+      debugPrint('Notification tap - navigating to: $route');
+      // Use a slight delay to ensure router is ready
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _router.go(route);
+        }
+      });
+    };
   }
 
   @override
