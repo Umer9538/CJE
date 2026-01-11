@@ -41,13 +41,13 @@ class MainShell extends ConsumerWidget {
         context.go(RouteNames.announcements);
         break;
       case 2:
-        context.go(RouteNames.meetings);
-        break;
-      case 3:
         context.go(RouteNames.initiatives);
         break;
+      case 3:
+        context.go(RouteNames.meetings);
+        break;
       case 4:
-        context.go(RouteNames.profile);
+        context.go(RouteNames.menu);
         break;
     }
   }
@@ -65,6 +65,7 @@ class _FloatingBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final isDark = context.isDarkMode;
     final navBgColor = isDark ? AppColors.cardDark : AppColors.navy;
 
@@ -92,29 +93,31 @@ class _FloatingBottomNav extends StatelessWidget {
               children: [
                 _NavItem(
                   icon: Icons.home_rounded,
-                  label: 'Home',
+                  label: l10n.translate('home'),
                   isSelected: currentIndex == 0,
                   onTap: () => onTap(0),
                 ),
                 _NavItem(
                   icon: Icons.campaign_rounded,
-                  label: 'News',
+                  label: l10n.translate('announcements'),
                   isSelected: currentIndex == 1,
                   onTap: () => onTap(1),
                 ),
-                _CenterNavItem(
+                _NavItem(
+                  icon: Icons.lightbulb_rounded,
+                  label: l10n.translate('ideas'),
                   isSelected: currentIndex == 2,
                   onTap: () => onTap(2),
                 ),
                 _NavItem(
-                  icon: Icons.lightbulb_rounded,
-                  label: 'Ideas',
+                  icon: Icons.groups_rounded,
+                  label: l10n.translate('meetings'),
                   isSelected: currentIndex == 3,
                   onTap: () => onTap(3),
                 ),
                 _NavItem(
-                  icon: Icons.person_rounded,
-                  label: 'Profile',
+                  icon: Icons.menu_rounded,
+                  label: l10n.translate('menu'),
                   isSelected: currentIndex == 4,
                   onTap: () => onTap(4),
                 ),
@@ -146,24 +149,24 @@ class _NavItem extends StatelessWidget {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 60,
+        width: 56,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOut,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.gold.withValues(alpha: 0.2)
                     : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
                 color: isSelected ? AppColors.gold : Colors.white.withValues(alpha: 0.5),
-                size: 24,
+                size: 22,
               ),
             ),
             const SizedBox(height: 2),
@@ -171,55 +174,16 @@ class _NavItem extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 color: isSelected ? AppColors.gold : Colors.white.withValues(alpha: 0.5),
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
-              child: Text(label),
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CenterNavItem extends StatelessWidget {
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CenterNavItem({
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isSelected
-                ? [AppColors.gold, const Color(0xFFE5C158)]
-                : [AppColors.gold.withValues(alpha: 0.8), AppColors.gold],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.gold.withValues(alpha: 0.4),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Icon(
-          Icons.event_rounded,
-          color: AppColors.navy,
-          size: isSelected ? 28 : 26,
         ),
       ),
     );
@@ -230,8 +194,11 @@ class _CenterNavItem extends StatelessWidget {
 int getIndexFromRoute(String location) {
   if (location.startsWith(RouteNames.home)) return 0;
   if (location.startsWith(RouteNames.announcements)) return 1;
-  if (location.startsWith(RouteNames.meetings)) return 2;
-  if (location.startsWith(RouteNames.initiatives)) return 3;
-  if (location.startsWith(RouteNames.profile)) return 4;
+  if (location.startsWith(RouteNames.initiatives)) return 2;
+  if (location.startsWith(RouteNames.meetings)) return 3;
+  if (location.startsWith(RouteNames.menu)) return 4;
+  if (location.startsWith(RouteNames.profile)) return 4; // Profile is now under Menu
+  if (location.startsWith(RouteNames.documents)) return 4; // Documents is now under Menu
+  if (location.startsWith(RouteNames.polls)) return 4; // Polls is now under Menu
   return 0;
 }

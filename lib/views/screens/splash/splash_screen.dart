@@ -66,6 +66,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: isDarkMode
@@ -80,36 +81,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Logo Image
-                Container(
+                Image.asset(
+                  'assets/images/App_logo.png',
                   width: 150,
                   height: 150,
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? AppColors.primaryDark
-                        : AppColors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/logo.jpeg',
-                      width: 150,
-                      height: 150,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
+                  fit: BoxFit.contain,
                 ),
                 const SizedBox(height: AppSizes.spacing24),
 
                 // App Name
                 Text(
-                  AppStrings.appName,
+                  '${l10n.translate('app_name')} Platform',
                   style: TextStyle(
                     fontSize: AppSizes.fontXXL,
                     fontWeight: FontWeight.bold,
@@ -120,9 +102,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 ),
                 const SizedBox(height: AppSizes.spacing8),
 
-                // Tagline
+                // Tagline - Full organization name
                 Text(
-                  AppStrings.appNameFull,
+                  l10n.translate('app_name_full'),
                   style: TextStyle(
                     fontSize: AppSizes.fontSM,
                     color: isDarkMode
