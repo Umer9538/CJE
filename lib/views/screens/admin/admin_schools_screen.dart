@@ -117,7 +117,7 @@ class _AdminSchoolsScreenState extends ConsumerState<AdminSchoolsScreen> {
     }
 
     if (filteredSchools.isEmpty) {
-      return _buildEmptyState(l10n);
+      return _buildEmptyState(context, l10n);
     }
 
     return RefreshIndicator(
@@ -138,7 +138,8 @@ class _AdminSchoolsScreenState extends ConsumerState<AdminSchoolsScreen> {
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -149,18 +150,18 @@ class _AdminSchoolsScreenState extends ConsumerState<AdminSchoolsScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
+                color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.school_outlined, size: 40, color: Colors.grey[400]),
+              child: Icon(Icons.school_outlined, size: 40, color: context.textSecondary),
             ),
             const SizedBox(height: 16),
             Text(
               l10n.translate('no_schools'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
           ],

@@ -8,6 +8,7 @@ import '../../../controllers/admin/admin_controller.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
 import 'user_detail_screen.dart';
+import 'widgets/add_user_dialog.dart';
 
 /// Admin screen to manage users
 /// Only accessible by schoolRep, bex, and superadmin
@@ -180,7 +181,26 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAddUserDialog(context),
+        backgroundColor: AppColors.gold,
+        foregroundColor: AppColors.navy,
+        icon: const Icon(Icons.person_add_rounded),
+        label: Text(l10n.translate('add_user')),
+      ),
     );
+  }
+
+  void _showAddUserDialog(BuildContext context) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => const AddUserDialog(),
+    );
+
+    // Refresh the users list if a user was added successfully
+    if (result == true && mounted) {
+      ref.invalidate(filteredUsersProvider);
+    }
   }
 
   Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
@@ -194,22 +214,22 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
+                color: context.goldColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.people_outline,
                 size: 40,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 16),
             Text(
               l10n.translate('no_users_found'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
           ],
@@ -223,9 +243,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+          Icon(Icons.error_outline, size: 48, color: context.errorColor),
           const SizedBox(height: 16),
-          Text(l10n.translate('error_loading')),
+          Text(l10n.translate('error_loading'), style: TextStyle(color: context.textSecondary)),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => ref.invalidate(filteredUsersProvider),
@@ -279,10 +299,11 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: context.cardColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
+      builder: (ctx) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -290,10 +311,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
           children: [
             Text(
               l10n.translate('filter_by_role'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: ctx.goldColor,
               ),
             ),
             const SizedBox(height: 16),
@@ -400,7 +421,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error picking file: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error_picking_file')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -430,7 +451,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error importing: $e'),
+            content: Text('${AppLocalizations.of(context).translate('error_importing')}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -443,9 +464,9 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
     final l10n = AppLocalizations.of(context);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [
@@ -455,7 +476,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
+              color: context.textSecondary.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -468,10 +489,10 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.navy.withValues(alpha: 0.1),
+                    color: context.goldColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.upload_file, color: AppColors.navy),
+                  child: Icon(Icons.upload_file, color: context.goldColor),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -480,17 +501,17 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                     children: [
                       Text(
                         l10n.translate('import_users'),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.navy,
+                          color: context.goldColor,
                         ),
                       ),
                       Text(
                         l10n.translate('import_users_subtitle'),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: context.textSecondary,
                         ),
                       ),
                     ],
@@ -537,7 +558,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                         CSVImportService.getTemplateDescription(),
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[700],
+                          color: context.textSecondary,
                           height: 1.5,
                         ),
                       ),
@@ -553,12 +574,12 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                   child: Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: context.scaffoldBackgroundColor,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: _selectedFilePath != null
                             ? Colors.green.withValues(alpha: 0.5)
-                            : Colors.grey.withValues(alpha: 0.3),
+                            : context.textSecondary.withValues(alpha: 0.3),
                         width: 2,
                         strokeAlign: BorderSide.strokeAlignOutside,
                       ),
@@ -572,7 +593,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                           size: 48,
                           color: _selectedFilePath != null
                               ? Colors.green
-                              : Colors.grey[400],
+                              : context.textSecondary,
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -581,8 +602,8 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                             color: _selectedFilePath != null
-                                ? AppColors.navy
-                                : Colors.grey[600],
+                                ? context.textPrimary
+                                : context.textSecondary,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -593,7 +614,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                               l10n.translate('tap_to_select'),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[500],
+                                color: context.textSecondary,
                               ),
                             ),
                           ),
@@ -630,9 +651,9 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                             const SizedBox(width: 8),
                             Text(
                               l10n.translate('import_results'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.navy,
+                                color: context.textPrimary,
                               ),
                             ),
                           ],
@@ -682,7 +703,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                                   error.toString(),
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey[700],
+                                    color: context.textSecondary,
                                   ),
                                 ),
                               )),
@@ -692,7 +713,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                               style: TextStyle(
                                 fontSize: 12,
                                 fontStyle: FontStyle.italic,
-                                color: Colors.grey[600],
+                                color: context.textSecondary,
                               ),
                             ),
                         ],
@@ -707,10 +728,10 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, -4),
                 ),
@@ -768,27 +789,29 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
   }
 
   Widget _buildResultRow(String label, String value, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey[600],
+    return Builder(
+      builder: (context) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: context.textSecondary,
+              ),
             ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: color ?? AppColors.navy,
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: color ?? context.textPrimary,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -815,14 +838,14 @@ class _UserCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: user.status == UserStatus.pending
               ? Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 2)
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -855,10 +878,10 @@ class _UserCard extends StatelessWidget {
                 children: [
                   Text(
                     user.fullName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -866,7 +889,7 @@ class _UserCard extends StatelessWidget {
                     user.email,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: context.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -897,7 +920,7 @@ class _UserCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          user.status.displayName,
+                          l10n.translate(user.status.translationKey),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -931,7 +954,7 @@ class _UserCard extends StatelessWidget {
             else
               Icon(
                 Icons.chevron_right,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
           ],
         ),

@@ -250,20 +250,22 @@ class _GDSCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: !gds.isActive
               ? Border.all(color: Colors.red.withValues(alpha: 0.3), width: 1)
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -285,7 +287,7 @@ class _GDSCard extends StatelessWidget {
                 child: Icon(
                   Icons.groups_rounded,
                   size: 28,
-                  color: gds.isActive ? AppColors.navy : Colors.grey,
+                  color: gds.isActive ? (isDark ? AppColors.gold : AppColors.navy) : Colors.grey,
                 ),
               ),
             ),
@@ -304,7 +306,7 @@ class _GDSCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: gds.isActive ? AppColors.navy : Colors.grey,
+                            color: gds.isActive ? context.textPrimary : Colors.grey,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -334,7 +336,7 @@ class _GDSCard extends StatelessWidget {
                       gds.focus!,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[500],
+                        color: context.textSecondary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -342,24 +344,24 @@ class _GDSCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.people_outline, size: 14, color: Colors.grey[400]),
+                      Icon(Icons.people_outline, size: 14, color: context.textSecondary),
                       const SizedBox(width: 4),
                       Text(
                         '${gds.memberCount} members',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          color: context.textSecondary,
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Icon(Icons.person_outline, size: 14, color: Colors.grey[400]),
+                      Icon(Icons.person_outline, size: 14, color: context.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           gds.leaderName,
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -377,12 +379,12 @@ class _GDSCard extends StatelessWidget {
                 icon: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.navy.withValues(alpha: 0.08),
+                    color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.edit_outlined,
-                    color: AppColors.navy,
+                    color: isDark ? AppColors.gold : AppColors.navy,
                     size: 18,
                   ),
                 ),
@@ -390,7 +392,7 @@ class _GDSCard extends StatelessWidget {
             else
               Icon(
                 Icons.chevron_right,
-                color: Colors.grey[400],
+                color: context.textSecondary,
               ),
           ],
         ),
@@ -409,137 +411,156 @@ class _GDSDetailSheet extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final canManage = ref.watch(canManageGDSProvider);
     final dateFormat = DateFormat('MMM d, yyyy');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (context, scrollController) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: ListView(
-          controller: scrollController,
-          children: [
-            // Header
-            Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
+    return Container(
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: AppColors.gold.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
+                    color: context.borderColor,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.groups_rounded,
-                      size: 32,
-                      color: AppColors.navy,
+                ),
+              ),
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.gold.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.groups_rounded,
+                        size: 32,
+                        color: isDark ? AppColors.gold : AppColors.navy,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        gds.name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.navy,
-                        ),
-                      ),
-                      if (gds.focus != null) ...[
-                        const SizedBox(height: 4),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          gds.focus!,
+                          gds.name,
                           style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.gold : AppColors.navy,
                           ),
                         ),
+                        if (gds.focus != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            gds.focus!,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Description
-            if (gds.description != null && gds.description!.isNotEmpty) ...[
-              Text(
-                l10n.translate('description'),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                gds.description!,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                ),
+                ],
               ),
               const SizedBox(height: 24),
-            ],
 
-            // Info rows
-            _buildInfoRow(Icons.people_outlined, l10n.translate('members'), '${gds.memberCount}'),
-            _buildInfoRow(Icons.person_outlined, l10n.translate('leader'), gds.leaderName),
-            _buildInfoRow(Icons.calendar_today_outlined, l10n.translate('created'), dateFormat.format(gds.createdAt)),
-            _buildInfoRow(
-              Icons.circle,
-              l10n.translate('status'),
-              gds.isActive ? l10n.translate('active') : l10n.translate('inactive'),
-              valueColor: gds.isActive ? Colors.green : Colors.red,
-            ),
-
-            const SizedBox(height: 24),
-
-            // Members section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
+              // Description
+              if (gds.description != null && gds.description!.isNotEmpty) ...[
                 Text(
-                  l10n.translate('members'),
-                  style: const TextStyle(
+                  l10n.translate('description'),
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.navy,
+                    color: isDark ? AppColors.gold : AppColors.navy,
                   ),
                 ),
-                if (canManage)
-                  TextButton.icon(
-                    onPressed: () => _showAddMemberDialog(context, ref),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text(l10n.translate('add')),
+                const SizedBox(height: 8),
+                Text(
+                  gds.description!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: context.textSecondary,
                   ),
+                ),
+                const SizedBox(height: 24),
               ],
-            ),
-            const SizedBox(height: 12),
 
-            if (gds.members.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    l10n.translate('no_members'),
-                    style: TextStyle(color: Colors.grey[500]),
+              // Info rows
+              _buildInfoRow(context, Icons.people_outlined, l10n.translate('members'), '${gds.memberCount}'),
+              _buildInfoRow(context, Icons.person_outlined, l10n.translate('leader'), gds.leaderName),
+              _buildInfoRow(context, Icons.calendar_today_outlined, l10n.translate('created'), dateFormat.format(gds.createdAt)),
+              _buildInfoRow(
+                context,
+                Icons.circle,
+                l10n.translate('status'),
+                gds.isActive ? l10n.translate('active') : l10n.translate('inactive'),
+                valueColor: gds.isActive ? Colors.green : Colors.red,
+              ),
+
+              const SizedBox(height: 24),
+
+              // Members section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l10n.translate('members'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.gold : AppColors.navy,
+                    ),
                   ),
-                ),
-              )
-            else
-              ...gds.members.map((member) => _buildMemberTile(context, ref, member, canManage)),
+                  if (canManage)
+                    TextButton.icon(
+                      onPressed: () => _showAddMemberDialog(context, ref),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(l10n.translate('add')),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+
+              if (gds.members.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: context.borderColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      l10n.translate('no_members'),
+                      style: TextStyle(color: context.textSecondary),
+                    ),
+                  ),
+                )
+              else
+                ...gds.members.map((member) => _buildMemberTile(context, ref, member, canManage)),
 
             if (canManage) ...[
               const SizedBox(height: 32),
@@ -578,10 +599,13 @@ class _GDSDetailSheet extends ConsumerWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, {Color? valueColor}) {
+  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value, {Color? valueColor}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -590,10 +614,10 @@ class _GDSDetailSheet extends ConsumerWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
+              color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppColors.navy, size: 20),
+            child: Icon(icon, color: isDark ? AppColors.gold : AppColors.navy, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -604,7 +628,7 @@ class _GDSDetailSheet extends ConsumerWidget {
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: context.textSecondary,
                   ),
                 ),
                 Text(
@@ -612,7 +636,7 @@ class _GDSDetailSheet extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
-                    color: valueColor ?? AppColors.navy,
+                    color: valueColor ?? (isDark ? AppColors.gold : AppColors.navy),
                   ),
                 ),
               ],
@@ -626,12 +650,13 @@ class _GDSDetailSheet extends ConsumerWidget {
   Widget _buildMemberTile(BuildContext context, WidgetRef ref, GDSMember member, bool canManage) {
     final l10n = AppLocalizations.of(context);
     final isLeader = member.id == gds.leaderId;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isLeader ? AppColors.gold.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.05),
+        color: isLeader ? AppColors.gold.withValues(alpha: 0.1) : context.borderColor.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
         border: isLeader ? Border.all(color: AppColors.gold.withValues(alpha: 0.3)) : null,
       ),
@@ -639,11 +664,11 @@ class _GDSDetailSheet extends ConsumerWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: isLeader ? AppColors.navy : AppColors.navy.withValues(alpha: 0.1),
+            backgroundColor: isLeader ? (isDark ? AppColors.gold : AppColors.navy) : (isDark ? AppColors.gold.withValues(alpha: 0.2) : AppColors.navy.withValues(alpha: 0.1)),
             child: Text(
               member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
               style: TextStyle(
-                color: isLeader ? Colors.white : AppColors.navy,
+                color: isLeader ? (isDark ? AppColors.navy : Colors.white) : (isDark ? AppColors.gold : AppColors.navy),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -657,9 +682,9 @@ class _GDSDetailSheet extends ConsumerWidget {
                   children: [
                     Text(
                       member.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.navy,
+                        color: context.textPrimary,
                       ),
                     ),
                     if (isLeader) ...[
@@ -687,7 +712,7 @@ class _GDSDetailSheet extends ConsumerWidget {
                     member.role!,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: context.textSecondary,
                     ),
                   ),
               ],
@@ -732,11 +757,11 @@ class _GDSDetailSheet extends ConsumerWidget {
                   final user = availableUsers[index];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+                      backgroundColor: AppColors.gold.withValues(alpha: 0.15),
                       child: Text(
                         user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: AppColors.navy,
+                        style: TextStyle(
+                          color: context.textPrimary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -925,86 +950,113 @@ class _GDSFormSheetState extends ConsumerState<_GDSFormSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final usersAsync = ref.watch(allUsersProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        24,
-        24,
-        MediaQuery.of(context).viewInsets.bottom + 24,
+    return Container(
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                isEditing ? l10n.translate('edit_gds') : l10n.translate('create_gds'),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Name field
-              TextFormField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  labelText: l10n.translate('gds_name'),
-                  hintText: 'e.g., Environment Team',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          24,
+          24,
+          24,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Drag handle
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: context.borderColor,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return l10n.translate('field_required');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Focus field
-              TextFormField(
-                controller: _focusController,
-                decoration: InputDecoration(
-                  labelText: l10n.translate('focus_area'),
-                  hintText: 'e.g., Environment, Education, Culture',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                Text(
+                  isEditing ? l10n.translate('edit_gds') : l10n.translate('create_gds'),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.gold : AppColors.navy,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-              // Description field
-              TextFormField(
-                controller: _descriptionController,
-                decoration: InputDecoration(
-                  labelText: l10n.translate('description'),
-                  hintText: l10n.translate('gds_description_hint'),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                // Name field
+                TextFormField(
+                  controller: _nameController,
+                  style: TextStyle(color: context.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: l10n.translate('gds_name'),
+                    labelStyle: TextStyle(color: context.textSecondary),
+                    hintText: 'e.g., Environment Team',
+                    hintStyle: TextStyle(color: context.textSecondary.withValues(alpha: 0.5)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return l10n.translate('field_required');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Focus field
+                TextFormField(
+                  controller: _focusController,
+                  style: TextStyle(color: context.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: l10n.translate('focus_area'),
+                    labelStyle: TextStyle(color: context.textSecondary),
+                    hintText: 'e.g., Environment, Education, Culture',
+                    hintStyle: TextStyle(color: context.textSecondary.withValues(alpha: 0.5)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Leader selection
-              Text(
-                l10n.translate('select_leader'),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.navy,
+                // Description field
+                TextFormField(
+                  controller: _descriptionController,
+                  style: TextStyle(color: context.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: l10n.translate('description'),
+                    labelStyle: TextStyle(color: context.textSecondary),
+                    hintText: l10n.translate('gds_description_hint'),
+                    hintStyle: TextStyle(color: context.textSecondary.withValues(alpha: 0.5)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  maxLines: 3,
                 ),
-              ),
+                const SizedBox(height: 16),
+
+                // Leader selection
+                Text(
+                  l10n.translate('select_leader'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? AppColors.gold : AppColors.navy,
+                  ),
+                ),
               const SizedBox(height: 8),
               usersAsync.when(
                 data: (users) => DropdownButtonFormField<String>(
@@ -1070,6 +1122,7 @@ class _GDSFormSheetState extends ConsumerState<_GDSFormSheet> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

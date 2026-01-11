@@ -12,6 +12,28 @@ class AdminSetupScreen extends StatefulWidget {
   State<AdminSetupScreen> createState() => _AdminSetupScreenState();
 }
 
+extension _AdminSetupL10n on AppLocalizations {
+  String get adminSetup => translate('admin_setup');
+  String get adminSetupWarning => translate('admin_setup_warning');
+  String get currentSuperAdmins => translate('current_super_admins');
+  String get addSuperAdmin => translate('add_super_admin');
+  String get addSuperAdminDesc => translate('add_super_admin_desc');
+  String get userEmail => translate('user_email');
+  String get emailHint => translate('admin_email_hint');
+  String get pleaseEnterEmail => translate('please_enter_email');
+  String get pleaseEnterValidEmail => translate('please_enter_valid_email');
+  String get setAsSuperAdmin => translate('set_as_super_admin');
+  String get superAdminSetSuccess => translate('super_admin_set_success');
+  String get superAdminSetFailed => translate('super_admin_set_failed');
+  String get superAdminCapabilities => translate('super_admin_capabilities');
+  String get capViewManageUsers => translate('cap_view_manage_users');
+  String get capApproveUsers => translate('cap_approve_users');
+  String get capChangeRoles => translate('cap_change_roles');
+  String get capCreateContent => translate('cap_create_content');
+  String get capUploadDocs => translate('cap_upload_docs');
+  String get capFullAccess => translate('cap_full_access');
+}
+
 class _AdminSetupScreenState extends State<AdminSetupScreen> {
   final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -57,12 +79,13 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
       _emailController.text.trim(),
     );
 
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _isLoading = false;
       _isSuccess = success;
       _message = success
-          ? 'Super Admin set successfully! The user can now manage the entire app.'
-          : 'Failed to set Super Admin. Make sure the email is registered in the app.';
+          ? l10n.superAdminSetSuccess
+          : l10n.superAdminSetFailed;
     });
 
     if (success) {
@@ -73,12 +96,13 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
-        title: const Text('Admin Setup'),
+        title: Text(l10n.adminSetup),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -100,7 +124,7 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'This screen is for initial setup only. Super Admins have full control over the app.',
+                      l10n.adminSetupWarning,
                       style: TextStyle(
                         color: Colors.orange[800],
                         fontSize: 13,
@@ -114,9 +138,9 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
 
             // Existing admins
             if (_existingAdmins.isNotEmpty) ...[
-              const Text(
-                'Current Super Admins',
-                style: TextStyle(
+              Text(
+                l10n.currentSuperAdmins,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppColors.navy,
@@ -166,9 +190,9 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
                           color: AppColors.gold.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          'Super Admin',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.translate('super_admin'),
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: AppColors.navy,
@@ -183,9 +207,9 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
             ],
 
             // Add new admin form
-            const Text(
-              'Add Super Admin',
-              style: TextStyle(
+            Text(
+              l10n.addSuperAdmin,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.navy,
@@ -193,7 +217,7 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Enter the email of a registered user to make them a Super Admin.',
+              l10n.addSuperAdminDesc,
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -223,8 +247,8 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'User Email',
-                        hintText: 'admin@example.com',
+                        labelText: l10n.userEmail,
+                        hintText: l10n.emailHint,
                         prefixIcon: const Icon(Icons.email_outlined),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -234,10 +258,10 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Please enter an email';
+                          return l10n.pleaseEnterEmail;
                         }
                         if (!value.contains('@')) {
-                          return 'Please enter a valid email';
+                          return l10n.pleaseEnterValidEmail;
                         }
                         return null;
                       },
@@ -266,9 +290,9 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
-                                'Set as Super Admin',
-                                style: TextStyle(
+                            : Text(
+                                l10n.setAsSuperAdmin,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -322,32 +346,32 @@ class _AdminSetupScreenState extends State<AdminSetupScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.05),
+                color: AppColors.gold.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.info_outline, color: AppColors.navy, size: 20),
-                      SizedBox(width: 8),
+                      Icon(Icons.info_outline, color: context.textPrimary, size: 20),
+                      const SizedBox(width: 8),
                       Text(
-                        'Super Admin Capabilities',
+                        l10n.superAdminCapabilities,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildCapability('View and manage all users'),
-                  _buildCapability('Approve or suspend any user'),
-                  _buildCapability('Change user roles'),
-                  _buildCapability('Create announcements, meetings, polls'),
-                  _buildCapability('Upload documents'),
-                  _buildCapability('Full access to all app features'),
+                  _buildCapability(l10n.capViewManageUsers),
+                  _buildCapability(l10n.capApproveUsers),
+                  _buildCapability(l10n.capChangeRoles),
+                  _buildCapability(l10n.capCreateContent),
+                  _buildCapability(l10n.capUploadDocs),
+                  _buildCapability(l10n.capFullAccess),
                 ],
               ),
             ),

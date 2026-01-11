@@ -109,7 +109,7 @@ class _WarningsTab extends ConsumerWidget {
     return warningsAsync.when(
       data: (warnings) {
         if (warnings.isEmpty) {
-          return _buildEmptyState(l10n, Icons.warning_amber_rounded, 'no_warnings');
+          return _buildEmptyState(context, l10n, Icons.warning_amber_rounded, 'no_warnings');
         }
 
         return RefreshIndicator(
@@ -129,20 +129,20 @@ class _WarningsTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(child: Text(l10n.translate('error_loading'))),
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n, IconData icon, String key) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n, IconData icon, String key) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: Colors.grey[300]),
+          Icon(icon, size: 64, color: context.textSecondary.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text(
             l10n.translate(key),
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 16, color: context.textSecondary),
           ),
         ],
       ),
@@ -166,7 +166,7 @@ class _AbsencesTab extends ConsumerWidget {
     return absencesAsync.when(
       data: (absences) {
         if (absences.isEmpty) {
-          return _buildEmptyState(l10n, Icons.event_busy_rounded, 'no_absences');
+          return _buildEmptyState(context, l10n, Icons.event_busy_rounded, 'no_absences');
         }
 
         return RefreshIndicator(
@@ -186,20 +186,20 @@ class _AbsencesTab extends ConsumerWidget {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator(color: AppColors.gold)),
-      error: (e, _) => Center(child: Text('Error: $e')),
+      error: (e, _) => Center(child: Text(l10n.translate('error_loading'))),
     );
   }
 
-  Widget _buildEmptyState(AppLocalizations l10n, IconData icon, String key) {
+  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n, IconData icon, String key) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: Colors.grey[300]),
+          Icon(icon, size: 64, color: context.textSecondary.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text(
             l10n.translate(key),
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 16, color: context.textSecondary),
           ),
         ],
       ),
@@ -221,15 +221,15 @@ class _WarningCard extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: warning.isActive ? _getTypeColor(warning.type) : Colors.grey[300]!,
+          color: warning.isActive ? _getTypeColor(warning.type) : context.borderColor,
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -267,7 +267,7 @@ class _WarningCard extends ConsumerWidget {
                       ),
                       Text(
                         dateFormat.format(warning.issuedAt),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                        style: TextStyle(fontSize: 12, color: context.textSecondary),
                       ),
                     ],
                   ),
@@ -276,12 +276,12 @@ class _WarningCard extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: context.textSecondary.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       l10n.translate('inactive'),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 11, color: context.textSecondary),
                     ),
                   ),
               ],
@@ -299,13 +299,13 @@ class _WarningCard extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+                      backgroundColor: context.textPrimary.withValues(alpha: 0.1),
                       child: Text(
                         warning.userName.isNotEmpty ? warning.userName[0].toUpperCase() : '?',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       ),
                     ),
@@ -316,16 +316,16 @@ class _WarningCard extends ConsumerWidget {
                         children: [
                           Text(
                             warning.userName,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.navy,
+                              color: context.textPrimary,
                             ),
                           ),
                           if (warning.userSchoolName != null)
                             Text(
                               warning.userSchoolName!,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                              style: TextStyle(fontSize: 12, color: context.textSecondary),
                             ),
                         ],
                       ),
@@ -337,14 +337,14 @@ class _WarningCard extends ConsumerWidget {
                 // Reason
                 Text(
                   warning.reason,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  style: TextStyle(fontSize: 14, color: context.textPrimary),
                 ),
 
                 if (warning.details != null) ...[
                   const SizedBox(height: 8),
                   Text(
                     warning.details!,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 13, color: context.textSecondary),
                   ),
                 ],
 
@@ -353,11 +353,11 @@ class _WarningCard extends ConsumerWidget {
                 // Footer
                 Row(
                   children: [
-                    Icon(Icons.person_outline, size: 14, color: Colors.grey[400]),
+                    Icon(Icons.person_outline, size: 14, color: context.textSecondary),
                     const SizedBox(width: 4),
                     Text(
                       '${l10n.translate('issued_by')}: ${warning.issuedByName}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
                     ),
                     const Spacer(),
                     if (canManage && warning.isActive)
@@ -454,15 +454,16 @@ class _AbsenceCard extends ConsumerWidget {
     final l10n = AppLocalizations.of(context);
     final dateFormat = DateFormat('MMM d, yyyy');
     final isExcused = absence.type == AbsenceType.excused;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -479,10 +480,10 @@ class _AbsenceCard extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.navy.withValues(alpha: 0.1),
+                    color: isDark ? AppColors.gold.withValues(alpha: 0.15) : AppColors.navy.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.event_busy_rounded, color: AppColors.navy, size: 20),
+                  child: Icon(Icons.event_busy_rounded, color: isDark ? AppColors.gold : AppColors.navy, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -491,17 +492,17 @@ class _AbsenceCard extends ConsumerWidget {
                     children: [
                       Text(
                         absence.meetingTitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         dateFormat.format(absence.meetingDate),
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: context.textSecondary),
                       ),
                     ],
                   ),
@@ -532,13 +533,13 @@ class _AbsenceCard extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: Colors.grey[200],
+                  backgroundColor: context.textSecondary.withValues(alpha: 0.2),
                   child: Text(
                     absence.userName.isNotEmpty ? absence.userName[0].toUpperCase() : '?',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
@@ -549,12 +550,12 @@ class _AbsenceCard extends ConsumerWidget {
                     children: [
                       Text(
                         absence.userName,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: context.textPrimary),
                       ),
                       if (absence.userSchoolName != null)
                         Text(
                           absence.userSchoolName!,
-                          style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 11, color: context.textSecondary),
                         ),
                     ],
                   ),
@@ -566,7 +567,7 @@ class _AbsenceCard extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 absence.reason!,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 13, color: context.textSecondary),
               ),
             ],
 
@@ -639,9 +640,9 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
     final usersAsync = ref.watch(allUsersProvider);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(context).viewInsets.bottom + 24),
       child: Form(
@@ -657,7 +658,7 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: context.borderColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -667,10 +668,10 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
               // Title
               Text(
                 l10n.translate('issue_warning'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -678,7 +679,7 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
               // User selector
               Text(
                 l10n.translate('select_user'),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.textPrimary),
               ),
               const SizedBox(height: 8),
               usersAsync.when(
@@ -686,10 +687,14 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
                   initialValue: _selectedUser,
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: Colors.grey[100],
+                    fillColor: context.cardColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                      borderSide: BorderSide(color: context.borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: context.borderColor),
                     ),
                   ),
                   hint: Text(l10n.translate('select_user')),
@@ -708,7 +713,7 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
               // Warning type
               Text(
                 l10n.translate('warning_type'),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.textPrimary),
               ),
               const SizedBox(height: 8),
               Wrap(
@@ -721,7 +726,7 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
                     onSelected: (_) => setState(() => _selectedType = type),
                     selectedColor: AppColors.gold,
                     labelStyle: TextStyle(
-                      color: isSelected ? AppColors.navy : Colors.grey[600],
+                      color: isSelected ? AppColors.navy : context.textSecondary,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       fontSize: 12,
                     ),
@@ -733,7 +738,7 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
               // Reason
               Text(
                 l10n.translate('reason'),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.textPrimary),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -741,10 +746,14 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
                 decoration: InputDecoration(
                   hintText: l10n.translate('reason_hint'),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: context.cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.borderColor),
                   ),
                 ),
                 maxLines: 2,
@@ -756,7 +765,7 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
               // Details (optional)
               Text(
                 l10n.translate('details_optional'),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.textPrimary),
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -764,10 +773,14 @@ class _IssueWarningSheetState extends ConsumerState<_IssueWarningSheet> {
                 decoration: InputDecoration(
                   hintText: l10n.translate('details_hint'),
                   filled: true,
-                  fillColor: Colors.grey[100],
+                  fillColor: context.cardColor,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: context.borderColor),
                   ),
                 ),
                 maxLines: 3,
