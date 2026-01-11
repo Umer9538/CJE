@@ -9,10 +9,16 @@ class AnnouncementModel extends Equatable {
   final String title;
   final String content;
   final String? summary; // Short preview text
+
+  // Translated content (stored in Firestore)
+  final Map<String, String>? titleTranslations; // {'en': '...', 'ro': '...'}
+  final Map<String, String>? contentTranslations;
+  final Map<String, String>? summaryTranslations;
   final AnnouncementType type;
   final String authorId;
   final String authorName;
   final String? authorPhotoUrl;
+  final String? countyId; // County this announcement belongs to
   final String? schoolId; // Only for school announcements
   final String? schoolName;
   final String? imageUrl; // Featured image
@@ -30,10 +36,14 @@ class AnnouncementModel extends Equatable {
     required this.title,
     required this.content,
     this.summary,
+    this.titleTranslations,
+    this.contentTranslations,
+    this.summaryTranslations,
     required this.type,
     required this.authorId,
     required this.authorName,
     this.authorPhotoUrl,
+    this.countyId,
     this.schoolId,
     this.schoolName,
     this.imageUrl,
@@ -46,6 +56,30 @@ class AnnouncementModel extends Equatable {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Get title for specific language (with fallback)
+  String getTitle(String languageCode) {
+    if (titleTranslations != null && titleTranslations!.containsKey(languageCode)) {
+      return titleTranslations![languageCode]!;
+    }
+    return title;
+  }
+
+  /// Get content for specific language (with fallback)
+  String getContent(String languageCode) {
+    if (contentTranslations != null && contentTranslations!.containsKey(languageCode)) {
+      return contentTranslations![languageCode]!;
+    }
+    return content;
+  }
+
+  /// Get summary for specific language (with fallback)
+  String? getSummary(String languageCode) {
+    if (summaryTranslations != null && summaryTranslations!.containsKey(languageCode)) {
+      return summaryTranslations![languageCode];
+    }
+    return summary;
+  }
 
   /// Create empty announcement
   factory AnnouncementModel.empty() {
@@ -82,10 +116,20 @@ class AnnouncementModel extends Equatable {
       title: data['title'] as String? ?? '',
       content: data['content'] as String? ?? '',
       summary: data['summary'] as String?,
+      titleTranslations: data['titleTranslations'] != null
+          ? Map<String, String>.from(data['titleTranslations'])
+          : null,
+      contentTranslations: data['contentTranslations'] != null
+          ? Map<String, String>.from(data['contentTranslations'])
+          : null,
+      summaryTranslations: data['summaryTranslations'] != null
+          ? Map<String, String>.from(data['summaryTranslations'])
+          : null,
       type: AnnouncementType.fromFirestore(data['type'] as String? ?? 'school'),
       authorId: data['authorId'] as String? ?? '',
       authorName: data['authorName'] as String? ?? '',
       authorPhotoUrl: data['authorPhotoUrl'] as String?,
+      countyId: data['countyId'] as String?,
       schoolId: data['schoolId'] as String?,
       schoolName: data['schoolName'] as String?,
       imageUrl: data['imageUrl'] as String?,
@@ -106,10 +150,14 @@ class AnnouncementModel extends Equatable {
       'title': title,
       'content': content,
       'summary': summary,
+      'titleTranslations': titleTranslations,
+      'contentTranslations': contentTranslations,
+      'summaryTranslations': summaryTranslations,
       'type': type.toFirestore(),
       'authorId': authorId,
       'authorName': authorName,
       'authorPhotoUrl': authorPhotoUrl,
+      'countyId': countyId,
       'schoolId': schoolId,
       'schoolName': schoolName,
       'imageUrl': imageUrl,
@@ -130,10 +178,14 @@ class AnnouncementModel extends Equatable {
     String? title,
     String? content,
     String? summary,
+    Map<String, String>? titleTranslations,
+    Map<String, String>? contentTranslations,
+    Map<String, String>? summaryTranslations,
     AnnouncementType? type,
     String? authorId,
     String? authorName,
     String? authorPhotoUrl,
+    String? countyId,
     String? schoolId,
     String? schoolName,
     String? imageUrl,
@@ -151,10 +203,14 @@ class AnnouncementModel extends Equatable {
       title: title ?? this.title,
       content: content ?? this.content,
       summary: summary ?? this.summary,
+      titleTranslations: titleTranslations ?? this.titleTranslations,
+      contentTranslations: contentTranslations ?? this.contentTranslations,
+      summaryTranslations: summaryTranslations ?? this.summaryTranslations,
       type: type ?? this.type,
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
       authorPhotoUrl: authorPhotoUrl ?? this.authorPhotoUrl,
+      countyId: countyId ?? this.countyId,
       schoolId: schoolId ?? this.schoolId,
       schoolName: schoolName ?? this.schoolName,
       imageUrl: imageUrl ?? this.imageUrl,
@@ -175,10 +231,14 @@ class AnnouncementModel extends Equatable {
         title,
         content,
         summary,
+        titleTranslations,
+        contentTranslations,
+        summaryTranslations,
         type,
         authorId,
         authorName,
         authorPhotoUrl,
+        countyId,
         schoolId,
         schoolName,
         imageUrl,

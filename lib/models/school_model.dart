@@ -48,12 +48,30 @@ class SchoolModel extends Equatable {
   /// Create from Firestore document
   factory SchoolModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+
+    // Debug: Print all fields in the document to understand structure
+    // ignore: avoid_print
+    print('SchoolModel.fromFirestore: doc ${doc.id} has keys: ${data.keys.toList()}');
+
+    // Check multiple possible field names for city/county
+    // Schools might have been created with different field names
+    final cityValue = data['city'] as String? ??
+                      data['county'] as String? ??
+                      data['countyId'] as String? ??
+                      data['judet'] as String? ??
+                      data['County'] as String? ??
+                      data['City'] as String?;
+
+    // Debug: Print what we found for city
+    // ignore: avoid_print
+    print('SchoolModel.fromFirestore: doc ${doc.id} cityValue="$cityValue" name="${data['name']}"');
+
     return SchoolModel(
       id: doc.id,
       name: data['name'] as String? ?? '',
       shortName: data['shortName'] as String? ?? '',
       address: data['address'] as String?,
-      city: data['city'] as String?,
+      city: cityValue,
       logoUrl: data['logoUrl'] as String?,
       schoolRepId: data['schoolRepId'] as String?,
       schoolRepName: data['schoolRepName'] as String?,

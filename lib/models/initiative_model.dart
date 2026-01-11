@@ -11,9 +11,11 @@ class InitiativeModel extends Equatable {
   final String? problem; // Problem statement
   final String? solution; // Proposed solution
   final String? impact; // Expected impact
+  final InitiativeType type; // school or county level
   final InitiativeStatus status;
   final String authorId;
   final String authorName;
+  final String? countyId; // County this initiative belongs to
   final String? schoolId; // If school-level initiative
   final String? schoolName;
   final List<String> supporterIds; // Users who support this initiative
@@ -31,6 +33,7 @@ class InitiativeModel extends Equatable {
   final int? votesAbstain;
   final String? rejectionReason;
   final String? reviewNotes;
+  final UserRole minimumVotingRole; // Minimum role required to vote on this initiative
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,9 +44,11 @@ class InitiativeModel extends Equatable {
     this.problem,
     this.solution,
     this.impact,
+    this.type = InitiativeType.school,
     required this.status,
     required this.authorId,
     required this.authorName,
+    this.countyId,
     this.schoolId,
     this.schoolName,
     this.supporterIds = const [],
@@ -61,6 +66,7 @@ class InitiativeModel extends Equatable {
     this.votesAbstain,
     this.rejectionReason,
     this.reviewNotes,
+    this.minimumVotingRole = UserRole.classRep, // Default: classRep and above can vote
     required this.createdAt,
     required this.updatedAt,
   });
@@ -113,9 +119,11 @@ class InitiativeModel extends Equatable {
       problem: data['problem'] as String?,
       solution: data['solution'] as String?,
       impact: data['impact'] as String?,
+      type: InitiativeType.fromFirestore(data['type'] as String?),
       status: InitiativeStatus.fromFirestore(data['status'] as String? ?? 'draft'),
       authorId: data['authorId'] as String? ?? '',
       authorName: data['authorName'] as String? ?? '',
+      countyId: data['countyId'] as String?,
       schoolId: data['schoolId'] as String?,
       schoolName: data['schoolName'] as String?,
       supporterIds: List<String>.from(data['supporterIds'] ?? []),
@@ -133,6 +141,7 @@ class InitiativeModel extends Equatable {
       votesAbstain: data['votesAbstain'] as int?,
       rejectionReason: data['rejectionReason'] as String?,
       reviewNotes: data['reviewNotes'] as String?,
+      minimumVotingRole: UserRole.fromFirestore(data['minimumVotingRole'] as String? ?? 'classRep'),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -146,9 +155,11 @@ class InitiativeModel extends Equatable {
       'problem': problem,
       'solution': solution,
       'impact': impact,
+      'type': type.toFirestore(),
       'status': status.toFirestore(),
       'authorId': authorId,
       'authorName': authorName,
+      'countyId': countyId,
       'schoolId': schoolId,
       'schoolName': schoolName,
       'supporterIds': supporterIds,
@@ -166,6 +177,7 @@ class InitiativeModel extends Equatable {
       'votesAbstain': votesAbstain,
       'rejectionReason': rejectionReason,
       'reviewNotes': reviewNotes,
+      'minimumVotingRole': minimumVotingRole.toFirestore(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -179,9 +191,11 @@ class InitiativeModel extends Equatable {
     String? problem,
     String? solution,
     String? impact,
+    InitiativeType? type,
     InitiativeStatus? status,
     String? authorId,
     String? authorName,
+    String? countyId,
     String? schoolId,
     String? schoolName,
     List<String>? supporterIds,
@@ -199,6 +213,7 @@ class InitiativeModel extends Equatable {
     int? votesAbstain,
     String? rejectionReason,
     String? reviewNotes,
+    UserRole? minimumVotingRole,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -209,9 +224,11 @@ class InitiativeModel extends Equatable {
       problem: problem ?? this.problem,
       solution: solution ?? this.solution,
       impact: impact ?? this.impact,
+      type: type ?? this.type,
       status: status ?? this.status,
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
+      countyId: countyId ?? this.countyId,
       schoolId: schoolId ?? this.schoolId,
       schoolName: schoolName ?? this.schoolName,
       supporterIds: supporterIds ?? this.supporterIds,
@@ -229,6 +246,7 @@ class InitiativeModel extends Equatable {
       votesAbstain: votesAbstain ?? this.votesAbstain,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       reviewNotes: reviewNotes ?? this.reviewNotes,
+      minimumVotingRole: minimumVotingRole ?? this.minimumVotingRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -242,9 +260,11 @@ class InitiativeModel extends Equatable {
         problem,
         solution,
         impact,
+        type,
         status,
         authorId,
         authorName,
+        countyId,
         schoolId,
         schoolName,
         supporterIds,
@@ -262,6 +282,7 @@ class InitiativeModel extends Equatable {
         votesAbstain,
         rejectionReason,
         reviewNotes,
+        minimumVotingRole,
         createdAt,
         updatedAt,
       ];
@@ -324,6 +345,67 @@ class InitiativeComment extends Equatable {
         authorPhotoUrl,
         content,
         isOfficial,
+        createdAt,
+      ];
+}
+
+/// Initiative vote model for tracking individual votes
+class InitiativeVote extends Equatable {
+  final String id;
+  final String initiativeId;
+  final String voterId;
+  final String voterName;
+  final String? voterSchoolId;
+  final String? voterSchoolName;
+  final String voteType; // 'for', 'against', 'abstain'
+  final DateTime createdAt;
+
+  const InitiativeVote({
+    required this.id,
+    required this.initiativeId,
+    required this.voterId,
+    required this.voterName,
+    this.voterSchoolId,
+    this.voterSchoolName,
+    required this.voteType,
+    required this.createdAt,
+  });
+
+  factory InitiativeVote.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return InitiativeVote(
+      id: doc.id,
+      initiativeId: data['initiativeId'] as String? ?? '',
+      voterId: data['voterId'] as String? ?? '',
+      voterName: data['voterName'] as String? ?? '',
+      voterSchoolId: data['voterSchoolId'] as String?,
+      voterSchoolName: data['voterSchoolName'] as String?,
+      voteType: data['voteType'] as String? ?? '',
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'initiativeId': initiativeId,
+      'voterId': voterId,
+      'voterName': voterName,
+      'voterSchoolId': voterSchoolId,
+      'voterSchoolName': voterSchoolName,
+      'voteType': voteType,
+      'createdAt': Timestamp.fromDate(createdAt),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        initiativeId,
+        voterId,
+        voterName,
+        voterSchoolId,
+        voterSchoolName,
+        voteType,
         createdAt,
       ];
 }

@@ -12,3 +12,4 @@ export 'notification_model.dart';
 export 'gds_model.dart';
 export 'activity_model.dart';
 export 'warning_model.dart';
+export 'county_settings_model.dart';

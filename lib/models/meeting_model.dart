@@ -8,12 +8,18 @@ class MeetingModel extends Equatable {
   final String id;
   final String title;
   final String? description;
+
+  // Translated content (stored in Firestore)
+  final Map<String, String>? titleTranslations; // {'en': '...', 'ro': '...'}
+  final Map<String, String>? descriptionTranslations;
+
   final MeetingType type;
   final DateTime dateTime;
   final int durationMinutes;
   final String? location; // Physical location or online link
   final bool isOnline;
   final String? onlineLink; // Zoom/Meet link
+  final String? countyId; // County this meeting belongs to
   final String? schoolId; // Only for school meetings
   final String? schoolName;
   final DepartmentType? department; // Only for department meetings
@@ -31,12 +37,15 @@ class MeetingModel extends Equatable {
     required this.id,
     required this.title,
     this.description,
+    this.titleTranslations,
+    this.descriptionTranslations,
     required this.type,
     required this.dateTime,
     this.durationMinutes = 60,
     this.location,
     this.isOnline = false,
     this.onlineLink,
+    this.countyId,
     this.schoolId,
     this.schoolName,
     this.department,
@@ -50,6 +59,22 @@ class MeetingModel extends Equatable {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Get title for specific language (with fallback)
+  String getTitle(String languageCode) {
+    if (titleTranslations != null && titleTranslations!.containsKey(languageCode)) {
+      return titleTranslations![languageCode]!;
+    }
+    return title;
+  }
+
+  /// Get description for specific language (with fallback)
+  String? getDescription(String languageCode) {
+    if (descriptionTranslations != null && descriptionTranslations!.containsKey(languageCode)) {
+      return descriptionTranslations![languageCode];
+    }
+    return description;
+  }
 
   /// Create empty meeting
   factory MeetingModel.empty() {
@@ -95,12 +120,19 @@ class MeetingModel extends Equatable {
       id: doc.id,
       title: data['title'] as String? ?? '',
       description: data['description'] as String?,
+      titleTranslations: data['titleTranslations'] != null
+          ? Map<String, String>.from(data['titleTranslations'])
+          : null,
+      descriptionTranslations: data['descriptionTranslations'] != null
+          ? Map<String, String>.from(data['descriptionTranslations'])
+          : null,
       type: MeetingType.fromFirestore(data['type'] as String? ?? 'school'),
       dateTime: (data['dateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
       durationMinutes: data['durationMinutes'] as int? ?? 60,
       location: data['location'] as String?,
       isOnline: data['isOnline'] as bool? ?? false,
       onlineLink: data['onlineLink'] as String?,
+      countyId: data['countyId'] as String?,
       schoolId: data['schoolId'] as String?,
       schoolName: data['schoolName'] as String?,
       department: data['department'] != null
@@ -125,12 +157,15 @@ class MeetingModel extends Equatable {
     return {
       'title': title,
       'description': description,
+      'titleTranslations': titleTranslations,
+      'descriptionTranslations': descriptionTranslations,
       'type': type.toFirestore(),
       'dateTime': Timestamp.fromDate(dateTime),
       'durationMinutes': durationMinutes,
       'location': location,
       'isOnline': isOnline,
       'onlineLink': onlineLink,
+      'countyId': countyId,
       'schoolId': schoolId,
       'schoolName': schoolName,
       'department': department?.toFirestore(),
@@ -151,12 +186,15 @@ class MeetingModel extends Equatable {
     String? id,
     String? title,
     String? description,
+    Map<String, String>? titleTranslations,
+    Map<String, String>? descriptionTranslations,
     MeetingType? type,
     DateTime? dateTime,
     int? durationMinutes,
     String? location,
     bool? isOnline,
     String? onlineLink,
+    String? countyId,
     String? schoolId,
     String? schoolName,
     DepartmentType? department,
@@ -174,12 +212,15 @@ class MeetingModel extends Equatable {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      titleTranslations: titleTranslations ?? this.titleTranslations,
+      descriptionTranslations: descriptionTranslations ?? this.descriptionTranslations,
       type: type ?? this.type,
       dateTime: dateTime ?? this.dateTime,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       location: location ?? this.location,
       isOnline: isOnline ?? this.isOnline,
       onlineLink: onlineLink ?? this.onlineLink,
+      countyId: countyId ?? this.countyId,
       schoolId: schoolId ?? this.schoolId,
       schoolName: schoolName ?? this.schoolName,
       department: department ?? this.department,
@@ -200,12 +241,15 @@ class MeetingModel extends Equatable {
         id,
         title,
         description,
+        titleTranslations,
+        descriptionTranslations,
         type,
         dateTime,
         durationMinutes,
         location,
         isOnline,
         onlineLink,
+        countyId,
         schoolId,
         schoolName,
         department,

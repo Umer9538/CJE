@@ -8,10 +8,16 @@ class PollModel extends Equatable {
   final String id;
   final String question;
   final String? description;
+
+  // Translated content (stored in Firestore)
+  final Map<String, String>? questionTranslations; // {'en': '...', 'ro': '...'}
+  final Map<String, String>? descriptionTranslations;
+
   final PollType type;
   final List<PollOption> options;
   final String createdById;
   final String createdByName;
+  final String? countyId; // County this poll belongs to
   final String? schoolId; // Only for school polls
   final String? schoolName;
   final bool isAnonymous;
@@ -27,10 +33,13 @@ class PollModel extends Equatable {
     required this.id,
     required this.question,
     this.description,
+    this.questionTranslations,
+    this.descriptionTranslations,
     required this.type,
     required this.options,
     required this.createdById,
     required this.createdByName,
+    this.countyId,
     this.schoolId,
     this.schoolName,
     this.isAnonymous = true,
@@ -42,6 +51,22 @@ class PollModel extends Equatable {
     required this.createdAt,
     required this.updatedAt,
   });
+
+  /// Get question for specific language (with fallback)
+  String getQuestion(String languageCode) {
+    if (questionTranslations != null && questionTranslations!.containsKey(languageCode)) {
+      return questionTranslations![languageCode]!;
+    }
+    return question;
+  }
+
+  /// Get description for specific language (with fallback)
+  String? getDescription(String languageCode) {
+    if (descriptionTranslations != null && descriptionTranslations!.containsKey(languageCode)) {
+      return descriptionTranslations![languageCode];
+    }
+    return description;
+  }
 
   /// Create empty poll
   factory PollModel.empty() {
@@ -94,6 +119,12 @@ class PollModel extends Equatable {
       id: doc.id,
       question: data['question'] as String? ?? '',
       description: data['description'] as String?,
+      questionTranslations: data['questionTranslations'] != null
+          ? Map<String, String>.from(data['questionTranslations'])
+          : null,
+      descriptionTranslations: data['descriptionTranslations'] != null
+          ? Map<String, String>.from(data['descriptionTranslations'])
+          : null,
       type: PollType.fromFirestore(data['type'] as String? ?? 'school'),
       options: (data['options'] as List<dynamic>?)
               ?.map((o) => PollOption.fromMap(o as Map<String, dynamic>))
@@ -101,6 +132,7 @@ class PollModel extends Equatable {
           [],
       createdById: data['createdById'] as String? ?? '',
       createdByName: data['createdByName'] as String? ?? '',
+      countyId: data['countyId'] as String?,
       schoolId: data['schoolId'] as String?,
       schoolName: data['schoolName'] as String?,
       isAnonymous: data['isAnonymous'] as bool? ?? true,
@@ -120,10 +152,13 @@ class PollModel extends Equatable {
     return {
       'question': question,
       'description': description,
+      'questionTranslations': questionTranslations,
+      'descriptionTranslations': descriptionTranslations,
       'type': type.toFirestore(),
       'options': options.map((o) => o.toMap()).toList(),
       'createdById': createdById,
       'createdByName': createdByName,
+      'countyId': countyId,
       'schoolId': schoolId,
       'schoolName': schoolName,
       'isAnonymous': isAnonymous,
@@ -142,10 +177,13 @@ class PollModel extends Equatable {
     String? id,
     String? question,
     String? description,
+    Map<String, String>? questionTranslations,
+    Map<String, String>? descriptionTranslations,
     PollType? type,
     List<PollOption>? options,
     String? createdById,
     String? createdByName,
+    String? countyId,
     String? schoolId,
     String? schoolName,
     bool? isAnonymous,
@@ -161,10 +199,13 @@ class PollModel extends Equatable {
       id: id ?? this.id,
       question: question ?? this.question,
       description: description ?? this.description,
+      questionTranslations: questionTranslations ?? this.questionTranslations,
+      descriptionTranslations: descriptionTranslations ?? this.descriptionTranslations,
       type: type ?? this.type,
       options: options ?? this.options,
       createdById: createdById ?? this.createdById,
       createdByName: createdByName ?? this.createdByName,
+      countyId: countyId ?? this.countyId,
       schoolId: schoolId ?? this.schoolId,
       schoolName: schoolName ?? this.schoolName,
       isAnonymous: isAnonymous ?? this.isAnonymous,
@@ -183,10 +224,13 @@ class PollModel extends Equatable {
         id,
         question,
         description,
+        questionTranslations,
+        descriptionTranslations,
         type,
         options,
         createdById,
         createdByName,
+        countyId,
         schoolId,
         schoolName,
         isAnonymous,
@@ -204,13 +248,23 @@ class PollModel extends Equatable {
 class PollOption extends Equatable {
   final String id;
   final String text;
+  final Map<String, String>? textTranslations; // {'en': '...', 'ro': '...'}
   final int voteCount;
 
   const PollOption({
     required this.id,
     required this.text,
+    this.textTranslations,
     this.voteCount = 0,
   });
+
+  /// Get text for specific language (with fallback)
+  String getText(String languageCode) {
+    if (textTranslations != null && textTranslations!.containsKey(languageCode)) {
+      return textTranslations![languageCode]!;
+    }
+    return text;
+  }
 
   /// Get vote percentage
   double getPercentage(int totalVotes) {
@@ -222,6 +276,9 @@ class PollOption extends Equatable {
     return PollOption(
       id: map['id'] as String? ?? '',
       text: map['text'] as String? ?? '',
+      textTranslations: map['textTranslations'] != null
+          ? Map<String, String>.from(map['textTranslations'])
+          : null,
       voteCount: map['voteCount'] as int? ?? 0,
     );
   }
@@ -230,6 +287,7 @@ class PollOption extends Equatable {
     return {
       'id': id,
       'text': text,
+      'textTranslations': textTranslations,
       'voteCount': voteCount,
     };
   }
@@ -237,15 +295,83 @@ class PollOption extends Equatable {
   PollOption copyWith({
     String? id,
     String? text,
+    Map<String, String>? textTranslations,
     int? voteCount,
   }) {
     return PollOption(
       id: id ?? this.id,
       text: text ?? this.text,
+      textTranslations: textTranslations ?? this.textTranslations,
       voteCount: voteCount ?? this.voteCount,
     );
   }
 
   @override
-  List<Object?> get props => [id, text, voteCount];
+  List<Object?> get props => [id, text, textTranslations, voteCount];
+}
+
+/// Poll vote model for tracking individual votes (when poll is not anonymous)
+class PollVote extends Equatable {
+  final String id;
+  final String pollId;
+  final String voterId;
+  final String voterName;
+  final String? voterSchoolId;
+  final String? voterSchoolName;
+  final List<String> optionIds; // Which option(s) they voted for
+  final List<String> optionTexts; // Option texts for display
+  final DateTime createdAt;
+
+  const PollVote({
+    required this.id,
+    required this.pollId,
+    required this.voterId,
+    required this.voterName,
+    this.voterSchoolId,
+    this.voterSchoolName,
+    required this.optionIds,
+    this.optionTexts = const [],
+    required this.createdAt,
+  });
+
+  factory PollVote.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return PollVote(
+      id: doc.id,
+      pollId: data['pollId'] as String? ?? '',
+      voterId: data['voterId'] as String? ?? '',
+      voterName: data['voterName'] as String? ?? '',
+      voterSchoolId: data['voterSchoolId'] as String?,
+      voterSchoolName: data['voterSchoolName'] as String?,
+      optionIds: List<String>.from(data['optionIds'] ?? []),
+      optionTexts: List<String>.from(data['optionTexts'] ?? []),
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'pollId': pollId,
+      'voterId': voterId,
+      'voterName': voterName,
+      'voterSchoolId': voterSchoolId,
+      'voterSchoolName': voterSchoolName,
+      'optionIds': optionIds,
+      'optionTexts': optionTexts,
+      'createdAt': Timestamp.fromDate(createdAt),
+    };
+  }
+
+  @override
+  List<Object?> get props => [
+        id,
+        pollId,
+        voterId,
+        voterName,
+        voterSchoolId,
+        voterSchoolName,
+        optionIds,
+        optionTexts,
+        createdAt,
+      ];
 }

@@ -18,6 +18,7 @@ class DocumentModel extends Equatable {
   final String? schoolName;
   final int downloadCount;
   final bool isPublic; // Visible to all users or only council members
+  final UserRole? minimumRole; // Minimum role required to view (when isPublic is false)
   final List<String> tags;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -36,6 +37,7 @@ class DocumentModel extends Equatable {
     this.schoolName,
     this.downloadCount = 0,
     this.isPublic = true,
+    this.minimumRole,
     this.tags = const [],
     required this.createdAt,
     required this.updatedAt,
@@ -49,7 +51,7 @@ class DocumentModel extends Equatable {
     return DocumentModel(
       id: '',
       title: '',
-      category: DocumentCategory.formulare,
+      category: DocumentCategory.regulamente,
       fileType: DocumentFileType.pdf,
       fileUrl: '',
       uploadedById: '',
@@ -88,6 +90,12 @@ class DocumentModel extends Equatable {
       schoolName: data['schoolName'] as String?,
       downloadCount: data['downloadCount'] as int? ?? 0,
       isPublic: data['isPublic'] as bool? ?? true,
+      minimumRole: data['minimumRole'] != null
+          ? UserRole.values.firstWhere(
+              (r) => r.name == data['minimumRole'],
+              orElse: () => UserRole.student,
+            )
+          : null,
       tags: List<String>.from(data['tags'] ?? []),
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -109,6 +117,7 @@ class DocumentModel extends Equatable {
       'schoolName': schoolName,
       'downloadCount': downloadCount,
       'isPublic': isPublic,
+      'minimumRole': minimumRole?.name,
       'tags': tags,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
@@ -130,6 +139,8 @@ class DocumentModel extends Equatable {
     String? schoolName,
     int? downloadCount,
     bool? isPublic,
+    UserRole? minimumRole,
+    bool clearMinimumRole = false,
     List<String>? tags,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -148,6 +159,7 @@ class DocumentModel extends Equatable {
       schoolName: schoolName ?? this.schoolName,
       downloadCount: downloadCount ?? this.downloadCount,
       isPublic: isPublic ?? this.isPublic,
+      minimumRole: clearMinimumRole ? null : (minimumRole ?? this.minimumRole),
       tags: tags ?? this.tags,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -169,8 +181,26 @@ class DocumentModel extends Equatable {
         schoolName,
         downloadCount,
         isPublic,
+        minimumRole,
         tags,
         createdAt,
         updatedAt,
       ];
+
+  /// Check if a user with given role can view this document
+  bool canBeViewedBy(UserRole? userRole) {
+    // Public documents can be viewed by anyone
+    if (isPublic) return true;
+
+    // If no user role provided, deny access
+    if (userRole == null) return false;
+
+    // If no minimum role set, only superadmin/bex can view
+    if (minimumRole == null) {
+      return userRole == UserRole.superadmin || userRole == UserRole.bex;
+    }
+
+    // Check role hierarchy
+    return userRole.index >= minimumRole!.index;
+  }
 }
