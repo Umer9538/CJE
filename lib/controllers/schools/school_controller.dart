@@ -4,6 +4,7 @@ import '../../core/repositories/school_repository.dart';
 import '../../core/constants/enums.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
+import '../admin/admin_controller.dart';
 
 /// School repository provider
 final schoolRepositoryProvider = Provider<SchoolRepository>((ref) {
@@ -21,15 +22,31 @@ final allSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
   return repository.getAllSchools();
 });
 
-/// Active schools provider
+/// Active schools provider - filtered by county for non-superadmin users
 final activeSchoolsProvider = FutureProvider<List<SchoolModel>>((ref) async {
-  final currentUser = ref.read(currentUserProvider);
+  final currentUser = ref.watch(currentUserProvider);
   if (currentUser == null) {
     return <SchoolModel>[];
   }
 
   final repository = ref.read(schoolRepositoryProvider);
-  return repository.getActiveSchools();
+
+  // For Superadmin, use the selected county from effectiveCountyProvider
+  // For other users, filter by their city/county
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
+  if (effectiveCounty != null) {
+    // Filter schools by the effective county
+    return repository.getSchoolsByCity(effectiveCounty);
+  }
+
+  // For Superadmin with "All Counties" selected, return all schools
+  if (currentUser.role == UserRole.superadmin) {
+    return repository.getActiveSchools();
+  }
+
+  // For other users without a county, return empty list
+  return <SchoolModel>[];
 });
 
 /// Single school provider
