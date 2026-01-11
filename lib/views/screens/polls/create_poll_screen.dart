@@ -30,6 +30,10 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
   DateTime _endDate = DateTime.now().add(const Duration(days: 7));
   bool _isLoading = false;
 
+  // School selection for BEX/Superadmin
+  String? _selectedSchoolId;
+  String? _selectedSchoolName;
+
   @override
   void dispose() {
     _questionController.dispose();
@@ -82,10 +86,10 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             // Poll Type Selection
             Text(
               l10n.translate('poll_type'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -115,13 +119,17 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             ),
             const SizedBox(height: 24),
 
+            // School selection for BEX/Superadmin when School type is selected
+            if (_selectedType == PollType.school && canCreateCountyPoll)
+              _buildSchoolDropdown(context, l10n),
+
             // Question
             Text(
               l10n.translate('question'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -131,9 +139,14 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                 hintText: l10n.translate('enter_question'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
               ),
               maxLines: 2,
               validator: (value) {
@@ -148,10 +161,10 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             // Description (optional)
             Text(
               '${l10n.translate('description')} (${l10n.translate('optional')})',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -161,9 +174,14 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                 hintText: l10n.translate('enter_description'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
               ),
               maxLines: 3,
             ),
@@ -174,10 +192,10 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
               children: [
                 Text(
                   l10n.translate('options'),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 const Spacer(),
@@ -199,15 +217,15 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: AppColors.navy.withValues(alpha: 0.1),
+                        color: context.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Center(
                         child: Text(
                           '${index + 1}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                       ),
@@ -220,9 +238,14 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                           hintText: '${l10n.translate('option')} ${index + 1}',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: context.borderColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: context.borderColor),
                           ),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: context.cardColor,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
                             vertical: 12,
@@ -250,10 +273,10 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             // Settings
             Text(
               l10n.translate('settings'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -261,11 +284,11 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.shadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -277,19 +300,19 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                     title: Text(l10n.translate('anonymous_voting')),
                     subtitle: Text(
                       l10n.translate('anonymous_voting_desc'),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
                     ),
                     value: _isAnonymous,
                     onChanged: (value) => setState(() => _isAnonymous = value),
                     activeColor: AppColors.gold,
                     contentPadding: EdgeInsets.zero,
                   ),
-                  const Divider(),
+                  Divider(color: context.dividerColor),
                   SwitchListTile(
                     title: Text(l10n.translate('allow_multiple_votes')),
                     subtitle: Text(
                       l10n.translate('allow_multiple_votes_desc'),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
                     ),
                     value: _allowMultipleVotes,
                     onChanged: (value) => setState(() => _allowMultipleVotes = value),
@@ -304,10 +327,10 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             // Dates
             Text(
               l10n.translate('voting_period'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -368,6 +391,108 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Build school dropdown for BEX/Superadmin users
+  Widget _buildSchoolDropdown(BuildContext context, AppLocalizations l10n) {
+    final schoolsAsync = ref.watch(activeSchoolsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l10n.translate('select_school'),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        schoolsAsync.when(
+          data: (schools) {
+            if (schools.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: context.cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.borderColor),
+                ),
+                child: Text(
+                  l10n.translate('no_schools_available'),
+                  style: TextStyle(color: context.textSecondary),
+                ),
+              );
+            }
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.borderColor),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _selectedSchoolId,
+                  hint: Text(
+                    l10n.translate('select_school'),
+                    style: TextStyle(color: context.textSecondary),
+                  ),
+                  dropdownColor: context.cardColor,
+                  style: TextStyle(color: context.textPrimary),
+                  icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
+                  items: schools.map((school) {
+                    return DropdownMenuItem<String>(
+                      value: school.id,
+                      child: Text(
+                        school.name,
+                        style: TextStyle(color: context.textPrimary),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      final selectedSchool = schools.firstWhere((s) => s.id == value);
+                      setState(() {
+                        _selectedSchoolId = value;
+                        _selectedSchoolName = selectedSchool.name;
+                      });
+                    }
+                  },
+                ),
+              ),
+            );
+          },
+          loading: () => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.borderColor),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (_, __) => Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.borderColor),
+            ),
+            child: Text(
+              l10n.translate('error_loading_schools'),
+              style: TextStyle(color: context.textSecondary),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
     );
   }
 
@@ -451,6 +576,21 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
       return;
     }
 
+    // Validate school selection for BEX/Superadmin when School type is selected
+    final user = ref.read(currentUserProvider);
+    if (user != null &&
+        _selectedType == PollType.school &&
+        (user.role == UserRole.bex || user.role == UserRole.superadmin) &&
+        _selectedSchoolId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).translate('please_select_school')),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     final controller = ref.read(pollControllerProvider.notifier);
@@ -473,6 +613,8 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
       allowMultipleVotes: _allowMultipleVotes,
       startDate: _startDate,
       endDate: _endDate,
+      schoolId: _selectedSchoolId,
+      schoolName: _selectedSchoolName,
     );
 
     setState(() => _isLoading = false);
@@ -520,10 +662,10 @@ class _TypeOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.gold.withValues(alpha: 0.15) : Colors.white,
+          color: isSelected ? AppColors.gold.withValues(alpha: 0.15) : context.cardColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? AppColors.gold : Colors.grey.withValues(alpha: 0.3),
+            color: isSelected ? AppColors.gold : context.borderColor,
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected
@@ -542,7 +684,7 @@ class _TypeOption extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: isSelected ? AppColors.gold : Colors.grey,
+                color: isSelected ? AppColors.gold : context.textSecondary,
                 size: 28,
               ),
               const SizedBox(height: 8),
@@ -551,7 +693,7 @@ class _TypeOption extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? AppColors.navy : Colors.grey[600],
+                  color: isSelected ? context.textPrimary : context.textSecondary,
                 ),
               ),
             ],
@@ -580,9 +722,9 @@ class _DateSelector extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+          border: Border.all(color: context.borderColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -591,21 +733,21 @@ class _DateSelector extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.calendar_today, size: 16, color: AppColors.navy),
+                Icon(Icons.calendar_today, size: 16, color: context.textPrimary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     '${date.day}/${date.month}/${date.year}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
@@ -614,14 +756,14 @@ class _DateSelector extends StatelessWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.access_time, size: 16, color: AppColors.navy),
+                Icon(Icons.access_time, size: 16, color: context.textPrimary),
                 const SizedBox(width: 8),
                 Text(
                   '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
               ],

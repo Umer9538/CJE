@@ -90,7 +90,7 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
       ),
       floatingActionButton: canCreate
           ? Padding(
-              padding: const EdgeInsets.only(bottom: 70),
+              padding: const EdgeInsets.only(bottom: 100),
               child: FloatingActionButton.extended(
                 heroTag: 'fab_polls',
                 onPressed: () => _navigateToCreatePoll(context),
@@ -105,37 +105,51 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+    final currentUser = ref.watch(currentUserProvider);
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          // Back button - navigate to home
+          // Back button - navigate to home or BEX dashboard
           GestureDetector(
-            onTap: () => context.go(RouteNames.home),
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(backRoute);
+              }
+            },
             child: Container(
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.shadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Icon(Icons.arrow_back_rounded, color: AppColors.navy, size: 22),
+              child: Center(
+                child: Icon(Icons.arrow_back_rounded, color: context.iconColor, size: 22),
+              ),
             ),
           ),
           const SizedBox(width: 16),
           Text(
             l10n.translate('polls'),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.navy,
+              color: context.goldColor,
             ),
           ),
           const Spacer(),
@@ -153,14 +167,14 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
             l10n.translate('active_only'),
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[600],
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(width: 8),
           Switch(
             value: _activeOnly,
             onChanged: (value) => setState(() => _activeOnly = value),
-            activeTrackColor: AppColors.gold,
+            activeTrackColor: context.goldColor,
             thumbColor: WidgetStateProperty.all(Colors.white),
           ),
         ],
@@ -172,11 +186,11 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -185,12 +199,12 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
       child: TabBar(
         controller: _tabController,
         onTap: (_) => setState(() {}),
-        labelColor: AppColors.navy,
-        unselectedLabelColor: Colors.grey,
+        labelColor: context.textPrimary,
+        unselectedLabelColor: context.textSecondary,
         labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
         indicator: BoxDecoration(
-          color: AppColors.gold.withValues(alpha: 0.2),
+          color: context.goldColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
@@ -216,22 +230,22 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppColors.navy.withValues(alpha: 0.08),
+                color: context.goldColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.poll_outlined,
                 size: 48,
-                color: Colors.grey[400],
+                color: context.goldColor,
               ),
             ),
             const SizedBox(height: 24),
             Text(
               l10n.translate('no_polls'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -240,7 +254,7 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: context.textSecondary,
               ),
             ),
           ],
@@ -256,11 +270,11 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            Icon(Icons.error_outline, size: 48, color: context.errorColor),
             const SizedBox(height: 16),
             Text(
               l10n.translate('error_loading'),
-              style: TextStyle(color: Colors.grey[600]),
+              style: TextStyle(color: context.textSecondary),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -322,14 +336,14 @@ class _PollCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: context.cardColor,
           borderRadius: BorderRadius.circular(20),
           border: isActive
-              ? Border.all(color: AppColors.gold.withValues(alpha: 0.5), width: 2)
+              ? Border.all(color: context.goldColor.withValues(alpha: 0.5), width: 2)
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.shadowColor,
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -341,62 +355,69 @@ class _PollCard extends StatelessWidget {
             // Header row
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? Colors.green.withValues(alpha: 0.1)
-                        : Colors.grey.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    isActive ? l10n.translate('active') : (hasEnded ? l10n.translate('ended') : l10n.translate('upcoming')),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isActive ? Colors.green : Colors.grey,
-                    ),
+                Flexible(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : context.textSecondary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isActive ? l10n.translate('active') : (hasEnded ? l10n.translate('ended') : l10n.translate('upcoming')),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isActive ? Colors.green : context.textSecondary,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.goldColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          l10n.translate(poll.type.translationKey),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.navy.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    poll.type.displayName,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
-                    ),
-                  ),
-                ),
-                const Spacer(),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 14,
-                  color: Colors.grey[400],
+                  color: context.textSecondary,
                 ),
               ],
             ),
             const SizedBox(height: 14),
 
-            // Question
+            // Question (with translation support)
             Text(
-              poll.question,
-              style: const TextStyle(
+              poll.getQuestion(Localizations.localeOf(context).languageCode),
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.navy,
+                color: context.textPrimary,
                 height: 1.3,
               ),
               maxLines: 2,
@@ -405,10 +426,10 @@ class _PollCard extends StatelessWidget {
             if (poll.description != null && poll.description!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                poll.description!,
+                poll.getDescription(Localizations.localeOf(context).languageCode) ?? '',
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey[600],
+                  color: context.textSecondary,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -417,43 +438,51 @@ class _PollCard extends StatelessWidget {
             const SizedBox(height: 14),
 
             // Stats row
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Icon(
-                  Icons.how_to_vote_rounded,
-                  size: 16,
-                  color: Colors.grey[500],
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.how_to_vote_rounded,
+                      size: 16,
+                      color: context.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${poll.totalVotes} ${l10n.translate('votes')}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.format_list_bulleted_rounded,
+                      size: 16,
+                      color: context.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${poll.options.length} ${l10n.translate('options')}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  '${poll.totalVotes} votes',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.format_list_bulleted_rounded,
-                  size: 16,
-                  color: Colors.grey[500],
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${poll.options.length} options',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
-                const Spacer(),
                 Text(
                   hasEnded
-                      ? 'Ended ${dateFormat.format(poll.endDate)}'
-                      : 'Ends ${dateFormat.format(poll.endDate)}',
+                      ? '${l10n.translate('ended')} ${dateFormat.format(poll.endDate)}'
+                      : '${l10n.translate('ends')} ${dateFormat.format(poll.endDate)}',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[400],
+                    color: context.textSecondary,
                   ),
                 ),
               ],
@@ -466,8 +495,8 @@ class _PollCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: _getLeadingPercentage(),
-                  backgroundColor: Colors.grey[200],
-                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.gold),
+                  backgroundColor: context.textSecondary.withValues(alpha: 0.2),
+                  valueColor: AlwaysStoppedAnimation<Color>(context.goldColor),
                   minHeight: 4,
                 ),
               ),

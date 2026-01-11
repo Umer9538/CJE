@@ -21,7 +21,8 @@ class PollDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
-  String? _selectedOptionId;
+  String? _selectedOptionId; // For single vote
+  final Set<String> _selectedOptionIds = {}; // For multiple votes
   bool _isVoting = false;
 
   @override
@@ -49,17 +50,17 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Icon(Icons.arrow_back, color: AppColors.navy, size: 20),
+            child: Icon(Icons.arrow_back, color: context.iconColor, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -69,17 +70,17 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: context.cardColor,
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
+                      color: context.shadowColor,
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: const Icon(Icons.more_vert, color: AppColors.navy, size: 20),
+                child: Icon(Icons.more_vert, color: context.iconColor, size: 20),
               ),
               onSelected: (value) {
                 if (value == 'delete') {
@@ -124,7 +125,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    isActive ? 'Active' : (hasEnded ? 'Ended' : 'Upcoming'),
+                    isActive ? l10n.translate('active') : (hasEnded ? l10n.translate('ended') : l10n.translate('upcoming')),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -139,15 +140,15 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.navy.withValues(alpha: 0.08),
+                    color: context.goldColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    widget.poll.type.displayName,
-                    style: const TextStyle(
+                    l10n.translate(widget.poll.type.translationKey),
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.navy,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
@@ -172,7 +173,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Anonymous',
+                          l10n.translate('anonymous'),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -187,13 +188,13 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Question
+            // Question (with translation support)
             Text(
-              widget.poll.question,
-              style: const TextStyle(
+              widget.poll.getQuestion(Localizations.localeOf(context).languageCode),
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.goldColor,
                 height: 1.3,
               ),
             ),
@@ -201,10 +202,10 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                 widget.poll.description!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text(
-                widget.poll.description!,
+                widget.poll.getDescription(Localizations.localeOf(context).languageCode) ?? '',
                 style: TextStyle(
                   fontSize: 15,
-                  color: Colors.grey[600],
+                  color: context.textSecondary,
                   height: 1.5,
                 ),
               ),
@@ -215,11 +216,11 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.shadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -232,19 +233,19 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Start Date',
+                          l10n.translate('start_date'),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey[500],
+                            color: context.textSecondary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           dateFormat.format(widget.poll.startDate),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                       ],
@@ -253,7 +254,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                   Container(
                     width: 1,
                     height: 40,
-                    color: Colors.grey[200],
+                    color: context.textSecondary.withValues(alpha: 0.2),
                   ),
                   Expanded(
                     child: Padding(
@@ -262,19 +263,19 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'End Date',
+                            l10n.translate('end_date'),
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: context.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             dateFormat.format(widget.poll.endDate),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.navy,
+                              color: context.textPrimary,
                             ),
                           ),
                         ],
@@ -289,21 +290,21 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
             // Voting section
             Text(
               hasEnded ? l10n.translate('results') : l10n.translate('options'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.navy,
+                color: context.goldColor,
               ),
             ),
             const SizedBox(height: 16),
 
             // Options
             hasVotedAsync.when(
-              data: (hasVoted) => _buildOptions(context, hasVoted || hasEnded),
+              data: (hasVoted) => _buildOptions(context, hasVoted || hasEnded, l10n),
               loading: () => const Center(
                 child: CircularProgressIndicator(color: AppColors.gold),
               ),
-              error: (_, __) => _buildOptions(context, hasEnded),
+              error: (_, __) => _buildOptions(context, hasEnded, l10n),
             ),
 
             const SizedBox(height: 24),
@@ -312,11 +313,11 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.shadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -326,19 +327,23 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildStatItem(
+                    context,
+                    l10n,
                     icon: Icons.how_to_vote_rounded,
                     value: '${widget.poll.totalVotes}',
-                    label: 'Total Votes',
+                    label: l10n.translate('total_votes'),
                   ),
                   Container(
                     width: 1,
                     height: 40,
-                    color: Colors.grey[200],
+                    color: context.textSecondary.withValues(alpha: 0.2),
                   ),
                   _buildStatItem(
+                    context,
+                    l10n,
                     icon: Icons.people_rounded,
                     value: '${widget.poll.voterIds.length}',
-                    label: 'Participants',
+                    label: l10n.translate('participants'),
                   ),
                 ],
               ),
@@ -349,11 +354,11 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
+                    color: context.shadowColor,
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -363,15 +368,15 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: AppColors.navy.withValues(alpha: 0.1),
+                    backgroundColor: context.goldColor.withValues(alpha: 0.1),
                     child: Text(
                       widget.poll.createdByName.isNotEmpty
                           ? widget.poll.createdByName[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.navy,
+                        color: context.goldColor,
                       ),
                     ),
                   ),
@@ -380,19 +385,19 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Created by',
+                        Text(
+                          l10n.translate('created_by'),
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey,
+                            color: context.textSecondary,
                           ),
                         ),
                         Text(
                           widget.poll.createdByName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.navy,
+                            color: context.textPrimary,
                           ),
                         ),
                       ],
@@ -401,6 +406,13 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                 ],
               ),
             ),
+
+            // Voter details for non-anonymous polls (admin only)
+            if (!widget.poll.isAnonymous && canManage) ...[
+              const SizedBox(height: 24),
+              _PollVoterSection(pollId: widget.poll.id),
+            ],
+
             const SizedBox(height: 100),
           ],
         ),
@@ -408,11 +420,14 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
       bottomNavigationBar: hasVotedAsync.when(
         data: (hasVoted) {
           if (hasVoted || hasEnded || !isActive) return null;
+          final hasSelection = widget.poll.allowMultipleVotes
+              ? _selectedOptionIds.isNotEmpty
+              : _selectedOptionId != null;
           return SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: ElevatedButton(
-                onPressed: _selectedOptionId != null && !_isVoting
+                onPressed: hasSelection && !_isVoting
                     ? () => _handleVote(context)
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -450,27 +465,41 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
     );
   }
 
-  Widget _buildOptions(BuildContext context, bool showResults) {
+  Widget _buildOptions(BuildContext context, bool showResults, AppLocalizations l10n) {
+    final allowMultiple = widget.poll.allowMultipleVotes;
+
     return Column(
       children: widget.poll.options.map((option) {
         final percentage = option.getPercentage(widget.poll.totalVotes);
-        final isSelected = _selectedOptionId == option.id;
+        final isSelected = allowMultiple
+            ? _selectedOptionIds.contains(option.id)
+            : _selectedOptionId == option.id;
         final isWinner = showResults &&
             widget.poll.winningOptions.any((o) => o.id == option.id);
 
         return GestureDetector(
           onTap: showResults
               ? null
-              : () => setState(() => _selectedOptionId = option.id),
+              : () => setState(() {
+                  if (allowMultiple) {
+                    if (_selectedOptionIds.contains(option.id)) {
+                      _selectedOptionIds.remove(option.id);
+                    } else {
+                      _selectedOptionIds.add(option.id);
+                    }
+                  } else {
+                    _selectedOptionId = option.id;
+                  }
+                }),
           child: Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isSelected
-                    ? AppColors.gold
+                    ? context.goldColor
                     : (isWinner
                         ? Colors.green.withValues(alpha: 0.5)
                         : Colors.transparent),
@@ -478,7 +507,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -495,12 +524,13 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                         height: 24,
                         margin: const EdgeInsets.only(right: 12),
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                          shape: allowMultiple ? BoxShape.rectangle : BoxShape.circle,
+                          borderRadius: allowMultiple ? BorderRadius.circular(4) : null,
                           border: Border.all(
-                            color: isSelected ? AppColors.gold : Colors.grey[300]!,
+                            color: isSelected ? context.goldColor : context.textSecondary.withValues(alpha: 0.3),
                             width: 2,
                           ),
-                          color: isSelected ? AppColors.gold : Colors.transparent,
+                          color: isSelected ? context.goldColor : Colors.transparent,
                         ),
                         child: isSelected
                             ? const Icon(
@@ -512,11 +542,11 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                       ),
                     Expanded(
                       child: Text(
-                        option.text,
+                        option.getText(Localizations.localeOf(context).languageCode),
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: isWinner ? FontWeight.bold : FontWeight.w500,
-                          color: AppColors.navy,
+                          color: context.textPrimary,
                         ),
                       ),
                     ),
@@ -526,7 +556,7 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          color: isWinner ? Colors.green : AppColors.navy,
+                          color: isWinner ? Colors.green : context.textPrimary,
                         ),
                       ),
                   ],
@@ -537,19 +567,19 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: percentage / 100,
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: context.textSecondary.withValues(alpha: 0.2),
                       valueColor: AlwaysStoppedAnimation<Color>(
-                        isWinner ? Colors.green : AppColors.gold,
+                        isWinner ? Colors.green : context.goldColor,
                       ),
                       minHeight: 6,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${option.voteCount} votes',
+                    '${option.voteCount} ${l10n.translate('votes')}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.grey[500],
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
@@ -561,28 +591,30 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
     );
   }
 
-  Widget _buildStatItem({
+  Widget _buildStatItem(
+    BuildContext context,
+    AppLocalizations l10n, {
     required IconData icon,
     required String value,
     required String label,
   }) {
     return Column(
       children: [
-        Icon(icon, color: AppColors.gold, size: 24),
+        Icon(icon, color: context.goldColor, size: 24),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.navy,
+            color: context.textPrimary,
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey[500],
+            color: context.textSecondary,
           ),
         ),
       ],
@@ -590,15 +622,21 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
   }
 
   Future<void> _handleVote(BuildContext context) async {
-    if (_selectedOptionId == null) return;
-
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    final controller = ref.read(pollControllerProvider.notifier);
+
+    // Determine which options to vote for
+    final optionsToVote = widget.poll.allowMultipleVotes
+        ? _selectedOptionIds.toList()
+        : (_selectedOptionId != null ? [_selectedOptionId!] : <String>[]);
+
+    if (optionsToVote.isEmpty) return;
 
     setState(() => _isVoting = true);
 
-    final controller = ref.read(pollControllerProvider.notifier);
-    final success = await controller.vote(widget.poll.id, _selectedOptionId!);
+    // Vote for all selected options at once
+    final success = await controller.voteMultiple(widget.poll.id, optionsToVote);
 
     setState(() => _isVoting = false);
 
@@ -651,6 +689,209 @@ class _PollDetailScreenState extends ConsumerState<PollDetailScreen> {
             child: Text(
               l10n.translate('delete'),
               style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Voter section for non-anonymous polls (admin visibility)
+class _PollVoterSection extends ConsumerStatefulWidget {
+  final String pollId;
+
+  const _PollVoterSection({required this.pollId});
+
+  @override
+  ConsumerState<_PollVoterSection> createState() => _PollVoterSectionState();
+}
+
+class _PollVoterSectionState extends ConsumerState<_PollVoterSection> {
+  bool _isExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final votesAsync = ref.watch(pollVotesStreamProvider(widget.pollId));
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: context.shadowColor,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with expand/collapse
+          GestureDetector(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.visibility_rounded,
+                  size: 20,
+                  color: context.goldColor,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.translate('voter_details'),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: context.goldColor,
+                    ),
+                  ),
+                ),
+                votesAsync.when(
+                  data: (votes) => Text(
+                    '${votes.length} ${l10n.translate('votes').toLowerCase()}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: context.textSecondary,
+                ),
+              ],
+            ),
+          ),
+
+          // Voter list
+          if (_isExpanded) ...[
+            const SizedBox(height: 16),
+            votesAsync.when(
+              data: (votes) => votes.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          l10n.translate('no_votes_yet'),
+                          style: TextStyle(color: context.textSecondary),
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: votes.map((vote) => _PollVoterTile(vote: vote)).toList(),
+                    ),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(color: AppColors.gold),
+                ),
+              ),
+              error: (_, __) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    l10n.translate('error_loading_votes'),
+                    style: TextStyle(color: context.textSecondary),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Individual voter tile for poll
+class _PollVoterTile extends StatelessWidget {
+  final PollVote vote;
+
+  const _PollVoterTile({required this.vote});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: context.scaffoldBackgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.borderColor),
+      ),
+      child: Row(
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: context.goldColor.withValues(alpha: 0.15),
+            child: Text(
+              vote.voterName.isNotEmpty ? vote.voterName[0].toUpperCase() : '?',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: context.goldColor,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Name and school
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vote.voterName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                ),
+                if (vote.voterSchoolName != null && vote.voterSchoolName!.isNotEmpty)
+                  Text(
+                    vote.voterSchoolName!,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                // Show voted options
+                if (vote.optionTexts.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: vote.optionTexts.map((text) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        text,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.green[700],
+                        ),
+                      ),
+                    )).toList(),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
