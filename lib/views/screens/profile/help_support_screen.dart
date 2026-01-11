@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
+import 'legal_screen.dart';
 
 /// Help & Support screen with FAQ and contact options
 class HelpSupportScreen extends ConsumerStatefulWidget {
@@ -20,7 +22,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: context.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
@@ -33,21 +35,21 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Contact Section
-            _buildSectionTitle(l10n.translate('contact_us')),
+            _buildSectionTitle(context, l10n.translate('contact_us')),
             const SizedBox(height: 12),
             _buildContactSection(context, l10n),
 
             const SizedBox(height: 32),
 
             // FAQ Section
-            _buildSectionTitle(l10n.translate('faq')),
+            _buildSectionTitle(context, l10n.translate('faq')),
             const SizedBox(height: 12),
             _buildFAQSection(context, l10n),
 
             const SizedBox(height: 32),
 
             // App Info Section
-            _buildSectionTitle(l10n.translate('about_app')),
+            _buildSectionTitle(context, l10n.translate('about_app')),
             const SizedBox(height: 12),
             _buildAppInfoSection(context, l10n),
           ],
@@ -56,26 +58,31 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: AppColors.navy,
+        color: context.textPrimary,
       ),
     );
   }
 
   Widget _buildContactSection(BuildContext context, AppLocalizations l10n) {
+    // Get user's county to show county-specific links
+    final user = ref.watch(currentUserProvider);
+    final countyName = user?.city ?? 'Default';
+    final countyInfo = ref.watch(countyContactInfoProvider(countyName));
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -87,32 +94,40 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
             icon: Icons.email_rounded,
             iconColor: const Color(0xFF3B82F6),
             title: l10n.translate('email_us'),
-            subtitle: 'support@cje.ro',
-            onTap: () => _launchEmail('support@cje.ro'),
+            subtitle: countyInfo.email,
+            onTap: () => _launchEmail(countyInfo.email),
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
           _ContactTile(
             icon: Icons.phone_rounded,
             iconColor: const Color(0xFF10B981),
             title: l10n.translate('call_us'),
-            subtitle: '+40 123 456 789',
-            onTap: () => _launchPhone('+40123456789'),
+            subtitle: countyInfo.phone,
+            onTap: () => _launchPhone(countyInfo.phone.replaceAll(' ', '')),
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
           _ContactTile(
             icon: Icons.language_rounded,
             iconColor: const Color(0xFF8B5CF6),
             title: l10n.translate('website'),
-            subtitle: 'www.cje.ro',
-            onTap: () => _launchUrl('https://www.cje.ro'),
+            subtitle: countyInfo.website.replaceFirst('https://', '').replaceFirst('http://', ''),
+            onTap: () => _launchUrl(countyInfo.website),
           ),
-          const Divider(height: 24),
+          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
           _ContactTile(
             icon: Icons.facebook_rounded,
             iconColor: const Color(0xFF1877F2),
-            title: 'Facebook',
-            subtitle: 'CJE Romania',
-            onTap: () => _launchUrl('https://www.facebook.com/CJERomania'),
+            title: l10n.translate('facebook'),
+            subtitle: 'CJE ${user?.city ?? "Romania"}',
+            onTap: () => _launchUrl(countyInfo.facebook),
+          ),
+          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
+          _ContactTile(
+            icon: Icons.camera_alt_rounded,
+            iconColor: const Color(0xFFE1306C),
+            title: l10n.translate('instagram'),
+            subtitle: '@cje.${(user?.city ?? "romania").toLowerCase()}',
+            onTap: () => _launchUrl(countyInfo.instagram),
           ),
         ],
       ),
@@ -124,11 +139,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -145,7 +160,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
             return Column(
               children: [
                 if (index > 0)
-                  Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1)),
+                  Divider(height: 1, color: context.textSecondary.withValues(alpha: 0.1)),
                 InkWell(
                   onTap: () {
                     setState(() {
@@ -166,10 +181,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                             Expanded(
                               child: Text(
                                 faq['question']!,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
-                                  color: AppColors.navy,
+                                  color: context.textPrimary,
                                 ),
                               ),
                             ),
@@ -177,7 +192,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                               isExpanded
                                   ? Icons.keyboard_arrow_up
                                   : Icons.keyboard_arrow_down,
-                              color: Colors.grey,
+                              color: context.textSecondary,
                             ),
                           ],
                         ),
@@ -187,7 +202,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                             faq['answer']!,
                             style: TextStyle(
                               fontSize: 13,
-                              color: Colors.grey[600],
+                              color: context.textSecondary,
                               height: 1.5,
                             ),
                           ),
@@ -208,11 +223,11 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -225,10 +240,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.navy.withValues(alpha: 0.1),
+                  color: context.goldColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.info_outline, color: AppColors.navy),
+                child: Icon(Icons.info_outline, color: context.goldColor),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -237,10 +252,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                   children: [
                     Text(
                       l10n.translate('app_name_full'),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: AppColors.navy,
+                        color: context.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -248,7 +263,7 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                       '${l10n.translate('version')}: 1.0.0',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: context.textSecondary,
                       ),
                     ),
                   ],
@@ -263,7 +278,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                 child: _InfoButton(
                   icon: Icons.description_rounded,
                   label: l10n.translate('terms_of_service'),
-                  onTap: () => _launchUrl('https://www.cje.ro/terms'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -271,7 +289,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                 child: _InfoButton(
                   icon: Icons.privacy_tip_rounded,
                   label: l10n.translate('privacy_policy'),
-                  onTap: () => _launchUrl('https://www.cje.ro/privacy'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                  ),
                 ),
               ),
             ],
@@ -365,10 +386,10 @@ class _ContactTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -376,13 +397,13 @@ class _ContactTile extends StatelessWidget {
                   subtitle,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: context.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: Colors.grey[400]),
+          Icon(Icons.chevron_right, color: context.textSecondary),
         ],
       ),
     );
@@ -408,21 +429,21 @@ class _InfoButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.08),
+          color: context.textSecondary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: AppColors.navy),
+            Icon(icon, size: 18, color: context.textPrimary),
             const SizedBox(width: 8),
             Flexible(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.navy,
+                  color: context.textPrimary,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,

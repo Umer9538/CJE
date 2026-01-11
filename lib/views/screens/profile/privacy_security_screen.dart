@@ -43,7 +43,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     ) ?? false;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: context.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
@@ -56,14 +56,14 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Password Section
-            _buildSectionTitle(l10n.translate('change_password')),
+            _buildSectionTitle(context, l10n.translate('change_password')),
             const SizedBox(height: 12),
             _buildPasswordSection(context, l10n, isGoogleUser),
 
             const SizedBox(height: 32),
 
             // Account Section
-            _buildSectionTitle(l10n.translate('account')),
+            _buildSectionTitle(context, l10n.translate('account')),
             const SizedBox(height: 12),
             _buildAccountSection(context, l10n),
           ],
@@ -72,13 +72,13 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: AppColors.navy,
+        color: context.textPrimary,
       ),
     );
   }
@@ -87,36 +87,36 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: isGoogleUser
-          ? _buildGoogleUserMessage(l10n)
+          ? _buildGoogleUserMessage(context, l10n)
           : _buildPasswordForm(context, l10n),
     );
   }
 
-  Widget _buildGoogleUserMessage(AppLocalizations l10n) {
+  Widget _buildGoogleUserMessage(BuildContext context, AppLocalizations l10n) {
     return Column(
       children: [
         Icon(
           Icons.g_mobiledata,
           size: 48,
-          color: Colors.grey[400],
+          color: context.textSecondary,
         ),
         const SizedBox(height: 12),
         Text(
           l10n.translate('google_password_message'),
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.grey[600],
+            color: context.textSecondary,
             fontSize: 14,
           ),
         ),
@@ -130,6 +130,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
       children: [
         // Current Password
         _buildPasswordField(
+          context: context,
           controller: _currentPasswordController,
           label: l10n.translate('current_password'),
           obscure: _obscureCurrentPassword,
@@ -139,6 +140,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
 
         // New Password
         _buildPasswordField(
+          context: context,
           controller: _newPasswordController,
           label: l10n.translate('new_password'),
           obscure: _obscureNewPassword,
@@ -148,6 +150,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
 
         // Confirm Password
         _buildPasswordField(
+          context: context,
           controller: _confirmPasswordController,
           label: l10n.translate('confirm_password'),
           obscure: _obscureConfirmPassword,
@@ -184,6 +187,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   }
 
   Widget _buildPasswordField({
+    required BuildContext context,
     required TextEditingController controller,
     required String label,
     required bool obscure,
@@ -192,13 +196,29 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     return TextField(
       controller: controller,
       obscureText: obscure,
+      style: TextStyle(color: context.textPrimary),
       decoration: InputDecoration(
         labelText: label,
+        labelStyle: TextStyle(color: context.textSecondary),
+        filled: true,
+        fillColor: context.scaffoldBackgroundColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.textSecondary.withValues(alpha: 0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.textSecondary.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: context.goldColor),
         ),
         suffixIcon: IconButton(
-          icon: Icon(obscure ? Icons.visibility_off : Icons.visibility),
+          icon: Icon(
+            obscure ? Icons.visibility_off : Icons.visibility,
+            color: context.textSecondary,
+          ),
           onPressed: onToggle,
         ),
       ),
@@ -209,11 +229,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -227,26 +247,26 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             leading: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
+                color: context.errorColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.delete_forever_rounded, color: Colors.red),
+              child: Icon(Icons.delete_forever_rounded, color: context.errorColor),
             ),
             title: Text(
               l10n.translate('delete_account'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: Colors.red,
+                color: context.errorColor,
               ),
             ),
             subtitle: Text(
               l10n.translate('delete_account_subtitle'),
               style: TextStyle(
-                color: Colors.grey[600],
+                color: context.textSecondary,
                 fontSize: 12,
               ),
             ),
-            trailing: const Icon(Icons.chevron_right, color: Colors.red),
+            trailing: Icon(Icons.chevron_right, color: context.errorColor),
             onTap: () => _showDeleteAccountDialog(context, l10n),
           ),
         ],

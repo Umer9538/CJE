@@ -3,12 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../controllers/controllers.dart';
-import '../../../controllers/admin/admin_controller.dart';
 import '../../../core/core.dart';
 import '../admin/admin_users_screen.dart';
+import '../main/main_shell.dart';
 import 'edit_profile_screen.dart';
 import 'privacy_security_screen.dart';
-import 'help_support_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -21,6 +20,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  int? _initialNavIndex;
 
   String _getRoleTranslationKey(UserRole? role) {
     switch (role) {
@@ -52,6 +52,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
     _animationController.forward();
+
+    // Store the initial navigation index when profile opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initialNavIndex = ref.read(navigationIndexProvider);
+    });
   }
 
   @override
@@ -66,6 +71,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final authState = ref.watch(authControllerProvider);
     final user = authState.user;
     final size = MediaQuery.of(context).size;
+
+    // Listen for navigation changes and pop if user taps a different nav item
+    ref.listen<int>(navigationIndexProvider, (previous, next) {
+      if (_initialNavIndex != null && next != _initialNavIndex && context.mounted) {
+        Navigator.of(context).pop();
+      }
+    });
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -129,10 +141,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     child: _buildStats(context, l10n, ref),
                   ),
 
-                  // Achievement badges
-                  SliverToBoxAdapter(
-                    child: _buildAchievements(context, l10n),
-                  ),
+                  // Achievement badges - Commented out until real achievements system is implemented
+                  // SliverToBoxAdapter(
+                  //   child: _buildAchievements(context, l10n),
+                  // ),
 
                   // Settings sections
                   SliverToBoxAdapter(
@@ -163,26 +175,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Profile',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: context.textPrimary,
-            ),
-          ),
           Row(
             children: [
               _buildHeaderButton(
-                icon: Icons.share_rounded,
-                onTap: () => _shareApp(context),
+                icon: Icons.arrow_back_rounded,
+                onTap: () => Navigator.of(context).pop(),
               ),
-              const SizedBox(width: 12),
-              _buildHeaderButton(
-                icon: Icons.settings_rounded,
-                onTap: () => _showSettingsSheet(context, ref),
+              const SizedBox(width: 16),
+              Text(
+                l10n.translate('profile'),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: context.textPrimary,
+                ),
               ),
             ],
+          ),
+          _buildHeaderButton(
+            icon: Icons.share_rounded,
+            onTap: () => _shareApp(context),
           ),
         ],
       ),
@@ -206,7 +218,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             ),
           ],
         ),
-        child: Icon(icon, color: context.textPrimary, size: 20),
+        child: Icon(icon, color: context.iconColor, size: 20),
       ),
     );
   }
@@ -321,6 +333,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                             fontSize: 13,
                           ),
                         ),
+                        if (user?.schoolName != null || user?.className != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.school_outlined,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  [
+                                    if (user?.schoolName != null) user.schoolName,
+                                    if (user?.className != null) '${l10n.translate('class')}: ${user.className}',
+                                  ].join(' • '),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -367,14 +405,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.edit_rounded, color: Colors.white, size: 18),
-                      SizedBox(width: 8),
+                      const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
                       Text(
-                        'Edit Profile',
-                        style: TextStyle(
+                        l10n.translate('edit_profile'),
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -499,7 +537,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Settings',
+            l10n.translate('account'),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -538,43 +576,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                   _buildDivider(),
                 ],
                 _SettingsTile(
-                  icon: Icons.notifications_rounded,
-                  iconColor: const Color(0xFFEF4444),
-                  title: l10n.translate('notifications'),
-                  subtitle: l10n.translate('notifications_subtitle'),
-                  trailing: _buildToggle(
-                    ref.watch(notificationsEnabledProvider),
-                    onChanged: (value) {
-                      ref.read(notificationsEnabledProvider.notifier).setEnabled(value);
-                    },
-                  ),
-                  onTap: () {},
-                ),
-                _buildDivider(),
-                _SettingsTile(
-                  icon: Icons.language_rounded,
-                  iconColor: const Color(0xFF3B82F6),
-                  title: 'Language',
-                  subtitle: ref.watch(languageProvider).languageCode == 'ro' ? 'Romana' : 'English',
-                  onTap: () => _showLanguageSheet(context, ref, l10n),
-                ),
-                _buildDivider(),
-                _SettingsTile(
-                  icon: Icons.dark_mode_rounded,
-                  iconColor: const Color(0xFF8B5CF6),
-                  title: 'Dark Mode',
-                  subtitle: 'System default',
-                  trailing: _buildToggle(ref.watch(themeModeProvider) == ThemeMode.dark, onChanged: (value) {
-                    if (value) {
-                      ref.read(themeModeProvider.notifier).setDarkTheme();
-                    } else {
-                      ref.read(themeModeProvider.notifier).setLightTheme();
-                    }
-                  }),
-                  onTap: () {},
-                ),
-                _buildDivider(),
-                _SettingsTile(
                   icon: Icons.security_rounded,
                   iconColor: const Color(0xFF10B981),
                   title: l10n.translate('privacy_security'),
@@ -584,21 +585,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                       context,
                       MaterialPageRoute(
                         builder: (_) => const PrivacySecurityScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildDivider(),
-                _SettingsTile(
-                  icon: Icons.help_rounded,
-                  iconColor: AppColors.gold,
-                  title: l10n.translate('help_support'),
-                  subtitle: l10n.translate('help_support_subtitle'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const HelpSupportScreen(),
                       ),
                     );
                   },
@@ -618,41 +604,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     );
   }
 
-  Widget _buildToggle(bool value, {ValueChanged<bool>? onChanged}) {
-    return GestureDetector(
-      onTap: onChanged != null ? () => onChanged(!value) : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 50,
-        height: 28,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          color: value ? AppColors.navy : Colors.grey.withValues(alpha: 0.3),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 200),
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 24,
-            height: 24,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: value ? AppColors.gold : Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildLogoutButton(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
@@ -666,14 +617,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 20),
+              const SizedBox(width: 8),
               Text(
-                'Log Out',
-                style: TextStyle(
+                l10n.translate('logout'),
+                style: const TextStyle(
                   color: Color(0xFFEF4444),
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -690,216 +641,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final l10n = AppLocalizations.of(context);
     final shareText = l10n.translate('share_app_message');
     SharePlus.instance.share(ShareParams(text: shareText));
-  }
-
-  void _showSettingsSheet(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      builder: (context) => Consumer(
-        builder: (context, ref, _) {
-          final isDarkMode = ref.watch(themeModeProvider) == ThemeMode.dark;
-          final currentLocale = ref.watch(languageProvider);
-
-          return Container(
-            padding: EdgeInsets.only(
-              left: 24,
-              right: 24,
-              top: 24,
-              bottom: MediaQuery.of(context).padding.bottom + 24,
-            ),
-            decoration: BoxDecoration(
-              color: context.cardColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: context.borderColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Quick Settings',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: context.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Dark Mode Toggle
-                _buildQuickSettingTile(
-                  icon: isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                  iconColor: isDarkMode ? Colors.indigo : Colors.amber,
-                  title: l10n.translate('dark_mode'),
-                  trailing: Switch.adaptive(
-                    value: isDarkMode,
-                    activeColor: AppColors.gold,
-                    onChanged: (value) {
-                      if (value) {
-                        ref.read(themeModeProvider.notifier).setDarkTheme();
-                      } else {
-                        ref.read(themeModeProvider.notifier).setLightTheme();
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Language Selection
-                _buildQuickSettingTile(
-                  icon: Icons.language_rounded,
-                  iconColor: Colors.blue,
-                  title: l10n.translate('language'),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: context.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      currentLocale.languageCode == 'ro' ? 'Română' : 'English',
-                      style: TextStyle(
-                        color: context.textPrimary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _showLanguageSheet(context, ref, l10n);
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildQuickSettingTile({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required Widget trailing,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Builder(
-        builder: (context) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: context.borderColor.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: context.textPrimary,
-                  ),
-                ),
-              ),
-              trailing,
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showLanguageSheet(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
-    final currentLocale = ref.read(languageProvider);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: MediaQuery.of(context).padding.bottom + 24,
-        ),
-        decoration: BoxDecoration(
-          color: context.cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.borderColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Select Language',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _LanguageOption(
-              flag: 'assets/flags/ro.png',
-              name: 'Romana',
-              isSelected: currentLocale.languageCode == 'ro',
-              onTap: () {
-                ref.read(languageProvider.notifier).setRomanian();
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 12),
-            _LanguageOption(
-              flag: 'assets/flags/en.png',
-              name: 'English',
-              isSelected: currentLocale.languageCode == 'en',
-              onTap: () {
-                ref.read(languageProvider.notifier).setEnglish();
-                Navigator.pop(context);
-              },
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
   }
 
   void _showLogoutDialog(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
@@ -927,7 +668,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               ),
               const SizedBox(height: 20),
               Text(
-                'Log Out?',
+                '${l10n.translate('logout')}?',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -936,7 +677,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Are you sure you want to log out?',
+                l10n.translate('logout_confirmation'),
                 style: TextStyle(
                   fontSize: 14,
                   color: context.textSecondary,
@@ -957,7 +698,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                         ),
                         child: Center(
                           child: Text(
-                            'Cancel',
+                            l10n.translate('cancel'),
                             style: TextStyle(
                               color: context.textPrimary,
                               fontSize: 15,
@@ -981,10 +722,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                           color: const Color(0xFFEF4444),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Center(
+                        child: Center(
                           child: Text(
-                            'Log Out',
-                            style: TextStyle(
+                            l10n.translate('logout'),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -1160,81 +901,6 @@ class _SettingsTile extends StatelessWidget {
               ),
             ),
             trailing ?? Icon(Icons.chevron_right_rounded, color: context.textSecondary),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LanguageOption extends StatelessWidget {
-  final String flag;
-  final String name;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _LanguageOption({
-    required this.flag,
-    required this.name,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.navy.withValues(alpha: 0.08) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? AppColors.navy : Colors.grey.withValues(alpha: 0.2),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: context.textPrimary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(
-                  name == 'English' ? 'EN' : 'RO',
-                  style: const TextStyle(
-                    color: AppColors.gold,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                name,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: context.textPrimary,
-                ),
-              ),
-            ),
-            if (isSelected)
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: context.textPrimary,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_rounded, color: AppColors.gold, size: 16),
-              ),
           ],
         ),
       ),

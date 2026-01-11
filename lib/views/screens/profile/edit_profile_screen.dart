@@ -73,24 +73,24 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.cardColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
+                  color: context.shadowColor,
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Icon(Icons.close, color: AppColors.navy, size: 20),
+            child: Icon(Icons.close, color: context.iconColor, size: 20),
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           l10n.translate('edit_profile'),
-          style: const TextStyle(
-            color: AppColors.navy,
+          style: TextStyle(
+            color: context.goldColor,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -101,7 +101,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             child: Text(
               l10n.translate('save'),
               style: TextStyle(
-                color: _isLoading ? Colors.grey : AppColors.gold,
+                color: _isLoading ? context.textSecondary : context.goldColor,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -194,15 +194,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 32),
 
             // Personal information section
-            _buildSectionTitle(l10n.translate('personal_information')),
+            _buildSectionTitle(context, l10n.translate('personal_information')),
             const SizedBox(height: 16),
 
             // Full name
-            _buildLabel(l10n.translate('full_name')),
+            _buildLabel(context, l10n.translate('full_name')),
             const SizedBox(height: 8),
             TextFormField(
               controller: _fullNameController,
-              decoration: _buildInputDecoration(l10n.translate('full_name')),
+              style: TextStyle(color: context.textPrimary),
+              decoration: _buildInputDecoration(context, l10n.translate('full_name')),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return l10n.translate('name_required');
@@ -213,21 +214,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             const SizedBox(height: 20),
 
             // Phone
-            _buildLabel(l10n.translate('phone')),
+            _buildLabel(context, l10n.translate('phone')),
             const SizedBox(height: 8),
             TextFormField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
-              decoration: _buildInputDecoration(l10n.translate('phone')),
+              style: TextStyle(color: context.textPrimary),
+              decoration: _buildInputDecoration(context, l10n.translate('phone')),
             ),
             const SizedBox(height: 32),
 
             // Read-only information section
-            _buildSectionTitle(l10n.translate('account_information')),
+            _buildSectionTitle(context, l10n.translate('account_information')),
             const SizedBox(height: 16),
 
             // Email (read-only)
             _buildInfoTile(
+              context: context,
               icon: Icons.email_rounded,
               label: 'Email',
               value: user?.email ?? '',
@@ -236,6 +239,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
             // Role (read-only)
             _buildInfoTile(
+              context: context,
               icon: Icons.badge_rounded,
               label: l10n.translate('role'),
               value: l10n.translate(_getRoleTranslationKey(user?.role)),
@@ -245,6 +249,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             // School (read-only)
             if (user?.schoolName != null) ...[
               _buildInfoTile(
+                context: context,
                 icon: Icons.school_rounded,
                 label: l10n.translate('school'),
                 value: user!.schoolName!,
@@ -255,6 +260,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             // City (read-only)
             if (user?.city != null) ...[
               _buildInfoTile(
+                context: context,
                 icon: Icons.location_city_rounded,
                 label: l10n.translate('city'),
                 value: user!.city!,
@@ -297,34 +303,34 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: AppColors.navy,
+        color: context.goldColor,
       ),
     );
   }
 
-  Widget _buildLabel(String text) {
+  Widget _buildLabel(BuildContext context, String text) {
     return Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
-        color: AppColors.navy,
+        color: context.goldColor,
       ),
     );
   }
 
-  InputDecoration _buildInputDecoration(String hint) {
+  InputDecoration _buildInputDecoration(BuildContext context, String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.grey[400]),
+      hintStyle: TextStyle(color: context.textSecondary),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: context.cardColor,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -335,17 +341,18 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.gold, width: 2),
+        borderSide: BorderSide(color: context.goldColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.red),
+        borderSide: BorderSide(color: context.errorColor),
       ),
       contentPadding: const EdgeInsets.all(20),
     );
   }
 
   Widget _buildInfoTile({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required String value,
@@ -353,11 +360,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: context.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -369,10 +376,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.navy.withValues(alpha: 0.08),
+              color: context.goldColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AppColors.navy, size: 20),
+            child: Icon(icon, color: context.goldColor, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -383,22 +390,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[500],
+                    color: context.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.navy,
+                    color: context.textPrimary,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(Icons.lock_rounded, color: Colors.grey[300], size: 18),
+          Icon(Icons.lock_rounded, color: context.textSecondary.withValues(alpha: 0.5), size: 18),
         ],
       ),
     );
@@ -470,7 +477,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               l10n.translate('cancel'),
-              style: const TextStyle(color: AppColors.navy),
+              style: const TextStyle(color: AppColors.gold),
             ),
           ),
           ElevatedButton(
@@ -478,8 +485,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               Navigator.pop(context);
               // TODO: Implement account deletion
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Please contact support to delete your account'),
+                SnackBar(
+                  content: Text(l10n.translate('contact_support_delete_account')),
                 ),
               );
             },
@@ -507,12 +514,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       backgroundColor: Colors.transparent,
       useRootNavigator: true,
       isScrollControlled: true,
-      builder: (context) => SafeArea(
+      builder: (ctx) => SafeArea(
         child: Container(
           padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          decoration: BoxDecoration(
+            color: ctx.cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -521,17 +528,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
+                  color: ctx.textSecondary.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 24),
               Text(
                 l10n.translate('choose_photo'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.navy,
+                  color: ctx.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -539,10 +546,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 children: [
                   Expanded(
                     child: _buildImagePickerOption(
+                      context: ctx,
                       icon: Icons.camera_alt_rounded,
                       label: l10n.translate('camera'),
                       onTap: () {
-                        Navigator.pop(context);
+                        Navigator.pop(ctx);
                         _pickImage(ImageSource.camera);
                       },
                     ),
@@ -550,10 +558,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildImagePickerOption(
+                      context: ctx,
                       icon: Icons.photo_library_rounded,
                       label: l10n.translate('gallery'),
                       onTap: () {
-                        Navigator.pop(context);
+                        Navigator.pop(ctx);
                         _pickImage(ImageSource.gallery);
                       },
                     ),
@@ -569,6 +578,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   }
 
   Widget _buildImagePickerOption({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -578,17 +588,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: AppColors.navy.withValues(alpha: 0.05),
+          color: context.goldColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           children: [
-            Icon(icon, color: AppColors.navy, size: 32),
+            Icon(icon, color: context.goldColor, size: 32),
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(
-                color: AppColors.navy,
+              style: TextStyle(
+                color: context.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
