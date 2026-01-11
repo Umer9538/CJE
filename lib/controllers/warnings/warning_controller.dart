@@ -23,6 +23,19 @@ class WarningFilter {
     this.isActive,
     this.limit = 50,
   });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is WarningFilter &&
+        other.countyId == countyId &&
+        other.userId == userId &&
+        other.isActive == isActive &&
+        other.limit == limit;
+  }
+
+  @override
+  int get hashCode => Object.hash(countyId, userId, isActive, limit);
 }
 
 /// Filter for absences
@@ -38,6 +51,19 @@ class AbsenceFilter {
     this.meetingId,
     this.limit = 50,
   });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is AbsenceFilter &&
+        other.countyId == countyId &&
+        other.userId == userId &&
+        other.meetingId == meetingId &&
+        other.limit == limit;
+  }
+
+  @override
+  int get hashCode => Object.hash(countyId, userId, meetingId, limit);
 }
 
 /// Warnings provider
@@ -257,16 +283,29 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
   }
 
   void _invalidateWarningProviders(String userId) {
-    _ref.invalidate(warningsProvider);
+    // Only invalidate specific user-related providers to avoid infinite loops
+    // Don't invalidate the family provider without parameters as it causes rebuilds
     _ref.invalidate(userWarningsProvider(userId));
     _ref.invalidate(warningCountProvider(userId));
+
+    // Invalidate all warnings providers with current user's county
+    final currentUser = _ref.read(currentUserProvider);
+    if (currentUser != null && currentUser.city != null) {
+      _ref.invalidate(warningsProvider(WarningFilter(countyId: currentUser.city)));
+    }
   }
 
   void _invalidateAbsenceProviders(String userId, String meetingId) {
-    _ref.invalidate(absencesProvider);
+    // Only invalidate specific user-related providers to avoid infinite loops
     _ref.invalidate(userAbsencesProvider(userId));
     _ref.invalidate(meetingAbsencesProvider(meetingId));
     _ref.invalidate(absenceCountProvider(userId));
+
+    // Invalidate absences providers with current user's county
+    final currentUser = _ref.read(currentUserProvider);
+    if (currentUser != null && currentUser.city != null) {
+      _ref.invalidate(absencesProvider(AbsenceFilter(countyId: currentUser.city)));
+    }
   }
 }
 

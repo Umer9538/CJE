@@ -20,7 +20,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   static ThemeMode _loadThemeMode(SharedPreferences prefs) {
     final themeIndex = prefs.getInt(_themeModeKey);
     if (themeIndex == null) {
-      return ThemeMode.system;
+      return ThemeMode.dark; // Default to dark mode on fresh install
     }
     return ThemeMode.values[themeIndex];
   }

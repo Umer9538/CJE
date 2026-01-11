@@ -121,6 +121,8 @@ final translationServiceProvider = Provider<TranslationService>((ref) {
       return DeepLTranslationService(apiKey: settings.apiKey!);
     case TranslationProvider.libre:
       return LibreTranslationService(apiKey: settings.apiKey);
+    case TranslationProvider.mlKit:
+      return mlKitTranslationService;
     case TranslationProvider.none:
       return NoOpTranslationService();
   }

@@ -13,11 +13,20 @@ final documentRepositoryProvider = Provider<DocumentRepository>((ref) {
 /// Documents list provider
 final documentsProvider = FutureProvider.family<List<DocumentModel>, DocumentFilter>((ref, filter) async {
   final repository = ref.watch(documentRepositoryProvider);
+  final user = ref.read(currentUserProvider);
+  final userId = user?.id;
+  final userRole = user?.role;
+  final userSchoolId = user?.schoolId;
 
   try {
-    return await repository.getDocuments(
+    // For BEX/Superadmin, don't filter by school - they see everything
+    final effectiveSchoolId = (userRole == UserRole.bex || userRole == UserRole.superadmin)
+        ? null
+        : filter.schoolId;
+
+    final documents = await repository.getDocuments(
       category: filter.category,
-      schoolId: filter.schoolId,
+      schoolId: effectiveSchoolId,
       includeCountyDocs: filter.includeCountyDocs,
       publicOnly: filter.publicOnly,
       limit: filter.limit,
@@ -25,6 +34,26 @@ final documentsProvider = FutureProvider.family<List<DocumentModel>, DocumentFil
       const Duration(seconds: 10),
       onTimeout: () => <DocumentModel>[],
     );
+
+    // Filter documents based on visibility rules
+    return documents.where((doc) {
+      // Always show documents created by the current user
+      if (userId != null && doc.uploadedById == userId) {
+        return doc.canBeViewedBy(userRole);
+      }
+
+      // BEX and Superadmin see ALL documents
+      if (userRole == UserRole.bex || userRole == UserRole.superadmin) {
+        return doc.canBeViewedBy(userRole);
+      }
+
+      // School filtering for other users
+      if (userSchoolId != null && doc.schoolId != null && doc.schoolId != userSchoolId) {
+        return false;
+      }
+
+      return doc.canBeViewedBy(userRole);
+    }).toList();
   } catch (e) {
     return <DocumentModel>[];
   }
@@ -33,11 +62,35 @@ final documentsProvider = FutureProvider.family<List<DocumentModel>, DocumentFil
 /// Documents stream provider
 final documentsStreamProvider = StreamProvider.family<List<DocumentModel>, DocumentFilter>((ref, filter) {
   final repository = ref.watch(documentRepositoryProvider);
+  final user = ref.read(currentUserProvider);
+  final userSchoolId = user?.schoolId;
+  final userId = user?.id;
+  final userRole = user?.role;
 
   return repository.getDocumentsStream(
     category: filter.category,
     limit: filter.limit,
-  );
+  ).map((documents) => documents.where((doc) {
+    // Always show documents created by the current user
+    if (userId != null && doc.uploadedById == userId) {
+      return doc.canBeViewedBy(userRole);
+    }
+
+    // BEX and Superadmin see ALL documents (county-level and school-specific)
+    if (userRole == UserRole.bex || userRole == UserRole.superadmin) {
+      return doc.canBeViewedBy(userRole);
+    }
+
+    // School filtering for other users:
+    // - County-level documents (doc.schoolId == null) are visible to all
+    // - School-specific documents are only visible to users from that school
+    if (userSchoolId != null && doc.schoolId != null && doc.schoolId != userSchoolId) {
+      return false;
+    }
+
+    // Role filtering for non-public documents
+    return doc.canBeViewedBy(userRole);
+  }).toList());
 });
 
 /// Single document provider
@@ -93,6 +146,7 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
   /// - BEX and Superadmin can upload any document (county-level)
   /// - SchoolRep can upload school-level documents only
   /// - Department can upload department-level documents only
+  /// - schoolId/schoolName: Optional overrides for BEX/Superadmin to upload documents for specific schools
   Future<String?> createDocument({
     required String title,
     String? description,
@@ -101,9 +155,12 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
     required String fileUrl,
     int fileSizeBytes = 0,
     bool isPublic = true,
+    UserRole? minimumRole,
     bool isSchoolDocument = false,
     bool isDepartmentDocument = false,
     List<String>? tags,
+    String? schoolId,
+    String? schoolName,
   }) async {
     state = const AsyncValue.loading();
 
@@ -132,6 +189,16 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
+    // Determine school ID and name for school documents
+    // - If schoolId is provided (BEX/Superadmin selected specific school), use it
+    // - Otherwise, use the current user's school
+    final effectiveSchoolId = isSchoolDocument
+        ? (schoolId ?? user.schoolId)
+        : null;
+    final effectiveSchoolName = isSchoolDocument
+        ? (schoolName ?? user.schoolName)
+        : null;
+
     final document = DocumentModel(
       id: '',
       title: title,
@@ -142,9 +209,10 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
       fileSizeBytes: fileSizeBytes,
       uploadedById: user.id,
       uploadedByName: user.fullName,
-      schoolId: isSchoolDocument ? user.schoolId : null,
-      schoolName: isSchoolDocument ? user.schoolName : null,
+      schoolId: effectiveSchoolId,
+      schoolName: effectiveSchoolName,
       isPublic: isPublic,
+      minimumRole: isPublic ? null : minimumRole,
       tags: isDepartmentDocument ? [...(tags ?? []), 'department:${user.department?.name ?? 'unknown'}'] : tags ?? [],
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
@@ -154,7 +222,9 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
 
     if (id != null) {
       state = const AsyncValue.data(null);
+      // Invalidate all document-related providers to force refresh
       _ref.invalidate(documentsProvider);
+      _ref.invalidate(documentsStreamProvider);
     } else {
       state = AsyncValue.error('Failed to create document', StackTrace.current);
     }
