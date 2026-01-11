@@ -7,6 +7,7 @@ import '../../core/constants/enums.dart';
 import '../../core/services/translation_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
+import '../admin/admin_controller.dart';
 import '../notifications/notification_controller.dart';
 
 /// Meeting repository provider
@@ -22,11 +23,17 @@ final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter
   }
 
   final repository = ref.read(meetingRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
+  // For BEX/Superadmin, don't filter by school - they see ALL meetings
+  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final effectiveSchoolId = shouldFilterBySchool ? filter.schoolId : null;
 
   try {
     return await repository.getMeetings(
       type: filter.type,
-      schoolId: filter.schoolId,
+      schoolId: effectiveSchoolId,
+      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
       department: filter.department,
       upcomingOnly: filter.upcomingOnly,
       limit: filter.limit,
@@ -42,10 +49,17 @@ final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter
 /// Meetings stream provider
 final meetingsStreamProvider = StreamProvider.family<List<MeetingModel>, MeetingFilter>((ref, filter) {
   final repository = ref.watch(meetingRepositoryProvider);
+  final user = ref.read(currentUserProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
+  // For BEX/Superadmin, don't filter by school - they see ALL meetings
+  final shouldFilterBySchool = user?.role != UserRole.superadmin && user?.role != UserRole.bex;
+  final effectiveSchoolId = shouldFilterBySchool ? filter.schoolId : null;
 
   return repository.getMeetingsStream(
     type: filter.type,
-    schoolId: filter.schoolId,
+    schoolId: effectiveSchoolId,
+    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
     upcomingOnly: filter.upcomingOnly,
     limit: filter.limit,
   );
@@ -65,9 +79,16 @@ final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async 
   }
 
   final repository = ref.read(meetingRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
+  // For BEX/Superadmin, don't filter by school - they see ALL upcoming meetings
+  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
+
   try {
     return await repository.getUpcomingMeetings(
-      schoolId: user.schoolId,
+      schoolId: effectiveSchoolId,
+      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
       limit: 5,
     ).timeout(
       const Duration(seconds: 10),
@@ -89,11 +110,14 @@ final departmentMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) asyn
   }
 
   final repository = ref.read(meetingRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
   try {
     // If user has a specific department assigned, filter by it
     // Otherwise, show all department-type meetings for users with department role
     final meetings = await repository.getMeetings(
       type: MeetingType.department,
+      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
       department: user.department, // null means show all department meetings
       limit: 20,
     ).timeout(
@@ -116,7 +140,13 @@ final nextMeetingProvider = FutureProvider<MeetingModel?>((ref) async {
   }
 
   final repository = ref.read(meetingRepositoryProvider);
-  return repository.getNextMeeting(schoolId: user.schoolId);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
+
+  // For BEX/Superadmin, don't filter by school - they see ALL meetings
+  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
+
+  return repository.getNextMeeting(schoolId: effectiveSchoolId, countyId: effectiveCounty);
 });
 
 /// Meeting attendance provider
@@ -132,11 +162,23 @@ final usersByIdsProvider = FutureProvider.family<List<UserModel>, List<String>>(
   return repository.getUsersByIds(userIds);
 });
 
-/// Provider for searchable users (for adding participants)
+/// Provider for searchable users (for adding participants) - filters by current user's county
 final searchUsersProvider = FutureProvider.family<List<UserModel>, String>((ref, query) async {
   if (query.isEmpty) return [];
   final repository = ref.watch(userRepositoryProvider);
-  return repository.searchUsers(query);
+  final currentUser = ref.read(currentUserProvider);
+  return repository.searchUsers(query, countyId: currentUser?.city);
+});
+
+/// Provider to get all active users from the current user's county
+final countyUsersProvider = FutureProvider<List<UserModel>>((ref) async {
+  final repository = ref.watch(userRepositoryProvider);
+  final currentUser = ref.read(currentUserProvider);
+  final countyId = currentUser?.city;
+  if (countyId == null || countyId.isEmpty) {
+    return [];
+  }
+  return repository.getUsersByCounty(countyId, limit: 50);
 });
 
 /// Filter model for meetings
@@ -280,6 +322,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       location: location,
       isOnline: isOnline,
       onlineLink: onlineLink,
+      countyId: user.city, // Save the county for data partitioning (city is the county name)
       schoolId: meetingSchoolId,
       schoolName: meetingSchoolName,
       department: meetingDepartment,
