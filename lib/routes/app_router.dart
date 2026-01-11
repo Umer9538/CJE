@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../controllers/controllers.dart';
+import '../core/core.dart';
 import '../views/screens/auth/email_verification_screen.dart';
 import '../views/screens/auth/forgot_password_screen.dart';
 import '../views/screens/auth/login_screen.dart';
@@ -35,7 +36,6 @@ import '../views/screens/announcements/announcement_detail_screen.dart';
 import '../views/screens/meetings/meeting_detail_screen.dart';
 import '../views/screens/initiatives/initiative_detail_screen.dart';
 import '../views/screens/polls/poll_detail_screen.dart';
-import '../core/constants/enums.dart';
 import 'route_names.dart';
 
 /// Auth state notifier for router refresh
@@ -413,35 +413,38 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const HelpSupportScreen(),
       ),
     ],
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Pagina nu a fost găsită',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              state.uri.toString(),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () => context.go(RouteNames.home),
-              child: const Text('Înapoi acasă'),
-            ),
-          ],
+    errorBuilder: (context, state) {
+      final l10n = AppLocalizations.of(context);
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Colors.red,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                l10n.translate('page_not_found'),
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                state.uri.toString(),
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => context.go(RouteNames.home),
+                child: Text(l10n.translate('back_home')),
+              ),
+            ],
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 });
 
@@ -477,16 +480,17 @@ class _AnnouncementDetailWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final announcementAsync = ref.watch(announcementProvider(announcementId));
     return announcementAsync.when(
       data: (announcement) {
         if (announcement == null) {
-          return _buildNotFound(context, 'Comunicatul nu a fost găsit');
+          return _buildNotFound(context, l10n.translate('announcement_not_found'), l10n.translate('back'));
         }
         return AnnouncementDetailScreen(announcement: announcement);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, e.toString()),
+      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
     );
   }
 }
@@ -498,16 +502,17 @@ class _MeetingDetailWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final meetingAsync = ref.watch(meetingProvider(meetingId));
     return meetingAsync.when(
       data: (meeting) {
         if (meeting == null) {
-          return _buildNotFound(context, 'Ședința nu a fost găsită');
+          return _buildNotFound(context, l10n.translate('meeting_not_found'), l10n.translate('back'));
         }
         return MeetingDetailScreen(meeting: meeting);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, e.toString()),
+      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
     );
   }
 }
@@ -519,16 +524,17 @@ class _InitiativeDetailWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final initiativeAsync = ref.watch(initiativeProvider(initiativeId));
     return initiativeAsync.when(
       data: (initiative) {
         if (initiative == null) {
-          return _buildNotFound(context, 'Inițiativa nu a fost găsită');
+          return _buildNotFound(context, l10n.translate('initiative_not_found'), l10n.translate('back'));
         }
         return InitiativeDetailScreen(initiative: initiative);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, e.toString()),
+      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
     );
   }
 }
@@ -540,16 +546,17 @@ class _PollDetailWrapper extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     final pollAsync = ref.watch(pollProvider(pollId));
     return pollAsync.when(
       data: (poll) {
         if (poll == null) {
-          return _buildNotFound(context, 'Sondajul nu a fost găsit');
+          return _buildNotFound(context, l10n.translate('poll_not_found'), l10n.translate('back'));
         }
         return PollDetailScreen(poll: poll);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, e.toString()),
+      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
     );
   }
 }
@@ -564,7 +571,7 @@ Widget _buildLoading() {
 }
 
 /// Build not found scaffold
-Widget _buildNotFound(BuildContext context, String message) {
+Widget _buildNotFound(BuildContext context, String message, String backText) {
   return Scaffold(
     appBar: AppBar(),
     body: Center(
@@ -577,7 +584,7 @@ Widget _buildNotFound(BuildContext context, String message) {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => context.pop(),
-            child: const Text('Înapoi'),
+            child: Text(backText),
           ),
         ],
       ),
@@ -586,7 +593,7 @@ Widget _buildNotFound(BuildContext context, String message) {
 }
 
 /// Build error scaffold
-Widget _buildError(BuildContext context, String error) {
+Widget _buildError(BuildContext context, String errorLabel, String errorDetails, String backText) {
   return Scaffold(
     appBar: AppBar(),
     body: Center(
@@ -595,11 +602,11 @@ Widget _buildError(BuildContext context, String error) {
         children: [
           const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
-          Text('Eroare: $error', style: Theme.of(context).textTheme.bodyMedium),
+          Text('$errorLabel: $errorDetails', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: () => context.pop(),
-            child: const Text('Înapoi'),
+            child: Text(backText),
           ),
         ],
       ),

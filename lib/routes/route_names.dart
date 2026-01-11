@@ -50,6 +50,7 @@ class RouteNames {
   static const String profile = '/profile';
   static const String editProfile = '/profile/edit';
   static const String settings = '/settings';
+  static const String menu = '/menu';
 
   // ============================================
   // ADMIN ROUTES (Superadmin only)
@@ -86,6 +87,7 @@ class RouteNames {
   static const String calendar = '/calendar';
   static const String search = '/search';
   static const String notifications = '/notifications';
+  static const String help = '/help';
 
   // ============================================
   // HELPER METHODS
