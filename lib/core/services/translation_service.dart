@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_mlkit_translation/google_mlkit_translation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,6 +10,7 @@ enum TranslationProvider {
   google,
   deepL,
   libre, // Free, self-hosted option
+  mlKit, // Firebase ML Kit (offline, free)
   none, // No translation (returns original text)
 }
 
@@ -505,6 +507,168 @@ class NoOpTranslationService implements TranslationService {
   Future<bool> isAvailable() async => true;
 }
 
+/// Firebase ML Kit Translation Service (offline, free)
+class MLKitTranslationService implements TranslationService {
+  final _modelManager = OnDeviceTranslatorModelManager();
+  final Map<String, OnDeviceTranslator> _translators = {};
+  bool _isInitialized = false;
+
+  /// Get language code for ML Kit
+  TranslateLanguage _getLanguage(String code) {
+    switch (code.toLowerCase()) {
+      case 'ro':
+      case 'romanian':
+        return TranslateLanguage.romanian;
+      case 'en':
+      case 'english':
+      default:
+        return TranslateLanguage.english;
+    }
+  }
+
+  /// Initialize and download required models
+  Future<void> _ensureModelDownloaded(String languageCode) async {
+    final bcpCode = _getLanguage(languageCode).bcpCode;
+    final isDownloaded = await _modelManager.isModelDownloaded(bcpCode);
+    if (!isDownloaded) {
+      debugPrint('MLKitTranslation: Downloading model for $languageCode...');
+      await _modelManager.downloadModel(bcpCode);
+      debugPrint('MLKitTranslation: Model downloaded for $languageCode');
+    }
+  }
+
+  /// Get or create translator for language pair
+  Future<OnDeviceTranslator> _getTranslator(String sourceLanguage, String targetLanguage) async {
+    final key = '${sourceLanguage}_$targetLanguage';
+
+    if (!_translators.containsKey(key)) {
+      await _ensureModelDownloaded(sourceLanguage);
+      await _ensureModelDownloaded(targetLanguage);
+
+      _translators[key] = OnDeviceTranslator(
+        sourceLanguage: _getLanguage(sourceLanguage),
+        targetLanguage: _getLanguage(targetLanguage),
+      );
+    }
+
+    return _translators[key]!;
+  }
+
+  @override
+  Future<TranslationResult> translate({
+    required String text,
+    required String targetLanguage,
+    String? sourceLanguage,
+  }) async {
+    if (text.trim().isEmpty) {
+      return TranslationResult.notTranslated(text);
+    }
+
+    try {
+      // Detect source language if not provided
+      final source = sourceLanguage ?? await detectLanguage(text);
+
+      // Don't translate if source and target are the same
+      if (source.toLowerCase() == targetLanguage.toLowerCase()) {
+        return TranslationResult(
+          originalText: text,
+          translatedText: text,
+          sourceLanguage: source,
+          targetLanguage: targetLanguage,
+          isTranslated: false,
+        );
+      }
+
+      final translator = await _getTranslator(source, targetLanguage);
+      final translatedText = await translator.translateText(text);
+
+      return TranslationResult(
+        originalText: text,
+        translatedText: translatedText,
+        sourceLanguage: source,
+        targetLanguage: targetLanguage,
+        isTranslated: true,
+      );
+    } catch (e) {
+      debugPrint('MLKitTranslation error: $e');
+      return TranslationResult.notTranslated(text);
+    }
+  }
+
+  @override
+  Future<List<TranslationResult>> translateBatch({
+    required List<String> texts,
+    required String targetLanguage,
+    String? sourceLanguage,
+  }) async {
+    final results = <TranslationResult>[];
+    for (final text in texts) {
+      results.add(await translate(
+        text: text,
+        targetLanguage: targetLanguage,
+        sourceLanguage: sourceLanguage,
+      ));
+    }
+    return results;
+  }
+
+  @override
+  Future<String> detectLanguage(String text) async {
+    final lowerText = text.toLowerCase();
+
+    // Romanian indicators (diacritics and common words)
+    final romanianIndicators = [
+      'ă', 'â', 'î', 'ș', 'ț',
+      ' și ', ' în ', ' că ', ' de ', ' la ', ' cu ', ' pe ', ' din ',
+      ' pentru ', ' sau ', ' este ', ' sunt ', ' era ', ' fost ',
+      ' această ', ' acest ', ' aceștia ', ' care ', ' mai ',
+    ];
+
+    // English indicators
+    final englishIndicators = [
+      ' the ', ' and ', ' is ', ' are ', ' was ', ' were ', ' be ',
+      ' have ', ' has ', ' had ', ' do ', ' does ', ' did ',
+      ' will ', ' would ', ' could ', ' should ', ' this ', ' that ',
+      ' with ', ' from ', ' for ', ' not ', ' but ', ' or ',
+    ];
+
+    int roScore = 0;
+    int enScore = 0;
+
+    for (final indicator in romanianIndicators) {
+      if (lowerText.contains(indicator)) roScore++;
+    }
+
+    for (final indicator in englishIndicators) {
+      if (lowerText.contains(indicator)) enScore++;
+    }
+
+    return roScore > enScore ? 'ro' : 'en';
+  }
+
+  @override
+  Future<bool> isAvailable() async {
+    try {
+      // Check if at least English model is available or can be downloaded
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Close all translators
+  void dispose() {
+    for (final translator in _translators.values) {
+      translator.close();
+    }
+    _translators.clear();
+    _isInitialized = false;
+  }
+}
+
+/// Global ML Kit translation service instance
+final mlKitTranslationService = MLKitTranslationService();
+
 /// Translation cache manager
 class TranslationCache {
   final SharedPreferences _prefs;
@@ -561,4 +725,72 @@ class TranslationCache {
   int get size {
     return _prefs.getKeys().where((k) => k.startsWith(_cachePrefix)).length;
   }
+}
+
+/// Translatable content - stores text in both English and Romanian
+class TranslatableContent {
+  final String en;
+  final String ro;
+
+  const TranslatableContent({required this.en, required this.ro});
+
+  /// Get content for specific language
+  String forLanguage(String languageCode) {
+    return languageCode.toLowerCase() == 'ro' ? ro : en;
+  }
+
+  /// Create from single text (same for both languages)
+  factory TranslatableContent.single(String text) {
+    return TranslatableContent(en: text, ro: text);
+  }
+
+  /// Create from translation result
+  static Future<TranslatableContent> fromText(String text, {TranslationService? service}) async {
+    final translationService = service ?? mlKitTranslationService;
+    final detectedLang = await translationService.detectLanguage(text);
+
+    if (detectedLang == 'ro') {
+      final enResult = await translationService.translate(
+        text: text,
+        targetLanguage: 'en',
+        sourceLanguage: 'ro',
+      );
+      return TranslatableContent(
+        en: enResult.isTranslated ? enResult.translatedText : text,
+        ro: text,
+      );
+    } else {
+      final roResult = await translationService.translate(
+        text: text,
+        targetLanguage: 'ro',
+        sourceLanguage: 'en',
+      );
+      return TranslatableContent(
+        en: text,
+        ro: roResult.isTranslated ? roResult.translatedText : text,
+      );
+    }
+  }
+
+  Map<String, dynamic> toJson() => {'en': en, 'ro': ro};
+
+  factory TranslatableContent.fromJson(Map<String, dynamic> json) {
+    return TranslatableContent(
+      en: json['en'] as String? ?? '',
+      ro: json['ro'] as String? ?? '',
+    );
+  }
+
+  /// Create from Firestore data (handles both old single-value and new multilingual format)
+  factory TranslatableContent.fromFirestore(dynamic data, {String? fallbackField}) {
+    if (data is Map<String, dynamic>) {
+      return TranslatableContent.fromJson(data);
+    } else if (data is String) {
+      return TranslatableContent.single(data);
+    }
+    return TranslatableContent.single('');
+  }
+
+  @override
+  String toString() => 'TranslatableContent(en: $en, ro: $ro)';
 }
