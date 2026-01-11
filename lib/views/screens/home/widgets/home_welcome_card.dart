@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../controllers/admin/admin_controller.dart';
 import '../../../../controllers/controllers.dart';
 import '../../../../core/core.dart';
 
@@ -64,11 +65,18 @@ class HomeWelcomeCard extends ConsumerWidget {
 
   Widget _buildContent(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final isSuperadmin = user?.role == UserRole.superadmin;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildRoleBadge(context),
+        // County Switcher for Superadmin
+        if (isSuperadmin) ...[
+          const SizedBox(height: 12),
+          _buildCountySwitcher(context, ref, l10n),
+        ],
         const SizedBox(height: 20),
         Text(
           l10n.translate('your_impact_this_month'),
@@ -82,6 +90,82 @@ class HomeWelcomeCard extends ConsumerWidget {
         const SizedBox(height: 20),
         _ImpactStats(),
       ],
+    );
+  }
+
+  /// County Switcher dropdown for Superadmin to filter content by county
+  Widget _buildCountySwitcher(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+    final selectedCounty = ref.watch(selectedCountyProvider);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.location_city_rounded,
+            color: Colors.white,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String?>(
+                value: selectedCounty,
+                isDense: true,
+                dropdownColor: AppColors.navy,
+                icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 18),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                hint: Text(
+                  l10n.translate('all_counties'),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.public, color: AppColors.gold, size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          l10n.translate('all_counties'),
+                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ...romanianCounties.map((county) => DropdownMenuItem<String?>(
+                    value: county,
+                    child: Text(county, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  )),
+                ],
+                onChanged: (value) {
+                  ref.read(selectedCountyProvider.notifier).state = value;
+                  // Invalidate all data providers to refresh with new county filter
+                  ref.invalidate(activePollsProvider);
+                  ref.invalidate(recentInitiativesProvider);
+                  ref.invalidate(upcomingMeetingsProvider);
+                  ref.invalidate(announcementsProvider);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
