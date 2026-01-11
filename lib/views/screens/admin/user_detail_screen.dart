@@ -93,30 +93,39 @@ class _UserDetailContent extends StatelessWidget {
                   children: [
                     _buildBadges(context),
                     const SizedBox(height: 24),
-                    _buildSectionTitle(l10n.translate('user_information')),
+                    _buildSectionTitle(context, l10n.translate('user_information')),
                     const SizedBox(height: 12),
                     UserInfoCard(user: user),
                     const SizedBox(height: 24),
-                    if (canChangeRoles && user.id != currentUser?.id) ...[
-                      _buildSectionTitle(l10n.translate('change_role')),
+                    // SECURITY: Don't show role selector for Superadmin users (only Superadmin can modify)
+                    // Also don't show for BEX users if current user is not Superadmin
+                    if (canChangeRoles &&
+                        user.id != currentUser?.id &&
+                        user.role != UserRole.superadmin &&
+                        !(user.role == UserRole.bex && currentUser?.role != UserRole.superadmin)) ...[
+                      _buildSectionTitle(context, l10n.translate('change_role')),
                       const SizedBox(height: 12),
                       UserRoleSelector(user: user),
                       const SizedBox(height: 24),
                     ],
-                    if (user.id != currentUser?.id) ...[
-                      _buildSectionTitle(l10n.translate('manage_status')),
+                    // SECURITY: Don't show status actions for Superadmin (only Superadmin can manage)
+                    // Also don't show for BEX users if current user is not Superadmin
+                    if (user.id != currentUser?.id &&
+                        user.role != UserRole.superadmin &&
+                        !(user.role == UserRole.bex && currentUser?.role != UserRole.superadmin)) ...[
+                      _buildSectionTitle(context, l10n.translate('manage_status')),
                       const SizedBox(height: 12),
                       UserStatusActions(user: user),
                     ],
                     const SizedBox(height: 24),
                     if (canChangeRoles) ...[
-                      _buildSectionTitle(l10n.translate('warnings')),
+                      _buildSectionTitle(context, l10n.translate('warnings')),
                       const SizedBox(height: 12),
                       UserWarningsSection(user: user),
                       const SizedBox(height: 24),
                     ],
                     if (canChangeRoles) ...[
-                      _buildSectionTitle(l10n.translate('absences')),
+                      _buildSectionTitle(context, l10n.translate('absences')),
                       const SizedBox(height: 12),
                       UserAbsencesSection(user: user),
                     ],
@@ -171,13 +180,13 @@ class _UserDetailContent extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.bold,
-        color: AppColors.navy,
+        color: context.textPrimary,
       ),
     );
   }

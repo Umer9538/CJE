@@ -20,6 +20,8 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
   NotificationType _selectedType = NotificationType.systemAlert;
   final Set<UserRole> _selectedRoles = {};
   bool _sendToAllRoles = true;
+  bool _sendToAllSchools = true;
+  String? _selectedSchoolId;
   bool _isLoading = false;
 
   @override
@@ -48,8 +50,6 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.navy,
-        foregroundColor: Colors.white,
         title: Text(l10n.translate('send_notification')),
         elevation: 0,
       ),
@@ -97,10 +97,10 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: isSelected ? _getTypeColor(type) : Colors.white,
+                      color: isSelected ? _getTypeColor(type) : context.cardColor,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? _getTypeColor(type) : Colors.grey.withValues(alpha: 0.3),
+                        color: isSelected ? _getTypeColor(type) : context.borderColor,
                       ),
                     ),
                     child: Row(
@@ -109,7 +109,7 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                         Icon(
                           _getTypeIcon(type),
                           size: 18,
-                          color: isSelected ? Colors.white : Colors.grey[600],
+                          color: isSelected ? Colors.white : context.textSecondary,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -117,7 +117,7 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: isSelected ? Colors.white : Colors.grey[600],
+                            color: isSelected ? Colors.white : context.textSecondary,
                           ),
                         ),
                       ],
@@ -137,9 +137,14 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                 hintText: l10n.translate('notification_title_hint'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -163,9 +168,14 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                 hintText: l10n.translate('notification_body_hint'),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: context.borderColor),
                 ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: context.cardColor,
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -185,7 +195,7 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -196,7 +206,7 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                     title: Text(l10n.translate('all_users')),
                     subtitle: Text(
                       l10n.translate('send_to_all_users'),
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
                     ),
                     value: _sendToAllRoles,
                     onChanged: (value) {
@@ -224,7 +234,7 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                       l10n.translate('select_roles'),
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.grey[600],
+                        color: context.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -256,6 +266,62 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
                         );
                       }).toList(),
                     ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // School targeting
+            _buildSectionTitle(l10n.translate('target_school')),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // All schools toggle
+                  SwitchListTile(
+                    title: Text(l10n.translate('all_schools')),
+                    subtitle: Text(
+                      l10n.translate('send_to_all_schools'),
+                      style: TextStyle(fontSize: 12, color: context.textSecondary),
+                    ),
+                    value: _sendToAllSchools,
+                    onChanged: (value) {
+                      setState(() {
+                        _sendToAllSchools = value;
+                        if (value) {
+                          _selectedSchoolId = null;
+                        }
+                      });
+                    },
+                    activeTrackColor: AppColors.gold.withValues(alpha: 0.5),
+                    thumbColor: WidgetStateProperty.resolveWith((states) {
+                      if (states.contains(WidgetState.selected)) {
+                        return AppColors.gold;
+                      }
+                      return null;
+                    }),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+
+                  if (!_sendToAllSchools) ...[
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.translate('select_school'),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: context.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildSchoolDropdown(l10n),
                   ],
                 ],
               ),
@@ -303,10 +369,10 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: AppColors.navy,
+        color: context.textPrimary,
       ),
     );
   }
@@ -356,6 +422,87 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
     }
   }
 
+  Widget _buildSchoolDropdown(AppLocalizations l10n) {
+    final schoolsAsync = ref.watch(activeSchoolsProvider);
+
+    return schoolsAsync.when(
+      data: (schools) {
+        if (schools.isEmpty) {
+          return Text(
+            l10n.translate('no_schools_available'),
+            style: TextStyle(color: context.textSecondary, fontSize: 14),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: context.borderColor),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedSchoolId,
+              hint: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  l10n.translate('select_school'),
+                  style: TextStyle(color: context.textSecondary),
+                ),
+              ),
+              isExpanded: true,
+              borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              dropdownColor: context.cardColor,
+              items: schools.map((school) {
+                return DropdownMenuItem<String>(
+                  value: school.id,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          school.name,
+                          style: TextStyle(
+                            color: context.textPrimary,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (school.city != null)
+                          Text(
+                            school.city!,
+                            style: TextStyle(
+                              color: context.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() => _selectedSchoolId = value);
+              },
+            ),
+          ),
+        );
+      },
+      loading: () => const Center(
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+        ),
+      ),
+      error: (e, _) => Text(
+        l10n.translate('error_loading_schools'),
+        style: TextStyle(color: Colors.red[400], fontSize: 14),
+      ),
+    );
+  }
+
   Future<void> _handleSend() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -363,6 +510,16 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context).translate('select_at_least_one_role')),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (!_sendToAllSchools && _selectedSchoolId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).translate('select_school')),
           backgroundColor: Colors.red,
         ),
       );
@@ -400,6 +557,7 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
           title: _titleController.text.trim(),
           body: _bodyController.text.trim(),
           type: _selectedType,
+          schoolId: _sendToAllSchools ? null : _selectedSchoolId,
           targetRoles: _sendToAllRoles ? null : _selectedRoles.toList(),
         );
 
