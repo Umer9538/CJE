@@ -28,23 +28,28 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       setState(() {
+        _showOnlyMine = false; // Reset by default
         switch (_tabController.index) {
           case 0:
             _selectedStatus = null; // All
             break;
           case 1:
-            _selectedStatus = InitiativeStatus.submitted;
+            _selectedStatus = InitiativeStatus.draft;
+            _showOnlyMine = true; // Only show user's own drafts
             break;
           case 2:
-            _selectedStatus = InitiativeStatus.review;
+            _selectedStatus = InitiativeStatus.submitted;
             break;
           case 3:
-            _selectedStatus = InitiativeStatus.debate;
+            _selectedStatus = InitiativeStatus.review;
             break;
           case 4:
+            _selectedStatus = InitiativeStatus.debate;
+            break;
+          case 5:
             _selectedStatus = InitiativeStatus.voting;
             break;
         }
@@ -348,6 +353,7 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
         tabAlignment: TabAlignment.start,
         tabs: [
           Tab(text: l10n.translate('all')),
+          Tab(text: l10n.translate('my_drafts')),
           Tab(text: l10n.translate('submitted')),
           Tab(text: l10n.translate('review')),
           Tab(text: l10n.translate('debate')),
