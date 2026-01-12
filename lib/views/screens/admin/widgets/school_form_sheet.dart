@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../controllers/admin/admin_controller.dart';
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../controllers/schools/school_controller.dart';
 import '../../../../core/core.dart';
@@ -25,17 +26,6 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
   String? _selectedCity;
   bool _isLoading = false;
 
-  // Romanian counties (42 total)
-  final List<String> _cities = [
-    'Alba', 'Arad', 'Argeș', 'Bacău', 'Bihor', 'Bistrița-Năsăud',
-    'Botoșani', 'Brașov', 'Brăila', 'București', 'Buzău', 'Caraș-Severin',
-    'Călărași', 'Cluj', 'Constanța', 'Covasna', 'Dâmbovița', 'Dolj',
-    'Galați', 'Giurgiu', 'Gorj', 'Harghita', 'Hunedoara', 'Ialomița',
-    'Iași', 'Ilfov', 'Maramureș', 'Mehedinți', 'Mureș', 'Neamț',
-    'Olt', 'Prahova', 'Satu Mare', 'Sălaj', 'Sibiu', 'Suceava',
-    'Teleorman', 'Timiș', 'Tulcea', 'Vaslui', 'Vâlcea', 'Vrancea',
-  ];
-
   bool get isEditing => widget.school != null;
 
   @override
@@ -45,7 +35,11 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
     _shortNameController = TextEditingController(text: widget.school?.shortName);
     _addressController = TextEditingController(text: widget.school?.address);
     // Pre-select city: use school's city if editing, otherwise initialize later in didChangeDependencies
-    _selectedCity = widget.school?.city;
+    // Only set if the city exists in the romanianCounties list
+    final schoolCity = widget.school?.city;
+    if (schoolCity != null && romanianCounties.contains(schoolCity)) {
+      _selectedCity = schoolCity;
+    }
   }
 
   @override
@@ -55,7 +49,10 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
     if (!isEditing && _selectedCity == null) {
       final currentUser = ref.read(currentUserProvider);
       if (currentUser?.city != null && currentUser!.city!.isNotEmpty) {
-        _selectedCity = currentUser.city;
+        // Only set if the city exists in the romanianCounties list
+        if (romanianCounties.contains(currentUser.city)) {
+          _selectedCity = currentUser.city;
+        }
       }
     }
   }
@@ -174,13 +171,13 @@ class _SchoolFormSheetState extends ConsumerState<SchoolFormSheet> {
       dropdownColor: context.cardColor,
       decoration: _inputDecoration(
         context,
-        l10n.translate('city'),
-        '${l10n.translate('select')} ${l10n.translate('city')}...',
+        l10n.translate('county'),
+        '${l10n.translate('select')} ${l10n.translate('county')}...',
       ),
-      items: _cities.map((city) {
+      items: romanianCounties.map((county) {
         return DropdownMenuItem(
-          value: city,
-          child: Text(city, style: TextStyle(color: context.textPrimary)),
+          value: county,
+          child: Text(county, style: TextStyle(color: context.textPrimary)),
         );
       }).toList(),
       onChanged: (value) => setState(() => _selectedCity = value),
