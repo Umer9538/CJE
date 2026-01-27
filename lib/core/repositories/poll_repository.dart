@@ -37,8 +37,14 @@ class PollRepository {
       // County filtering:
       // - Content with NULL countyId is visible to everyone (legacy/global content)
       // - Content with countyId is only visible to users from that county
+      // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
       if (countyId != null && countyId.isNotEmpty) {
-        polls = polls.where((p) => p.countyId == null || p.countyId!.isEmpty || p.countyId == countyId).toList();
+        final userCounty = countyId.toLowerCase();
+        polls = polls.where((p) {
+          if (p.countyId == null || p.countyId!.isEmpty) return true;
+          final pollCounty = p.countyId!.toLowerCase();
+          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+        }).toList();
       }
 
       // Filter by type if needed
@@ -52,12 +58,11 @@ class PollRepository {
       }
 
       // Filter by school if needed
-      // Show: county polls, school polls with matching schoolId, or school polls with null schoolId (all schools in this county)
+      // Show: county polls + school polls with matching schoolId only
       if (schoolId != null) {
         polls = polls.where((p) =>
             p.type == PollType.county ||
-            p.schoolId == schoolId ||
-            p.schoolId == null).toList();
+            (p.type == PollType.school && p.schoolId == schoolId)).toList();
       }
 
       // Sort by createdAt descending
@@ -73,6 +78,7 @@ class PollRepository {
   /// Get polls stream
   Stream<List<PollModel>> getPollsStream({
     PollType? type,
+    String? schoolId,
     String? countyId,
     int limit = 20,
   }) {
@@ -85,13 +91,27 @@ class PollRepository {
       // County filtering:
       // - Content with NULL countyId is visible to everyone (legacy/global content)
       // - Content with countyId is only visible to users from that county
+      // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
       if (countyId != null && countyId.isNotEmpty) {
-        polls = polls.where((p) => p.countyId == null || p.countyId!.isEmpty || p.countyId == countyId).toList();
+        final userCounty = countyId.toLowerCase();
+        polls = polls.where((p) {
+          if (p.countyId == null || p.countyId!.isEmpty) return true;
+          final pollCounty = p.countyId!.toLowerCase();
+          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+        }).toList();
       }
 
       // Filter by type if needed
       if (type != null) {
         polls = polls.where((p) => p.type == type).toList();
+      }
+
+      // Filter by school if needed
+      // Show: county polls + school polls with matching schoolId only
+      if (schoolId != null) {
+        polls = polls.where((p) =>
+            p.type == PollType.county ||
+            (p.type == PollType.school && p.schoolId == schoolId)).toList();
       }
 
       // Sort by createdAt descending
@@ -104,7 +124,13 @@ class PollRepository {
   /// Get poll by ID
   Future<PollModel?> getPollById(String id) async {
     try {
-      final doc = await _collection.doc(id).get();
+      final doc = await _collection.doc(id).get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Timeout getting poll by ID: $id');
+          throw Exception('Request timed out');
+        },
+      );
       if (doc.exists) {
         return PollModel.fromFirestore(doc);
       }
@@ -118,15 +144,21 @@ class PollRepository {
   /// Create poll
   Future<String?> createPoll(PollModel poll) async {
     try {
-      final docRef = await _collection.add(poll.toFirestore()).timeout(
+      debugPrint('createPoll: Starting - question="${poll.question}", createdById=${poll.createdById}');
+      final data = poll.toFirestore();
+      debugPrint('createPoll: Data prepared, adding to Firestore...');
+      final docRef = await _collection.add(data).timeout(
         const Duration(seconds: 15),
         onTimeout: () {
+          debugPrint('createPoll: TIMEOUT - Firestore write took too long');
           throw Exception('Timeout creating poll - Firestore may be unavailable');
         },
       );
+      debugPrint('createPoll: SUCCESS - docId=${docRef.id}');
       return docRef.id;
-    } catch (e) {
-      debugPrint('Error creating poll: $e');
+    } catch (e, stackTrace) {
+      debugPrint('createPoll: ERROR - $e');
+      debugPrint('createPoll: Stack trace - $stackTrace');
       return null;
     }
   }
@@ -339,35 +371,90 @@ class PollRepository {
     try {
       // Get all polls and filter in memory to avoid composite index requirement
       final snapshot = await _collection.get();
+      debugPrint('getActivePolls: Total polls in DB: ${snapshot.docs.length}');
 
       List<PollModel> polls = snapshot.docs
           .map((doc) => PollModel.fromFirestore(doc))
-          .where((p) => p.isActive)
           .toList();
+
+      // Debug: show all polls before filtering
+      for (var p in polls) {
+        debugPrint('getActivePolls: Poll "${p.question}" - isActive=${p.isActive}, countyId=${p.countyId}, schoolId=${p.schoolId}, type=${p.type}');
+      }
+
+      polls = polls.where((p) => p.isActive).toList();
+      debugPrint('getActivePolls: After isActive filter: ${polls.length}');
 
       // County filtering:
       // - Content with NULL countyId is visible to everyone (legacy/global content)
       // - Content with countyId is only visible to users from that county
+      // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
       if (countyId != null && countyId.isNotEmpty) {
-        polls = polls.where((p) => p.countyId == null || p.countyId!.isEmpty || p.countyId == countyId).toList();
+        final userCounty = countyId.toLowerCase();
+        polls = polls.where((p) {
+          if (p.countyId == null || p.countyId!.isEmpty) return true;
+          final pollCounty = p.countyId!.toLowerCase();
+          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+        }).toList();
+        debugPrint('getActivePolls: After county filter (user county: $countyId): ${polls.length}');
+      } else {
+        debugPrint('getActivePolls: Skipping county filter (countyId is null/empty)');
       }
 
       // Filter by school if needed
-      // Show: county polls, school polls with matching schoolId, or school polls with null schoolId (all schools in this county)
+      // Show: county polls + school polls with matching schoolId only
       if (schoolId != null) {
         polls = polls.where((p) =>
             p.type == PollType.county ||
-            p.schoolId == schoolId ||
-            p.schoolId == null).toList();
+            (p.type == PollType.school && p.schoolId == schoolId)).toList();
+        debugPrint('getActivePolls: After school filter (schoolId: $schoolId): ${polls.length}');
+      } else {
+        debugPrint('getActivePolls: Skipping school filter (schoolId is null)');
       }
 
       // Sort by endDate ascending (soonest ending first)
       polls.sort((a, b) => a.endDate.compareTo(b.endDate));
 
+      debugPrint('getActivePolls: Returning ${polls.take(limit).length} polls');
       return polls.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting active polls: $e');
       return [];
     }
+  }
+
+  /// Get active polls stream for home screen (real-time updates)
+  Stream<List<PollModel>> getActivePollsStream({
+    String? schoolId,
+    String? countyId,
+    int limit = 5,
+  }) {
+    return _collection.snapshots().map((snapshot) {
+      List<PollModel> polls = snapshot.docs
+          .map((doc) => PollModel.fromFirestore(doc))
+          .where((p) => p.isActive)
+          .toList();
+
+      // County filtering
+      if (countyId != null && countyId.isNotEmpty) {
+        final userCounty = countyId.toLowerCase();
+        polls = polls.where((p) {
+          if (p.countyId == null || p.countyId!.isEmpty) return true;
+          final pollCounty = p.countyId!.toLowerCase();
+          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+        }).toList();
+      }
+
+      // Filter by school if needed
+      if (schoolId != null) {
+        polls = polls.where((p) =>
+            p.type == PollType.county ||
+            (p.type == PollType.school && p.schoolId == schoolId)).toList();
+      }
+
+      // Sort by endDate ascending
+      polls.sort((a, b) => a.endDate.compareTo(b.endDate));
+      return polls.take(limit).toList();
+    });
   }
 }

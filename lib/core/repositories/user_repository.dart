@@ -196,6 +196,41 @@ class UserRepository {
     });
   }
 
+  /// Get school representative for a specific school
+  /// Returns the user with role=schoolRep who belongs to this school
+  Future<UserModel?> getSchoolRepresentative(String schoolId) async {
+    try {
+      final snapshot = await _usersCollection
+          .where('schoolId', isEqualTo: schoolId)
+          .where('role', isEqualTo: UserRole.schoolRep.toFirestore())
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return UserModel.fromFirestore(snapshot.docs.first);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting school representative: $e');
+      return null;
+    }
+  }
+
+  /// Get school representative stream for a specific school
+  Stream<UserModel?> getSchoolRepresentativeStream(String schoolId) {
+    return _usersCollection
+        .where('schoolId', isEqualTo: schoolId)
+        .where('role', isEqualTo: UserRole.schoolRep.toFirestore())
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        return UserModel.fromFirestore(snapshot.docs.first);
+      }
+      return null;
+    });
+  }
+
   /// Get users by role
   Future<List<UserModel>> getUsersByRole(UserRole role) async {
     try {
@@ -309,7 +344,13 @@ class UserRepository {
     try {
       // Get all users and search in memory to avoid composite index requirement
       final queryLower = query.toLowerCase();
-      final snapshot = await _usersCollection.get();
+      final snapshot = await _usersCollection.get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Timeout searching users');
+          throw Exception('Request timed out');
+        },
+      );
       final users = snapshot.docs
           .map((doc) => UserModel.fromFirestore(doc))
           .where((user) => user.status == UserStatus.active)
@@ -334,7 +375,13 @@ class UserRepository {
   /// Get active users from a specific county (for adding meeting participants)
   Future<List<UserModel>> getUsersByCounty(String countyId, {int limit = 50}) async {
     try {
-      final snapshot = await _usersCollection.get();
+      final snapshot = await _usersCollection.get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Timeout getting users by county');
+          throw Exception('Request timed out');
+        },
+      );
       final users = snapshot.docs
           .map((doc) => UserModel.fromFirestore(doc))
           .where((user) => user.status == UserStatus.active)
@@ -359,7 +406,14 @@ class UserRepository {
         final batch = userIds.skip(i).take(10).toList();
         final snapshot = await _usersCollection
             .where(FieldPath.documentId, whereIn: batch)
-            .get();
+            .get()
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                debugPrint('Timeout getting users by IDs');
+                throw Exception('Request timed out');
+              },
+            );
         users.addAll(snapshot.docs.map((doc) => UserModel.fromFirestore(doc)));
       }
       return users;

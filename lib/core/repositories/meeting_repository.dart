@@ -25,10 +25,11 @@ class MeetingRepository {
     String? countyId,
     DepartmentType? department,
     bool upcomingOnly = false,
+    bool pastOnly = false,
     int limit = 20,
   }) async {
     try {
-      debugPrint('getMeetings: type=$type, department=$department, countyId=$countyId');
+      debugPrint('getMeetings: type=$type, department=$department, countyId=$countyId, upcomingOnly=$upcomingOnly, pastOnly=$pastOnly');
       // Simple query without orderBy to avoid index requirement
       final snapshot = await _collection.get();
       debugPrint('getMeetings: fetched ${snapshot.docs.length} total docs from Firebase');
@@ -40,8 +41,12 @@ class MeetingRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
-              if (m.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final meetingCounty = m.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(meetingCounty) || meetingCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
             if (type != null && m.type != type) {
               debugPrint('getMeetings: filtering out ${m.title} - type mismatch: ${m.type} != $type');
@@ -55,16 +60,18 @@ class MeetingRepository {
               debugPrint('getMeetings: filtering out ${m.title} - department mismatch: ${m.department} != $department');
               return false;
             }
+            // Time filtering: upcoming only shows future, past only shows past
             if (upcomingOnly && m.dateTime.isBefore(now)) return false;
+            if (pastOnly && m.dateTime.isAfter(now)) return false;
             return true;
           })
           .toList();
 
       // Sort in memory
       if (upcomingOnly) {
-        meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+        meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime)); // Soonest first
       } else {
-        meetings.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+        meetings.sort((a, b) => b.dateTime.compareTo(a.dateTime)); // Most recent first
       }
 
       return meetings.take(limit).toList();
@@ -80,6 +87,7 @@ class MeetingRepository {
     String? schoolId,
     String? countyId,
     bool upcomingOnly = false,
+    bool pastOnly = false,
     int limit = 20,
   }) {
     // Simple stream without composite queries
@@ -91,24 +99,30 @@ class MeetingRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
-              if (m.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final meetingCounty = m.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(meetingCounty) || meetingCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
             if (type != null && m.type != type) return false;
             // School filtering:
             // - County-level meetings (m.schoolId == null) are visible to all in this county
             // - School-specific meetings are only visible to users from that school
             if (schoolId != null && m.schoolId != null && m.schoolId != schoolId) return false;
+            // Time filtering: upcoming only shows future, past only shows past
             if (upcomingOnly && m.dateTime.isBefore(now)) return false;
+            if (pastOnly && m.dateTime.isAfter(now)) return false;
             return true;
           })
           .toList();
 
       // Sort in memory
       if (upcomingOnly) {
-        meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+        meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime)); // Soonest first
       } else {
-        meetings.sort((a, b) => b.dateTime.compareTo(a.dateTime));
+        meetings.sort((a, b) => b.dateTime.compareTo(a.dateTime)); // Most recent first
       }
 
       return meetings.take(limit).toList();
@@ -118,7 +132,13 @@ class MeetingRepository {
   /// Get meeting by ID
   Future<MeetingModel?> getMeetingById(String id) async {
     try {
-      final doc = await _collection.doc(id).get();
+      final doc = await _collection.doc(id).get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Timeout getting meeting by ID: $id');
+          throw Exception('Request timed out');
+        },
+      );
       if (doc.exists) {
         return MeetingModel.fromFirestore(doc);
       }
@@ -132,13 +152,21 @@ class MeetingRepository {
   /// Create meeting
   Future<String?> createMeeting(MeetingModel meeting) async {
     try {
-      debugPrint('Creating meeting: ${meeting.title}, type: ${meeting.type}');
-      final docRef = await _collection.add(meeting.toFirestore());
-      debugPrint('Meeting created with id: ${docRef.id}');
+      debugPrint('createMeeting: Starting - title="${meeting.title}", type=${meeting.type}, createdById=${meeting.createdById}');
+      final data = meeting.toFirestore();
+      debugPrint('createMeeting: Data prepared, adding to Firestore...');
+      final docRef = await _collection.add(data).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('createMeeting: TIMEOUT - Firestore write took too long');
+          throw Exception('Firestore write timeout');
+        },
+      );
+      debugPrint('createMeeting: SUCCESS - docId=${docRef.id}');
       return docRef.id;
     } catch (e, stackTrace) {
-      debugPrint('Error creating meeting: $e');
-      debugPrint('Stack trace: $stackTrace');
+      debugPrint('createMeeting: ERROR - $e');
+      debugPrint('createMeeting: Stack trace - $stackTrace');
       return null;
     }
   }
@@ -197,20 +225,32 @@ class MeetingRepository {
     try {
       // Simple query without orderBy to avoid index requirement
       final snapshot = await _collection.get();
+      debugPrint('getUpcomingMeetings: Total meetings in DB: ${snapshot.docs.length}');
 
       final now = DateTime.now();
       List<MeetingModel> meetings = snapshot.docs
           .map((doc) => MeetingModel.fromFirestore(doc))
-          .where((m) {
-            // County filtering:
-            // - Content with NULL countyId is visible to everyone (legacy/global content)
-            // - Content with countyId is only visible to users from that county
-            if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
-              if (m.countyId != countyId) return false;
-            }
-            return m.dateTime.isAfter(now); // Filter upcoming
-          })
           .toList();
+
+      // Debug: show all meetings before filtering
+      for (var m in meetings) {
+        debugPrint('getUpcomingMeetings: Meeting "${m.title}" - dateTime=${m.dateTime}, isUpcoming=${m.dateTime.isAfter(now)}, countyId=${m.countyId}, schoolId=${m.schoolId}');
+      }
+
+      meetings = meetings.where((m) {
+        // County filtering:
+        // - Content with NULL countyId is visible to everyone (legacy/global content)
+        // - Content with countyId is only visible to users from that county
+        // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
+        if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
+          final userCounty = countyId.toLowerCase();
+          final meetingCounty = m.countyId!.toLowerCase();
+          final isMatch = userCounty.contains(meetingCounty) || meetingCounty.contains(userCounty);
+          if (!isMatch) return false;
+        }
+        return m.dateTime.isAfter(now); // Filter upcoming
+      }).toList();
+      debugPrint('getUpcomingMeetings: After date & county filter (county: $countyId): ${meetings.length}');
 
       // School filtering:
       // - County-level meetings (m.schoolId == null) are visible to all in this county
@@ -218,16 +258,52 @@ class MeetingRepository {
       if (schoolId != null) {
         meetings = meetings.where((m) =>
             m.schoolId == null || m.schoolId == schoolId).toList();
+        debugPrint('getUpcomingMeetings: After school filter (schoolId: $schoolId): ${meetings.length}');
+      } else {
+        debugPrint('getUpcomingMeetings: Skipping school filter');
       }
 
       // Sort by dateTime ascending (soonest first)
       meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
 
+      debugPrint('getUpcomingMeetings: Returning ${meetings.take(limit).length} meetings');
       return meetings.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting upcoming meetings: $e');
       return [];
     }
+  }
+
+  /// Get upcoming meetings stream for real-time updates on home screen
+  Stream<List<MeetingModel>> getUpcomingMeetingsStream({
+    String? schoolId,
+    String? countyId,
+    int limit = 5,
+  }) {
+    return _collection.snapshots().map((snapshot) {
+      final now = DateTime.now();
+      List<MeetingModel> meetings = snapshot.docs
+          .map((doc) => MeetingModel.fromFirestore(doc))
+          .where((m) {
+            // County filtering
+            if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
+              final userCounty = countyId.toLowerCase();
+              final meetingCounty = m.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(meetingCounty) || meetingCounty.contains(userCounty);
+              if (!isMatch) return false;
+            }
+            // School filtering
+            if (schoolId != null && m.schoolId != null && m.schoolId != schoolId) return false;
+            // Only upcoming meetings
+            return m.dateTime.isAfter(now);
+          })
+          .toList();
+
+      // Sort by dateTime ascending (soonest first)
+      meetings.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+
+      return meetings.take(limit).toList();
+    });
   }
 
   /// Get next meeting
@@ -252,7 +328,14 @@ class MeetingRepository {
     try {
       final snapshot = await _attendanceCollection
           .where('meetingId', isEqualTo: meetingId)
-          .get();
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout getting meeting attendance: $meetingId');
+              throw Exception('Request timed out');
+            },
+          );
       return snapshot.docs
           .map((doc) => MeetingAttendance.fromFirestore(doc))
           .toList();
@@ -305,8 +388,12 @@ class MeetingRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && m.countyId != null && m.countyId!.isNotEmpty) {
-              if (m.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final meetingCounty = m.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(meetingCounty) || meetingCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
             return m.dateTime.isAfter(startOfDay.subtract(const Duration(seconds: 1))) &&
                 m.dateTime.isBefore(endOfDay);

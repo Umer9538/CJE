@@ -39,8 +39,12 @@ class InitiativeRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && i.countyId != null && i.countyId!.isNotEmpty) {
-              if (i.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final initiativeCounty = i.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(initiativeCounty) || initiativeCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
             if (status != null && i.status != status) return false;
             // School filtering:
@@ -77,8 +81,12 @@ class InitiativeRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && i.countyId != null && i.countyId!.isNotEmpty) {
-              if (i.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final initiativeCounty = i.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(initiativeCounty) || initiativeCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
             if (status != null && i.status != status) return false;
             // School filtering:
@@ -99,7 +107,13 @@ class InitiativeRepository {
   /// Get initiative by ID
   Future<InitiativeModel?> getInitiativeById(String id) async {
     try {
-      final doc = await _collection.doc(id).get();
+      final doc = await _collection.doc(id).get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Timeout getting initiative by ID: $id');
+          throw Exception('Request timed out');
+        },
+      );
       if (doc.exists) {
         return InitiativeModel.fromFirestore(doc);
       }
@@ -113,10 +127,21 @@ class InitiativeRepository {
   /// Create initiative
   Future<String?> createInitiative(InitiativeModel initiative) async {
     try {
-      final docRef = await _collection.add(initiative.toFirestore());
+      debugPrint('createInitiative: Starting - title="${initiative.title}", authorId=${initiative.authorId}');
+      final data = initiative.toFirestore();
+      debugPrint('createInitiative: Data prepared, adding to Firestore...');
+      final docRef = await _collection.add(data).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          debugPrint('createInitiative: TIMEOUT - Firestore write took too long');
+          throw Exception('Firestore write timeout');
+        },
+      );
+      debugPrint('createInitiative: SUCCESS - docId=${docRef.id}');
       return docRef.id;
-    } catch (e) {
-      debugPrint('Error creating initiative: $e');
+    } catch (e, stackTrace) {
+      debugPrint('createInitiative: ERROR - $e');
+      debugPrint('createInitiative: Stack trace - $stackTrace');
       return null;
     }
   }
@@ -215,10 +240,14 @@ class InitiativeRepository {
   /// Support/unsupport initiative
   Future<bool> toggleSupport(String initiativeId, String userId) async {
     try {
+      if (initiativeId.isEmpty || userId.isEmpty) return false;
+
       final doc = await _collection.doc(initiativeId).get();
       if (!doc.exists) return false;
 
-      final data = doc.data()!;
+      final data = doc.data();
+      if (data == null) return false;
+
       final supporterIds = List<String>.from(data['supporterIds'] ?? []);
 
       if (supporterIds.contains(userId)) {
@@ -242,10 +271,14 @@ class InitiativeRepository {
   /// Check if user supports initiative
   Future<bool> isSupporting(String initiativeId, String userId) async {
     try {
+      if (initiativeId.isEmpty || userId.isEmpty) return false;
+
       final doc = await _collection.doc(initiativeId).get();
       if (!doc.exists) return false;
 
-      final data = doc.data()!;
+      final data = doc.data();
+      if (data == null) return false;
+
       final supporterIds = List<String>.from(data['supporterIds'] ?? []);
       return supporterIds.contains(userId);
     } catch (e) {
@@ -413,6 +446,7 @@ class InitiativeRepository {
     try {
       // Get all initiatives and filter in memory to avoid composite index requirement
       final snapshot = await _collection.get();
+      debugPrint('getRecentInitiatives: Total initiatives in DB: ${snapshot.docs.length}');
 
       final validStatuses = {
         InitiativeStatus.submitted,
@@ -423,17 +457,71 @@ class InitiativeRepository {
 
       List<InitiativeModel> initiatives = snapshot.docs
           .map((doc) => InitiativeModel.fromFirestore(doc))
+          .toList();
+
+      // Debug: show all initiatives before filtering
+      for (var i in initiatives) {
+        debugPrint('getRecentInitiatives: Initiative "${i.title}" - status=${i.status}, countyId=${i.countyId}, schoolId=${i.schoolId}');
+      }
+
+      initiatives = initiatives.where((initiative) {
+        // County filtering:
+        // - Content with NULL countyId is visible to everyone (legacy/global content)
+        // - Content with countyId is only visible to users from that county
+        // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
+        if (countyId != null && countyId.isNotEmpty && initiative.countyId != null && initiative.countyId!.isNotEmpty) {
+          final userCounty = countyId.toLowerCase();
+          final initiativeCounty = initiative.countyId!.toLowerCase();
+          final isMatch = userCounty.contains(initiativeCounty) || initiativeCounty.contains(userCounty);
+          if (!isMatch) return false;
+        }
+        if (!validStatuses.contains(initiative.status)) return false;
+        // School filtering:
+        // - County-level initiatives (schoolId == null) are visible to all in this county
+        // - School-specific initiatives are only visible to users from that school
+        if (schoolId != null && initiative.schoolId != null && initiative.schoolId != schoolId) return false;
+        return true;
+      }).toList();
+
+      debugPrint('getRecentInitiatives: After all filters (county: $countyId, schoolId: $schoolId): ${initiatives.length}');
+
+      // Sort by createdAt descending
+      initiatives.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      debugPrint('getRecentInitiatives: Returning ${initiatives.take(limit).length} initiatives');
+      return initiatives.take(limit).toList();
+    } catch (e) {
+      debugPrint('Error getting recent initiatives: $e');
+      return [];
+    }
+  }
+
+  /// Get recent initiatives stream for home screen (real-time updates)
+  Stream<List<InitiativeModel>> getRecentInitiativesStream({
+    String? schoolId,
+    String? countyId,
+    int limit = 5,
+  }) {
+    final validStatuses = {
+      InitiativeStatus.submitted,
+      InitiativeStatus.review,
+      InitiativeStatus.debate,
+      InitiativeStatus.voting,
+    };
+
+    return _collection.snapshots().map((snapshot) {
+      List<InitiativeModel> initiatives = snapshot.docs
+          .map((doc) => InitiativeModel.fromFirestore(doc))
           .where((initiative) {
-            // County filtering:
-            // - Content with NULL countyId is visible to everyone (legacy/global content)
-            // - Content with countyId is only visible to users from that county
+            // County filtering
             if (countyId != null && countyId.isNotEmpty && initiative.countyId != null && initiative.countyId!.isNotEmpty) {
-              if (initiative.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final initiativeCounty = initiative.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(initiativeCounty) || initiativeCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
             if (!validStatuses.contains(initiative.status)) return false;
-            // School filtering:
-            // - County-level initiatives (schoolId == null) are visible to all in this county
-            // - School-specific initiatives are only visible to users from that school
+            // School filtering
             if (schoolId != null && initiative.schoolId != null && initiative.schoolId != schoolId) return false;
             return true;
           })
@@ -441,12 +529,8 @@ class InitiativeRepository {
 
       // Sort by createdAt descending
       initiatives.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
       return initiatives.take(limit).toList();
-    } catch (e) {
-      debugPrint('Error getting recent initiatives: $e');
-      return [];
-    }
+    });
   }
 
   /// Add comment to initiative
@@ -481,6 +565,12 @@ class InitiativeRepository {
 
   /// Get comments stream
   Stream<List<InitiativeComment>> getCommentsStream(String initiativeId) async* {
+    // Guard: return empty stream if no initiative ID
+    if (initiativeId.isEmpty) {
+      yield <InitiativeComment>[];
+      return;
+    }
+
     try {
       // Simple stream without composite queries
       await for (final snapshot in _commentsCollection.snapshots()) {

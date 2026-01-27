@@ -33,20 +33,35 @@ class AnnouncementRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && a.countyId != null && a.countyId!.isNotEmpty) {
-              if (a.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final announcementCounty = a.countyId!.toLowerCase();
+              // Flexible match: one contains the other (handles "Cluj" vs "Cluj-Napoca")
+              final isMatch = userCounty.contains(announcementCounty) ||
+                              announcementCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
+            // Type filtering
             if (type != null && a.type != type) return false;
-            if (type == AnnouncementType.school && schoolId != null) {
-              return a.schoolId == schoolId;
+            // School filtering - for school announcements, only show user's school
+            // This applies both when type==school AND when type==null (All tab)
+            if (a.type == AnnouncementType.school && schoolId != null && a.schoolId != schoolId) {
+              return false;
             }
             return true;
           })
           .toList();
 
-      // Sort by publishedAt in memory and limit
-      results.sort((a, b) => (b.publishedAt ?? b.createdAt)
-          .compareTo(a.publishedAt ?? a.createdAt));
+      // Sort: pinned first, then by publishedAt
+      results.sort((a, b) {
+        // Pinned announcements come first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // Then sort by publishedAt (newest first)
+        return (b.publishedAt ?? b.createdAt)
+            .compareTo(a.publishedAt ?? a.createdAt);
+      });
       return results.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting announcements: $e');
@@ -70,20 +85,34 @@ class AnnouncementRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && a.countyId != null && a.countyId!.isNotEmpty) {
-              if (a.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final announcementCounty = a.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(announcementCounty) ||
+                              announcementCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
+            // Type filtering
             if (type != null && a.type != type) return false;
-            if (type == AnnouncementType.school && schoolId != null) {
-              return a.schoolId == schoolId;
+            // School filtering - for school announcements, only show user's school
+            // This applies both when type==school AND when type==null (All tab)
+            if (a.type == AnnouncementType.school && schoolId != null && a.schoolId != schoolId) {
+              return false;
             }
             return true;
           })
           .toList();
 
-      // Sort by publishedAt in memory
-      results.sort((a, b) => (b.publishedAt ?? b.createdAt)
-          .compareTo(a.publishedAt ?? a.createdAt));
+      // Sort: pinned first, then by publishedAt
+      results.sort((a, b) {
+        // Pinned announcements come first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // Then sort by publishedAt (newest first)
+        return (b.publishedAt ?? b.createdAt)
+            .compareTo(a.publishedAt ?? a.createdAt);
+      });
       return results.take(limit).toList();
     });
   }
@@ -91,7 +120,13 @@ class AnnouncementRepository {
   /// Get announcement by ID
   Future<AnnouncementModel?> getAnnouncementById(String id) async {
     try {
-      final doc = await _collection.doc(id).get();
+      final doc = await _collection.doc(id).get().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('Timeout getting announcement by ID: $id');
+          throw Exception('Request timed out');
+        },
+      );
       if (doc.exists) {
         return AnnouncementModel.fromFirestore(doc);
       }
@@ -180,6 +215,25 @@ class AnnouncementRepository {
     }
   }
 
+  /// Get user's draft announcements (unpublished)
+  Future<List<AnnouncementModel>> getUserDrafts(String authorId) async {
+    try {
+      final snapshot = await _collection.get();
+
+      List<AnnouncementModel> results = snapshot.docs
+          .map((doc) => AnnouncementModel.fromFirestore(doc))
+          .where((a) => !a.isPublished && a.authorId == authorId)
+          .toList();
+
+      // Sort by createdAt descending (most recent first)
+      results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return results;
+    } catch (e) {
+      debugPrint('Error getting user drafts: $e');
+      return [];
+    }
+  }
+
   /// Increment view count
   Future<void> incrementViewCount(String id) async {
     try {
@@ -208,8 +262,13 @@ class AnnouncementRepository {
             // County filtering:
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
+            // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
             if (countyId != null && countyId.isNotEmpty && announcement.countyId != null && announcement.countyId!.isNotEmpty) {
-              if (announcement.countyId != countyId) return false;
+              final userCounty = countyId.toLowerCase();
+              final announcementCounty = announcement.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(announcementCounty) ||
+                              announcementCounty.contains(userCounty);
+              if (!isMatch) return false;
             }
             // Include county announcements or school announcements matching user's school
             if (announcement.type == AnnouncementType.county) return true;
@@ -220,13 +279,58 @@ class AnnouncementRepository {
           })
           .toList();
 
-      // Sort by publishedAt and limit
-      results.sort((a, b) => (b.publishedAt ?? b.createdAt)
-          .compareTo(a.publishedAt ?? a.createdAt));
+      // Sort: pinned first, then by publishedAt
+      results.sort((a, b) {
+        // Pinned announcements come first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // Then sort by publishedAt (newest first)
+        return (b.publishedAt ?? b.createdAt)
+            .compareTo(a.publishedAt ?? a.createdAt);
+      });
       return results.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting recent announcements: $e');
       return [];
     }
+  }
+
+  /// Get recent announcements stream for home screen (real-time updates)
+  Stream<List<AnnouncementModel>> getRecentAnnouncementsStream({
+    String? schoolId,
+    String? countyId,
+    int limit = 5,
+  }) {
+    return _collection.snapshots().map((snapshot) {
+      List<AnnouncementModel> results = snapshot.docs
+          .map((doc) => AnnouncementModel.fromFirestore(doc))
+          .where((announcement) => announcement.isPublished)
+          .where((announcement) {
+            // County filtering
+            if (countyId != null && countyId.isNotEmpty && announcement.countyId != null && announcement.countyId!.isNotEmpty) {
+              final userCounty = countyId.toLowerCase();
+              final announcementCounty = announcement.countyId!.toLowerCase();
+              final isMatch = userCounty.contains(announcementCounty) ||
+                              announcementCounty.contains(userCounty);
+              if (!isMatch) return false;
+            }
+            // Include county announcements or school announcements matching user's school
+            if (announcement.type == AnnouncementType.county) return true;
+            if (announcement.type == AnnouncementType.school && schoolId != null) {
+              return announcement.schoolId == schoolId;
+            }
+            return false;
+          })
+          .toList();
+
+      // Sort: pinned first, then by publishedAt
+      results.sort((a, b) {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return (b.publishedAt ?? b.createdAt)
+            .compareTo(a.publishedAt ?? a.createdAt);
+      });
+      return results.take(limit).toList();
+    });
   }
 }
