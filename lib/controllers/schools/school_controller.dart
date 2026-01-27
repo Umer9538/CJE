@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/repositories/school_repository.dart';
+import '../../core/repositories/user_repository.dart';
 import '../../core/constants/enums.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
@@ -71,6 +72,26 @@ final canManageSchoolsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.superadmin || user.role == UserRole.bex;
+});
+
+/// User repository provider for school-related queries
+final _userRepositoryProvider = Provider<UserRepository>((ref) {
+  return UserRepository();
+});
+
+/// Get actual school representative for a school (fetched from users collection)
+/// This provides real-time accurate data based on actual user assignments
+final schoolRepresentativeProvider = FutureProvider.family<UserModel?, String>((ref, schoolId) async {
+  if (schoolId.isEmpty) return null;
+  final repository = ref.read(_userRepositoryProvider);
+  return repository.getSchoolRepresentative(schoolId);
+});
+
+/// Stream provider for school representative (real-time updates)
+final schoolRepresentativeStreamProvider = StreamProvider.family<UserModel?, String>((ref, schoolId) {
+  if (schoolId.isEmpty) return Stream.value(null);
+  final repository = ref.read(_userRepositoryProvider);
+  return repository.getSchoolRepresentativeStream(schoolId);
 });
 
 /// School controller for CRUD operations
