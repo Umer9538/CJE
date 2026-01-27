@@ -12,6 +12,7 @@ class InitiativeCommentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final dateFormat = DateFormat('MMM d, h:mm a');
 
     return Container(
@@ -36,7 +37,7 @@ class InitiativeCommentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(context, dateFormat),
+          _buildHeader(context, l10n, dateFormat),
           const SizedBox(height: 10),
           Text(
             comment.content,
@@ -51,11 +52,12 @@ class InitiativeCommentCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, DateFormat dateFormat) {
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n, DateFormat dateFormat) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CircleAvatar(
-          radius: 16,
+          radius: 18,
           backgroundColor: context.goldColor.withValues(alpha: 0.15),
           backgroundImage: comment.authorPhotoUrl != null
               ? NetworkImage(comment.authorPhotoUrl!)
@@ -66,26 +68,30 @@ class InitiativeCommentCard extends StatelessWidget {
                       ? comment.authorName[0].toUpperCase()
                       : '?',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: context.goldColor,
                   ),
                 )
               : null,
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Name row with official badge
               Row(
                 children: [
-                  Text(
-                    comment.authorName,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: context.textPrimary,
+                  Flexible(
+                    child: Text(
+                      comment.authorName,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (comment.isOfficial) ...[
@@ -94,6 +100,29 @@ class InitiativeCommentCard extends StatelessWidget {
                   ],
                 ],
               ),
+              const SizedBox(height: 2),
+              // Role and school info
+              if (comment.authorRole != null || comment.authorSchoolName != null)
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    if (comment.authorRole != null)
+                      _buildInfoBadge(
+                        context,
+                        _getRoleDisplayName(comment.authorRole!, l10n),
+                        Icons.badge_outlined,
+                      ),
+                    if (comment.authorSchoolName != null && comment.authorSchoolName!.isNotEmpty)
+                      _buildInfoBadge(
+                        context,
+                        comment.authorSchoolName!,
+                        Icons.school_outlined,
+                      ),
+                  ],
+                ),
+              const SizedBox(height: 4),
+              // Date
               Text(
                 dateFormat.format(comment.createdAt),
                 style: TextStyle(
@@ -106,6 +135,51 @@ class InitiativeCommentCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildInfoBadge(BuildContext context, String text, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: context.textSecondary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: context.textSecondary),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 11,
+                color: context.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getRoleDisplayName(String role, AppLocalizations l10n) {
+    switch (role) {
+      case 'classRep':
+        return l10n.translate('class_representative');
+      case 'schoolRep':
+        return l10n.translate('school_representative');
+      case 'department':
+        return l10n.translate('department');
+      case 'bex':
+        return 'BEx';
+      case 'superadmin':
+        return 'Admin';
+      default:
+        return role;
+    }
   }
 
   Widget _buildOfficialBadge() {

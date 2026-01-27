@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../../routes/route_names.dart';
+import '../main/main_shell.dart';
 import 'initiative_detail_screen.dart';
 import 'create_initiative_screen.dart';
 
@@ -83,8 +86,9 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
     // Determine the effective school filter
     final effectiveSchoolId = _showAllSchools ? null : _selectedSchoolId;
 
+    // Use StreamProvider for real-time updates
     final initiativesAsync = ref.watch(
-      initiativesProvider(InitiativeFilter(
+      initiativesStreamProvider(InitiativeFilter(
         status: _selectedStatus,
         authorId: _showOnlyMine ? currentUser?.id : null,
         schoolId: effectiveSchoolId,
@@ -95,7 +99,20 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
     final canCreate = ref.watch(canDraftInitiativesProvider);
     final hasActiveFilters = _showOnlyMine || (_selectedSchoolId != null && !_showAllSchools);
 
-    return Scaffold(
+    // Determine back route based on user role
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // Handle system back button
+        ref.read(navigationIndexProvider.notifier).state = 0;
+        context.go(backRoute);
+      },
+      child: Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
@@ -134,23 +151,58 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
               ),
             )
           : null,
+    ),
     );
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n, bool hasActiveFilters) {
+    final currentUser = ref.watch(currentUserProvider);
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          Text(
-            l10n.translate('initiatives'),
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: context.goldColor,
+          // Back button
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              // Navigate to home and update bottom nav index
+              ref.read(navigationIndexProvider.notifier).state = 0;
+              context.go(backRoute);
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.shadowColor,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(Icons.arrow_back_rounded, color: context.iconColor, size: 22),
+              ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              l10n.translate('initiatives'),
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: context.goldColor,
+              ),
+            ),
+          ),
           _buildFilterButton(context, hasActiveFilters),
         ],
       ),

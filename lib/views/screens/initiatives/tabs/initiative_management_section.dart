@@ -212,11 +212,14 @@ class _StatusActionButtons extends ConsumerWidget {
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            Text(
-                              '${role.displayName} ${l10n.translate('and_above')}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: context.textPrimary,
+                            Flexible(
+                              child: Text(
+                                '${role.displayName} ${l10n.translate('and_above')}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: context.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
