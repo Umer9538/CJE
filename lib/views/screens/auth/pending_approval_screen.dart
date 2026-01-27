@@ -17,11 +17,12 @@ class PendingApprovalScreen extends ConsumerWidget {
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSizes.paddingLG),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const Spacer(),
+              const SizedBox(height: AppSizes.spacing24),
 
               // Pending icon
               Container(
@@ -64,6 +65,7 @@ class PendingApprovalScreen extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(AppSizes.paddingMD),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       // Avatar
                       CircleAvatar(
@@ -107,6 +109,7 @@ class PendingApprovalScreen extends ConsumerWidget {
                       if (user?.schoolName != null)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.school,
@@ -114,10 +117,13 @@ class PendingApprovalScreen extends ConsumerWidget {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: AppSizes.spacing4),
-                            Text(
-                              user!.schoolName!,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                            Flexible(
+                              child: Text(
+                                user!.schoolName!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -158,7 +164,7 @@ class PendingApprovalScreen extends ConsumerWidget {
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: AppSizes.spacing32),
 
               // Info box
               Container(
@@ -204,6 +210,7 @@ class PendingApprovalScreen extends ConsumerWidget {
                   await ref.read(authControllerProvider.notifier).signOut();
                 },
               ),
+              const SizedBox(height: AppSizes.spacing24),
             ],
           ),
         ),

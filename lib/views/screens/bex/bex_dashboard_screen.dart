@@ -209,78 +209,77 @@ class BexDashboardScreen extends ConsumerWidget {
   Widget _buildStatsSection(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
     final usersAsync = ref.watch(allUsersProvider);
     final meetingsAsync = ref.watch(upcomingMeetingsProvider);
+    final responsive = Responsive(context);
+    final columns = responsive.value(mobile: 2, tablet: 4, desktop: 4);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
+
+    final statCards = [
+      _StatCard(
+        icon: Icons.people_rounded,
+        label: l10n.translate('members'),
+        value: usersAsync.when(
+          data: (users) => users.length.toString(),
+          loading: () => '...',
+          error: (_, __) => '0',
+        ),
+        color: Colors.blue,
+      ),
+      _StatCard(
+        icon: Icons.event_rounded,
+        label: l10n.translate('upcoming'),
+        value: meetingsAsync.when(
+          data: (meetings) => meetings.length.toString(),
+          loading: () => '...',
+          error: (_, __) => '0',
+        ),
+        color: Colors.indigo,
+      ),
+      _StatCard(
+        icon: Icons.warning_amber_rounded,
+        label: l10n.translate('warnings'),
+        value: '0',
+        color: Colors.orange,
+      ),
+      _StatCard(
+        icon: Icons.school_rounded,
+        label: l10n.translate('schools'),
+        value: usersAsync.when(
+          data: (users) {
+            final schools = users.map((u) => u.schoolId).whereType<String>().toSet();
+            return schools.length.toString();
+          },
+          loading: () => '...',
+          error: (_, __) => '0',
+        ),
+        color: Colors.teal,
+      ),
+    ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.translate('overview'),
             style: TextStyle(
-              fontSize: 18,
+              fontSize: responsive.value(mobile: 18.0, tablet: 20.0, desktop: 22.0),
               fontWeight: FontWeight.bold,
               color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.people_rounded,
-                  label: l10n.translate('members'),
-                  value: usersAsync.when(
-                    data: (users) => users.length.toString(),
-                    loading: () => '...',
-                    error: (_, __) => '0',
-                  ),
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.event_rounded,
-                  label: l10n.translate('upcoming'),
-                  value: meetingsAsync.when(
-                    data: (meetings) => meetings.length.toString(),
-                    loading: () => '...',
-                    error: (_, __) => '0',
-                  ),
-                  color: Colors.indigo,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.warning_amber_rounded,
-                  label: l10n.translate('warnings'),
-                  value: '0',
-                  color: Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.school_rounded,
-                  label: l10n.translate('schools'),
-                  value: usersAsync.when(
-                    data: (users) {
-                      final schools = users.map((u) => u.schoolId).whereType<String>().toSet();
-                      return schools.length.toString();
-                    },
-                    loading: () => '...',
-                    error: (_, __) => '0',
-                  ),
-                  color: Colors.teal,
-                ),
-              ),
-            ],
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: responsive.value(mobile: 1.3, tablet: 1.5, desktop: 1.6),
+            ),
+            itemCount: statCards.length,
+            itemBuilder: (context, index) => statCards[index],
           ),
         ],
       ),
@@ -288,15 +287,19 @@ class BexDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildQuickActionsSection(BuildContext context, AppLocalizations l10n) {
+    final responsive = Responsive(context);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
+    final columns = responsive.value(mobile: 4, tablet: 6, desktop: 8);
+
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(horizontalPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.translate('quick_actions'),
             style: TextStyle(
-              fontSize: 18,
+              fontSize: responsive.value(mobile: 18.0, tablet: 20.0, desktop: 22.0),
               fontWeight: FontWeight.bold,
               color: context.textPrimary,
             ),
@@ -305,10 +308,10 @@ class BexDashboardScreen extends ConsumerWidget {
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 4,
+            crossAxisCount: columns,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.85,
+            childAspectRatio: responsive.value(mobile: 0.85, tablet: 0.9, desktop: 0.95),
             children: [
               _QuickActionButton(
                 icon: Icons.event_rounded,
@@ -422,7 +425,10 @@ class BexDashboardScreen extends ConsumerWidget {
               ),
               TextButton(
                 onPressed: () {
-                  // Navigate to meetings tab
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MeetingsScreen()),
+                  );
                 },
                 child: Text(
                   l10n.translate('see_all'),

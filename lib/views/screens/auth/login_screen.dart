@@ -161,8 +161,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: context.scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+          child: ResponsiveContainer(
+            maxWidth: 480,
+            padding: EdgeInsets.all(context.responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0)),
             child: Form(
               key: _formKey,
               child: Column(

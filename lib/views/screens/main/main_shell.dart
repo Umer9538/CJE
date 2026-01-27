@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +26,7 @@ class MainShell extends ConsumerWidget {
       bottomNavigationBar: _FloatingBottomNav(
         currentIndex: currentIndex,
         onTap: (index) {
+          debugPrint('MainShell: Bottom nav tapped, index=$index, currentIndex=$currentIndex');
           ref.read(navigationIndexProvider.notifier).state = index;
           _navigateToIndex(context, index);
         },
@@ -33,20 +35,35 @@ class MainShell extends ConsumerWidget {
   }
 
   void _navigateToIndex(BuildContext context, int index) {
+    debugPrint('MainShell: _navigateToIndex called with index=$index');
+
+    // Pop all local routes (Navigator.push routes) before navigating via GoRouter
+    // This fixes navigation when inside detail screens
+    final navigator = Navigator.of(context, rootNavigator: false);
+    if (navigator.canPop()) {
+      debugPrint('MainShell: Popping local routes first');
+      navigator.popUntil((route) => route.isFirst);
+    }
+
     switch (index) {
       case 0:
+        debugPrint('MainShell: Navigating to ${RouteNames.home}');
         context.go(RouteNames.home);
         break;
       case 1:
+        debugPrint('MainShell: Navigating to ${RouteNames.announcements}');
         context.go(RouteNames.announcements);
         break;
       case 2:
+        debugPrint('MainShell: Navigating to ${RouteNames.initiatives}');
         context.go(RouteNames.initiatives);
         break;
       case 3:
+        debugPrint('MainShell: Navigating to ${RouteNames.meetings}');
         context.go(RouteNames.meetings);
         break;
       case 4:
+        debugPrint('MainShell: Navigating to ${RouteNames.menu}');
         context.go(RouteNames.menu);
         break;
     }
