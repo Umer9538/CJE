@@ -7,7 +7,7 @@ import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
-import 'announcement_detail_screen.dart';
+import '../main/main_shell.dart';
 import 'create_announcement_screen.dart';
 
 /// Main announcements list screen
@@ -20,33 +20,49 @@ class AnnouncementsScreen extends ConsumerStatefulWidget {
 
 class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
     with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  TabController? _tabController;
   AnnouncementType? _selectedFilter;
+  bool _showDrafts = false;
+  bool? _canCreateCached;
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() {
-      setState(() {
-        switch (_tabController.index) {
-          case 0:
-            _selectedFilter = null; // All
-            break;
-          case 1:
-            _selectedFilter = AnnouncementType.county; // CJE
-            break;
-          case 2:
-            _selectedFilter = AnnouncementType.school; // School
-            break;
-        }
-      });
+  void _initTabController(bool canCreate) {
+    // Only reinitialize if canCreate changed or controller doesn't exist
+    if (_canCreateCached == canCreate && _tabController != null) return;
+
+    _tabController?.removeListener(_onTabChanged);
+    _tabController?.dispose();
+
+    final tabCount = canCreate ? 4 : 3;
+    _tabController = TabController(length: tabCount, vsync: this);
+    _tabController!.addListener(_onTabChanged);
+    _canCreateCached = canCreate;
+  }
+
+  void _onTabChanged() {
+    final canCreate = _canCreateCached ?? false;
+    setState(() {
+      _showDrafts = false;
+      switch (_tabController?.index ?? 0) {
+        case 0:
+          _selectedFilter = null; // All
+          break;
+        case 1:
+          _selectedFilter = AnnouncementType.county; // CJE
+          break;
+        case 2:
+          _selectedFilter = AnnouncementType.school; // School
+          break;
+        case 3:
+          if (canCreate) _showDrafts = true; // My Drafts (only if canCreate)
+          break;
+      }
     });
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
+    _tabController?.removeListener(_onTabChanged);
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -54,17 +70,37 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final user = ref.watch(currentUserProvider);
-    final announcementsAsync = ref.watch(
-      announcementsProvider(AnnouncementFilter(type: _selectedFilter)),
-    );
 
-    // Check if user can create announcements
+    // Check if user can create announcements (and thus see drafts)
     final canCreate = user != null &&
         (user.role == UserRole.schoolRep ||
             user.role == UserRole.bex ||
             user.role == UserRole.superadmin);
 
-    return Scaffold(
+    // Initialize or update tab controller based on permissions
+    _initTabController(canCreate);
+
+    // Choose provider based on current tab
+    // Use StreamProvider for real-time updates (except drafts which use FutureProvider)
+    final announcementsAsync = _showDrafts
+        ? ref.watch(myDraftAnnouncementsProvider)
+        : ref.watch(announcementsStreamProvider(AnnouncementFilter(type: _selectedFilter)));
+
+    // Determine back route based on user role
+    final currentUser = ref.watch(currentUserProvider);
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // Handle system back button
+        ref.read(navigationIndexProvider.notifier).state = 0;
+        context.go(backRoute);
+      },
+      child: Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
@@ -72,15 +108,15 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
             // Header
             _buildHeader(context, l10n),
 
-            // Tabs
-            _buildTabs(context, l10n),
+            // Tabs (4 tabs if can create, 3 otherwise)
+            _buildTabs(context, l10n, canCreate),
 
             // Content
             Expanded(
               child: announcementsAsync.when(
                 data: (announcements) => announcements.isEmpty
                     ? _buildEmptyState(context, l10n)
-                    : _buildAnnouncementsList(announcements),
+                    : _buildAnnouncementsList(announcements, isDrafts: _showDrafts),
                 loading: () => const Center(
                   child: CircularProgressIndicator(color: AppColors.gold),
                 ),
@@ -103,6 +139,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
               ),
             )
           : null,
+    ),
     );
   }
 
@@ -120,11 +157,9 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go(backRoute);
-              }
+              // Navigate to home and update bottom nav index
+              ref.read(navigationIndexProvider.notifier).state = 0;
+              context.go(backRoute);
             },
             child: Container(
               width: 44,
@@ -187,7 +222,18 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
     );
   }
 
-  Widget _buildTabs(BuildContext context, AppLocalizations l10n) {
+  Widget _buildTabs(BuildContext context, AppLocalizations l10n, bool showDraftsTab) {
+    final controller = _tabController;
+    if (controller == null) {
+      return const SizedBox.shrink();
+    }
+
+    // Verify tab count matches controller length to avoid errors
+    final expectedLength = showDraftsTab ? 4 : 3;
+    if (controller.length != expectedLength) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       margin: const EdgeInsets.fromLTRB(24, 8, 24, 16),
       decoration: BoxDecoration(
@@ -202,7 +248,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
         ],
       ),
       child: TabBar(
-        controller: _tabController,
+        controller: controller,
         labelColor: context.textPrimary,
         unselectedLabelColor: context.textSecondary,
         indicatorSize: TabBarIndicatorSize.tab,
@@ -212,33 +258,68 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
         ),
         dividerColor: Colors.transparent,
         labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        isScrollable: showDraftsTab, // Make scrollable when 4 tabs
         tabs: [
           Tab(text: l10n.translate('all')),
           Tab(text: l10n.translate('county')),
           Tab(text: l10n.translate('school')),
+          if (showDraftsTab) Tab(text: l10n.translate('my_drafts')),
         ],
       ),
     );
   }
 
-  Widget _buildAnnouncementsList(List<AnnouncementModel> announcements) {
+  Widget _buildAnnouncementsList(List<AnnouncementModel> announcements, {bool isDrafts = false}) {
+    final responsive = Responsive(context);
+    final columns = responsive.value(mobile: 1, tablet: 2, desktop: 3);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
+
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(announcementsProvider);
+        if (isDrafts) {
+          ref.invalidate(myDraftAnnouncementsProvider);
+        } else {
+          ref.invalidate(announcementsProvider);
+        }
       },
       color: AppColors.gold,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: announcements.length,
-        itemBuilder: (context, index) {
-          final announcement = announcements[index];
-          return _AnnouncementCard(
-            announcement: announcement,
-            onTap: () => _navigateToDetail(context, announcement),
-          );
-        },
-      ),
+      child: columns == 1
+          ? ListView.builder(
+              padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: announcements.length,
+              itemBuilder: (context, index) {
+                final announcement = announcements[index];
+                return _AnnouncementCard(
+                  announcement: announcement,
+                  isDraft: isDrafts,
+                  onTap: () => isDrafts
+                      ? _navigateToEdit(context, announcement)
+                      : _navigateToDetail(context, announcement),
+                );
+              },
+            )
+          : GridView.builder(
+              padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: responsive.value(mobile: 1.0, tablet: 0.85, desktop: 0.9),
+              ),
+              itemCount: announcements.length,
+              itemBuilder: (context, index) {
+                final announcement = announcements[index];
+                return _AnnouncementCard(
+                  announcement: announcement,
+                  isDraft: isDrafts,
+                  onTap: () => isDrafts
+                      ? _navigateToEdit(context, announcement)
+                      : _navigateToDetail(context, announcement),
+                );
+              },
+            ),
     );
   }
 
@@ -309,12 +390,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
   }
 
   void _navigateToDetail(BuildContext context, AnnouncementModel announcement) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AnnouncementDetailScreen(announcement: announcement),
-      ),
-    );
+    context.push(RouteNames.announcementDetailPath(announcement.id));
   }
 
   void _navigateToCreate(BuildContext context) {
@@ -325,16 +401,30 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
       ),
     );
   }
+
+  void _navigateToEdit(BuildContext context, AnnouncementModel announcement) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateAnnouncementScreen(draftAnnouncement: announcement),
+      ),
+    ).then((_) {
+      // Refresh drafts when returning from edit
+      ref.invalidate(myDraftAnnouncementsProvider);
+    });
+  }
 }
 
 /// Announcement card widget
 class _AnnouncementCard extends StatelessWidget {
   final AnnouncementModel announcement;
   final VoidCallback onTap;
+  final bool isDraft;
 
   const _AnnouncementCard({
     required this.announcement,
     required this.onTap,
+    this.isDraft = false,
   });
 
   @override
@@ -388,6 +478,26 @@ class _AnnouncementCard extends StatelessWidget {
                   // Type badge and date
                   Row(
                     children: [
+                      // Draft badge (if draft)
+                      if (isDraft) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            l10n.translate('draft'),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      // Type badge
                       Flexible(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
