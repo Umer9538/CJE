@@ -93,12 +93,21 @@ class AppStrings {
   static const String statusPending = 'În așteptare';
 
   // ============================================
-  // DEPARTMENTS
+  // DEPARTMENTS (6 total)
   // ============================================
 
-  static const String deptPRCommunications = 'PR & Comunicare';
-  static const String deptVolunteering = 'Voluntariat';
-  static const String deptSchoolInclusion = 'Incluziune Școlară';
+  // 1. Departament pt. Învățământ gimnazial - Department for Secondary Education
+  static const String deptSecondaryEducation = 'Dept. Învățământ Gimnazial';
+  // 2. Departamentul pt. IPTCV - Department for IPTCV
+  static const String deptIPTCV = 'Dept. IPTCV';
+  // 3. Departament pt. grupuri vulnerabile și minorități - Department for vulnerable groups and minorities
+  static const String deptVulnerableGroups = 'Dept. Grupuri Vulnerabile';
+  // 4. Departamentul pt. învățământ special - Department for Special Education
+  static const String deptSpecialEducation = 'Dept. Învățământ Special';
+  // 5. Departamentul pt. voluntariat & educație nonformală - Department for Volunteering
+  static const String deptVolunteering = 'Dept. Voluntariat';
+  // 6. Departamentul de PR & Comunicare - PR & Comm
+  static const String deptPRCommunications = 'Dept. PR & Comunicare';
 
   // ============================================
   // MEETINGS

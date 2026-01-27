@@ -60,7 +60,7 @@ class CSVImportService {
   /// john@example.com,John Doe,0712345678,Cluj,student,school123,High School #1,12A,
   ///
   /// Role values: student, classRep, schoolRep, department, bex (superadmin cannot be imported)
-  /// Department values: prCommunications, volunteering, schoolInclusion
+  /// Department values: secondaryEducation, iptcv, vulnerableGroups, specialEducation, volunteering, prCommunications
   CSVImportResult parseCSV(String csvContent) {
     final List<UserModel> successfulUsers = [];
     final List<CSVImportError> errors = [];
@@ -266,7 +266,7 @@ class CSVImportService {
       if (department == null) {
         errors.add(CSVImportError(
           rowNumber: rowNumber,
-          message: 'Invalid department: $departmentStr. Valid values: prCommunications, volunteering, schoolInclusion',
+          message: 'Invalid department: $departmentStr. Valid values: secondaryEducation, iptcv, vulnerableGroups, specialEducation, volunteering, prCommunications',
           rowData: rowData,
         ));
         return null;
@@ -329,16 +329,26 @@ class CSVImportService {
   DepartmentType? _parseDepartment(String departmentStr) {
     final normalized = departmentStr.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
     switch (normalized) {
+      case 'secondaryeducation':
+      case 'gimnazial':
+      case 'secondary':
+        return DepartmentType.secondaryEducation;
+      case 'iptcv':
+        return DepartmentType.iptcv;
+      case 'vulnerablegroups':
+      case 'vulnerable':
+      case 'minorities':
+        return DepartmentType.vulnerableGroups;
+      case 'specialeducation':
+      case 'special':
+        return DepartmentType.specialEducation;
+      case 'volunteering':
+      case 'voluntariat':
+        return DepartmentType.volunteering;
       case 'prcommunications':
       case 'pr':
       case 'communications':
         return DepartmentType.prCommunications;
-      case 'volunteering':
-      case 'voluntariat':
-        return DepartmentType.volunteering;
-      case 'schoolinclusion':
-      case 'inclusion':
-        return DepartmentType.schoolInclusion;
       default:
         return null;
     }
@@ -370,7 +380,7 @@ Optional columns:
 - schoolId: School document ID
 - schoolName: School name (display)
 - className: Class name (e.g., 12A, 11B)
-- department: prCommunications, volunteering, schoolInclusion (only for department role)
+- department: secondaryEducation, iptcv, vulnerableGroups, specialEducation, volunteering, prCommunications (only for department role)
 
 Notes:
 - First row must contain headers

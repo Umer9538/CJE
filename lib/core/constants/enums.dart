@@ -180,21 +180,54 @@ enum UserStatus {
 /// ============================================
 /// DEPARTMENT TYPE ENUM
 /// ============================================
-/// 3 departments in the CJE structure
+/// 6 departments in the CJE structure
 enum DepartmentType {
-  prCommunications,
+  /// 1. Departament pt. Învățământ gimnazial - Department for Secondary Education
+  secondaryEducation,
+  /// 2. Departamentul pt. IPTCV - Department for IPTCV
+  iptcv,
+  /// 3. Departament pt. grupuri vulnerabile și minorități - Vulnerable groups and minorities
+  vulnerableGroups,
+  /// 4. Departamentul pt. învățământ special - Department for Special Education
+  specialEducation,
+  /// 5. Departamentul pt. voluntariat & educație nonformală - Volunteering
   volunteering,
-  schoolInclusion;
+  /// 6. Departamentul de PR & Comunicare - PR & Communications
+  prCommunications;
 
   /// Get display name in Romanian
   String get displayName {
     switch (this) {
-      case DepartmentType.prCommunications:
-        return AppStrings.deptPRCommunications;
+      case DepartmentType.secondaryEducation:
+        return AppStrings.deptSecondaryEducation;
+      case DepartmentType.iptcv:
+        return AppStrings.deptIPTCV;
+      case DepartmentType.vulnerableGroups:
+        return AppStrings.deptVulnerableGroups;
+      case DepartmentType.specialEducation:
+        return AppStrings.deptSpecialEducation;
       case DepartmentType.volunteering:
         return AppStrings.deptVolunteering;
-      case DepartmentType.schoolInclusion:
-        return AppStrings.deptSchoolInclusion;
+      case DepartmentType.prCommunications:
+        return AppStrings.deptPRCommunications;
+    }
+  }
+
+  /// Get English display name
+  String get displayNameEn {
+    switch (this) {
+      case DepartmentType.secondaryEducation:
+        return 'Department for Secondary Education';
+      case DepartmentType.iptcv:
+        return 'Department for IPTCV';
+      case DepartmentType.vulnerableGroups:
+        return 'Department for Vulnerable Groups';
+      case DepartmentType.specialEducation:
+        return 'Department for Special Education';
+      case DepartmentType.volunteering:
+        return 'Department for Volunteering';
+      case DepartmentType.prCommunications:
+        return 'PR & Communications';
     }
   }
 
@@ -635,7 +668,9 @@ enum NotificationType {
   newAnnouncement,
   initiativeUpdate,
   pollReminder,
-  systemAlert;
+  systemAlert,
+  warningIssued,
+  absenceRecorded;
 
   /// Get display name
   String get displayName {
@@ -650,6 +685,10 @@ enum NotificationType {
         return 'Sondaj activ';
       case NotificationType.systemAlert:
         return 'Alertă sistem';
+      case NotificationType.warningIssued:
+        return 'Avertisment primit';
+      case NotificationType.absenceRecorded:
+        return 'Absență înregistrată';
     }
   }
 

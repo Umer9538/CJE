@@ -157,12 +157,18 @@ class DepartmentDashboardScreen extends ConsumerWidget {
 
   IconData _getDepartmentIcon(DepartmentType? department) {
     switch (department) {
-      case DepartmentType.prCommunications:
-        return Icons.campaign_rounded;
+      case DepartmentType.secondaryEducation:
+        return Icons.school_rounded;
+      case DepartmentType.iptcv:
+        return Icons.engineering_rounded;
+      case DepartmentType.vulnerableGroups:
+        return Icons.diversity_3_rounded;
+      case DepartmentType.specialEducation:
+        return Icons.accessibility_new_rounded;
       case DepartmentType.volunteering:
         return Icons.volunteer_activism_rounded;
-      case DepartmentType.schoolInclusion:
-        return Icons.diversity_3_rounded;
+      case DepartmentType.prCommunications:
+        return Icons.campaign_rounded;
       default:
         return Icons.work_rounded;
     }
