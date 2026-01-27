@@ -30,34 +30,206 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isSupportingAsync = ref.watch(
-      isSupportingProvider(widget.initiative.id),
-    );
-    final commentsAsync = ref.watch(
-      initiativeCommentsStreamProvider(widget.initiative.id),
-    );
-    // Permission checks
+    final commentsAsync = ref.watch(initiativeCommentsStreamProvider(widget.initiative.id));
     final canComment = ref.watch(canCommentOnInitiativesProvider);
     final canSupport = ref.watch(canSupportInitiativesProvider);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (canSupport)
-          _SupportSection(
-            initiative: widget.initiative,
-            isSupportingAsync: isSupportingAsync,
-          ),
-        const SizedBox(height: 24),
+        // Support section
+        if (canSupport) _buildSupportSection(context, l10n),
+
+        if (canSupport) const SizedBox(height: 24),
+
+        // Comments header
         _buildCommentsHeader(context, l10n),
+
         const SizedBox(height: 12),
-        if (canComment)
-          _buildCommentInput(context, l10n),
-        if (canComment)
-          const SizedBox(height: 16),
-        _buildCommentsList(context, commentsAsync, l10n),
+
+        // Comment input
+        if (canComment) _buildCommentInput(context, l10n),
+
+        if (canComment) const SizedBox(height: 16),
+
+        // Comments list
+        commentsAsync.when(
+          data: (comments) {
+            if (comments.isEmpty) {
+              return _buildEmptyComments(context, l10n);
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: comments.map((c) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InitiativeCommentCard(comment: c),
+              )).toList(),
+            );
+          },
+          loading: () => Container(
+            height: 100,
+            alignment: Alignment.center,
+            child: const CircularProgressIndicator(),
+          ),
+          error: (_, __) => Container(
+            height: 100,
+            alignment: Alignment.center,
+            child: Text(
+              l10n.translate('error_loading_comments'),
+              style: TextStyle(color: context.textSecondary),
+            ),
+          ),
+        ),
+
+        // Extra padding for bottom navigation bar
         const SizedBox(height: 100),
       ],
+    );
+  }
+
+  Widget _buildSupportSection(BuildContext context, AppLocalizations l10n) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSupportingAsync = ref.watch(isSupportingProvider(widget.initiative.id));
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: context.shadowColor,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              // Icon
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.gold.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.favorite_rounded, size: 24, color: AppColors.gold),
+              ),
+              const SizedBox(width: 16),
+              // Count and label
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widget.initiative.supportCount}',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      l10n.translate('supporters'),
+                      style: TextStyle(fontSize: 14, color: context.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Button - full width
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: isSupportingAsync.when(
+              data: (isSupporting) => Material(
+                color: isSupporting ? Colors.red.shade600 : AppColors.gold,
+                borderRadius: BorderRadius.circular(12),
+                elevation: 3,
+                child: InkWell(
+                  onTap: _toggleSupport,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    height: 44,
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          isSupporting ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+                          size: 22,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          isSupporting ? l10n.translate('supported') : l10n.translate('support'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.white,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              loading: () => Material(
+                color: AppColors.gold.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  height: 44,
+                  alignment: Alignment.center,
+                  child: const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              error: (_, __) => Material(
+                color: AppColors.gold,
+                borderRadius: BorderRadius.circular(12),
+                elevation: 3,
+                child: InkWell(
+                  onTap: _toggleSupport,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    height: 44,
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.favorite_outline_rounded, size: 22, color: Colors.white),
+                        const SizedBox(width: 10),
+                        Text(
+                          l10n.translate('support'),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -65,7 +237,11 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
-        Icon(Icons.comment_rounded, size: 20, color: isDark ? AppColors.gold : AppColors.navy),
+        Icon(
+          Icons.comment_rounded,
+          size: 20,
+          color: isDark ? AppColors.gold : AppColors.navy,
+        ),
         const SizedBox(width: 8),
         Text(
           l10n.translate('comments'),
@@ -81,7 +257,7 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
 
   Widget _buildCommentInput(BuildContext context, AppLocalizations l10n) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: context.cardColor,
         borderRadius: BorderRadius.circular(16),
@@ -104,7 +280,6 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
                 hintStyle: TextStyle(color: context.textSecondary),
                 border: InputBorder.none,
               ),
-              maxLines: null,
             ),
           ),
           IconButton(
@@ -122,54 +297,29 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
     );
   }
 
-  Widget _buildCommentsList(
-    BuildContext context,
-    AsyncValue<List<InitiativeComment>> commentsAsync,
-    AppLocalizations l10n,
-  ) {
-    return commentsAsync.when(
-      data: (comments) => comments.isEmpty
-          ? _buildEmptyComments(context, l10n)
-          : Column(
-              children: comments
-                  .map((c) => InitiativeCommentCard(comment: c))
-                  .toList(),
-            ),
-      loading: () => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: CircularProgressIndicator(),
-        ),
-      ),
-      error: (_, __) => Center(
-        child: Text(
-          l10n.translate('error_loading_comments'),
-          style: TextStyle(color: context.textSecondary),
-        ),
+  Widget _buildEmptyComments(BuildContext context, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline_rounded,
+            size: 48,
+            color: context.textSecondary,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.translate('no_comments_yet'),
+            style: TextStyle(color: context.textSecondary),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildEmptyComments(BuildContext context, AppLocalizations l10n) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Icon(
-              Icons.chat_bubble_outline_rounded,
-              size: 48,
-              color: context.textSecondary,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l10n.translate('no_comments_yet'),
-              style: TextStyle(color: context.textSecondary),
-            ),
-          ],
-        ),
-      ),
-    );
+  void _toggleSupport() {
+    ref.read(initiativeControllerProvider.notifier).toggleSupport(widget.initiative.id);
   }
 
   Future<void> _addComment() async {
@@ -187,152 +337,5 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
     if (id != null) {
       _commentController.clear();
     }
-  }
-}
-
-class _SupportSection extends ConsumerWidget {
-  final InitiativeModel initiative;
-  final AsyncValue<bool> isSupportingAsync;
-
-  const _SupportSection({
-    required this.initiative,
-    required this.isSupportingAsync,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final l10n = AppLocalizations.of(context);
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: context.shadowColor,
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _buildSupportIcon(),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _buildSupportCount(context, l10n),
-          ),
-          const SizedBox(width: 12),
-          Flexible(
-            flex: 0,
-            child: _buildSupportButton(context, ref, l10n),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSupportIcon() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.gold.withValues(alpha: 0.15),
-        shape: BoxShape.circle,
-      ),
-      child: const Icon(
-        Icons.favorite_rounded,
-        size: 24,
-        color: AppColors.gold,
-      ),
-    );
-  }
-
-  Widget _buildSupportCount(BuildContext context, AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '${initiative.supportCount}',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: context.textPrimary,
-          ),
-          maxLines: 1,
-        ),
-        Text(
-          l10n.translate('supporters'),
-          style: TextStyle(fontSize: 14, color: context.textSecondary),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSupportButton(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isSupportingAsync.when(
-      data: (isSupporting) => ElevatedButton.icon(
-        onPressed: () => _toggleSupport(ref),
-        icon: Icon(
-          isSupporting ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-          size: 18,
-        ),
-        label: Text(
-          isSupporting ? l10n.translate('supported') : l10n.translate('support'),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isSupporting ? AppColors.gold : (isDark ? Colors.grey[800] : Colors.grey.shade200),
-          foregroundColor: isSupporting ? AppColors.navy : context.textPrimary,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      loading: () => ElevatedButton.icon(
-        onPressed: null, // Disabled while loading
-        icon: const SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-        label: Text(l10n.translate('support')),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDark ? Colors.grey[800] : Colors.grey.shade200,
-          foregroundColor: context.textPrimary,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-      // Show button on error too - user can still try to support
-      error: (_, __) => ElevatedButton.icon(
-        onPressed: () => _toggleSupport(ref),
-        icon: const Icon(Icons.favorite_outline_rounded, size: 18),
-        label: Text(l10n.translate('support')),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isDark ? Colors.grey[800] : Colors.grey.shade200,
-          foregroundColor: context.textPrimary,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _toggleSupport(WidgetRef ref) {
-    ref
-        .read(initiativeControllerProvider.notifier)
-        .toggleSupport(initiative.id);
   }
 }
