@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/enums.dart';
+import '../../core/repositories/notification_repository.dart';
 import '../../core/repositories/warning_repository.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
@@ -8,6 +9,11 @@ import '../auth/auth_controller.dart';
 /// Warning repository provider
 final warningRepositoryProvider = Provider<WarningRepository>((ref) {
   return WarningRepository();
+});
+
+/// Notification repository provider for warnings
+final warningNotificationRepositoryProvider = Provider<NotificationRepository>((ref) {
+  return NotificationRepository();
 });
 
 /// Filter for warnings
@@ -106,24 +112,49 @@ final meetingAbsencesProvider = FutureProvider.family<List<AbsenceModel>, String
   return repository.getMeetingAbsences(meetingId);
 });
 
-/// Warning count provider
+/// Warning count provider (one-time fetch)
 final warningCountProvider = FutureProvider.family<int, String>((ref, userId) async {
   final repository = ref.read(warningRepositoryProvider);
   return repository.getWarningCount(userId);
 });
 
-/// Absence count provider
+/// Warning count stream provider (real-time updates)
+final warningCountStreamProvider = StreamProvider.family<int, String>((ref, userId) {
+  final repository = ref.read(warningRepositoryProvider);
+  return repository.getWarningCountStream(userId);
+});
+
+/// User warnings stream provider (real-time updates)
+final userWarningsStreamProvider = StreamProvider.family<List<WarningModel>, String>((ref, userId) {
+  final repository = ref.read(warningRepositoryProvider);
+  return repository.getUserWarningsStream(userId);
+});
+
+/// Absence count provider (one-time fetch)
 final absenceCountProvider = FutureProvider.family<Map<String, int>, String>((ref, userId) async {
   final repository = ref.read(warningRepositoryProvider);
   return repository.getAbsenceCount(userId);
 });
 
+/// Absence count stream provider (real-time updates)
+final absenceCountStreamProvider = StreamProvider.family<Map<String, int>, String>((ref, userId) {
+  final repository = ref.read(warningRepositoryProvider);
+  return repository.getAbsenceCountStream(userId);
+});
+
+/// User absences stream provider (real-time updates)
+final userAbsencesStreamProvider = StreamProvider.family<List<AbsenceModel>, String>((ref, userId) {
+  final repository = ref.read(warningRepositoryProvider);
+  return repository.getUserAbsencesStream(userId);
+});
+
 /// Warning controller for managing warnings and absences
 class WarningController extends StateNotifier<AsyncValue<void>> {
   final WarningRepository _repository;
+  final NotificationRepository _notificationRepository;
   final Ref _ref;
 
-  WarningController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  WarningController(this._repository, this._notificationRepository, this._ref) : super(const AsyncValue.data(null));
 
   /// Issue a warning to a user
   Future<bool> issueWarning({
@@ -165,6 +196,15 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     if (id != null) {
       state = const AsyncValue.data(null);
       _invalidateWarningProviders(userId);
+
+      // Send notification to the user
+      await _sendWarningNotification(
+        userId: userId,
+        warningType: type,
+        reason: reason,
+        issuedByName: currentUser.fullName,
+      );
+
       return true;
     } else {
       state = AsyncValue.error('Failed to create warning', StackTrace.current);
@@ -243,6 +283,15 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     if (id != null) {
       state = const AsyncValue.data(null);
       _invalidateAbsenceProviders(userId, meetingId);
+
+      // Send notification to the user
+      await _sendAbsenceNotification(
+        userId: userId,
+        meetingTitle: meetingTitle,
+        absenceType: type,
+        recordedByName: currentUser.fullName,
+      );
+
       return true;
     } else {
       state = AsyncValue.error('Failed to record absence', StackTrace.current);
@@ -307,6 +356,53 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(absencesProvider(AbsenceFilter(countyId: currentUser.city)));
     }
   }
+
+  /// Send notification when a warning is issued
+  Future<void> _sendWarningNotification({
+    required String userId,
+    required WarningType warningType,
+    required String reason,
+    required String issuedByName,
+  }) async {
+    final notification = NotificationModel(
+      id: '',
+      userId: userId,
+      type: NotificationType.warningIssued,
+      title: 'Ai primit o mustrare',
+      body: '${warningType.displayNameRo}: $reason',
+      data: {
+        'warningType': warningType.name,
+        'issuedBy': issuedByName,
+      },
+      createdAt: DateTime.now(),
+    );
+
+    await _notificationRepository.createNotification(notification);
+  }
+
+  /// Send notification when an absence is recorded
+  Future<void> _sendAbsenceNotification({
+    required String userId,
+    required String meetingTitle,
+    required AbsenceType absenceType,
+    required String recordedByName,
+  }) async {
+    final notification = NotificationModel(
+      id: '',
+      userId: userId,
+      type: NotificationType.absenceRecorded,
+      title: 'Absență înregistrată',
+      body: '${absenceType.displayNameRo} la: $meetingTitle',
+      data: {
+        'meetingTitle': meetingTitle,
+        'absenceType': absenceType.name,
+        'recordedBy': recordedByName,
+      },
+      createdAt: DateTime.now(),
+    );
+
+    await _notificationRepository.createNotification(notification);
+  }
 }
 
 /// Warning controller provider
@@ -314,6 +410,7 @@ final warningControllerProvider =
     StateNotifierProvider<WarningController, AsyncValue<void>>((ref) {
   return WarningController(
     ref.watch(warningRepositoryProvider),
+    ref.watch(warningNotificationRepositoryProvider),
     ref,
   );
 });

@@ -50,12 +50,23 @@ class WarningRepository {
   /// Get warnings for a specific user
   Future<List<WarningModel>> getUserWarnings(String userId) async {
     try {
+      // Note: Firestore requires composite index for where + orderBy on different fields
+      // So we fetch without orderBy and sort in memory
       final snapshot = await _warningsCollection
           .where('userId', isEqualTo: userId)
-          .orderBy('issuedAt', descending: true)
-          .get();
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout getting user warnings');
+              throw Exception('Request timed out');
+            },
+          );
 
-      return snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+      final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+      // Sort by issuedAt descending (most recent first)
+      warnings.sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+      return warnings;
     } catch (e) {
       debugPrint('Error getting user warnings: $e');
       return [];
@@ -100,18 +111,65 @@ class WarningRepository {
     return updateWarning(id, {'isActive': false});
   }
 
+  /// Stream of user warnings (real-time updates)
+  Stream<List<WarningModel>> getUserWarningsStream(String userId) {
+    debugPrint('getUserWarningsStream: Starting stream for userId=$userId');
+    return _warningsCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      debugPrint('getUserWarningsStream: Got ${snapshot.docs.length} warnings');
+      final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+      warnings.sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+      return warnings;
+    }).handleError((error, stackTrace) {
+      debugPrint('getUserWarningsStream ERROR: $error');
+      debugPrint('Stack trace: $stackTrace');
+      throw error;
+    });
+  }
+
+  /// Stream of warning count (real-time updates)
+  Stream<int> getWarningCountStream(String userId, {bool activeOnly = true}) {
+    debugPrint('getWarningCountStream: Starting stream for userId=$userId');
+    return _warningsCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      debugPrint('getWarningCountStream: Got ${snapshot.docs.length} docs');
+      if (activeOnly) {
+        final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+        return warnings.where((w) => w.isActive).length;
+      }
+      return snapshot.docs.length;
+    }).handleError((error, stackTrace) {
+      debugPrint('getWarningCountStream ERROR: $error');
+      debugPrint('Stack trace: $stackTrace');
+      throw error;
+    });
+  }
+
   /// Get warning count for user
   Future<int> getWarningCount(String userId, {bool activeOnly = true}) async {
     try {
-      Query<Map<String, dynamic>> query = _warningsCollection
-          .where('userId', isEqualTo: userId);
+      // Fetch all user warnings and count in memory to avoid composite index issues
+      final snapshot = await _warningsCollection
+          .where('userId', isEqualTo: userId)
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout getting warning count');
+              throw Exception('Request timed out');
+            },
+          );
 
       if (activeOnly) {
-        query = query.where('isActive', isEqualTo: true);
+        final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+        return warnings.where((w) => w.isActive).length;
       }
 
-      final snapshot = await query.count().get();
-      return snapshot.count ?? 0;
+      return snapshot.docs.length;
     } catch (e) {
       debugPrint('Error getting warning count: $e');
       return 0;
@@ -155,12 +213,23 @@ class WarningRepository {
   /// Get absences for a specific user
   Future<List<AbsenceModel>> getUserAbsences(String userId) async {
     try {
+      // Note: Firestore requires composite index for where + orderBy on different fields
+      // So we fetch without orderBy and sort in memory
       final snapshot = await _absencesCollection
           .where('userId', isEqualTo: userId)
-          .orderBy('recordedAt', descending: true)
-          .get();
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout getting user absences');
+              throw Exception('Request timed out');
+            },
+          );
 
-      return snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      // Sort by recordedAt descending (most recent first)
+      absences.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+      return absences;
     } catch (e) {
       debugPrint('Error getting user absences: $e');
       return [];
@@ -182,10 +251,17 @@ class WarningRepository {
   }
 
   /// Create a new absence record
+  /// If absence.id is provided (non-empty), use it as the document ID
   Future<String?> createAbsence(AbsenceModel absence) async {
     try {
-      final docRef = await _absencesCollection.add(absence.toFirestore());
-      return docRef.id;
+      if (absence.id.isNotEmpty) {
+        // Use specific document ID for syncing with user's embedded absence
+        await _absencesCollection.doc(absence.id).set(absence.toFirestore());
+        return absence.id;
+      } else {
+        final docRef = await _absencesCollection.add(absence.toFirestore());
+        return docRef.id;
+      }
     } catch (e) {
       debugPrint('Error creating absence: $e');
       return null;
@@ -214,12 +290,58 @@ class WarningRepository {
     }
   }
 
+  /// Stream of user absences (real-time updates)
+  Stream<List<AbsenceModel>> getUserAbsencesStream(String userId) {
+    debugPrint('getUserAbsencesStream: Starting stream for userId=$userId');
+    return _absencesCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      debugPrint('getUserAbsencesStream: Got ${snapshot.docs.length} absences');
+      final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      absences.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+      return absences;
+    }).handleError((error, stackTrace) {
+      debugPrint('getUserAbsencesStream ERROR: $error');
+      debugPrint('Stack trace: $stackTrace');
+      throw error;
+    });
+  }
+
+  /// Stream of absence count (real-time updates)
+  Stream<Map<String, int>> getAbsenceCountStream(String userId) {
+    debugPrint('getAbsenceCountStream: Starting stream for userId=$userId');
+    return _absencesCollection
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) {
+      debugPrint('getAbsenceCountStream: Got ${snapshot.docs.length} docs');
+      final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      return {
+        'total': absences.length,
+        'excused': absences.where((a) => a.type == AbsenceType.excused).length,
+        'unexcused': absences.where((a) => a.type == AbsenceType.unexcused).length,
+      };
+    }).handleError((error, stackTrace) {
+      debugPrint('getAbsenceCountStream ERROR: $error');
+      debugPrint('Stack trace: $stackTrace');
+      throw error;
+    });
+  }
+
   /// Get absence count for user
   Future<Map<String, int>> getAbsenceCount(String userId) async {
     try {
       final snapshot = await _absencesCollection
           .where('userId', isEqualTo: userId)
-          .get();
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout getting absence count');
+              throw Exception('Request timed out');
+            },
+          );
 
       final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
 

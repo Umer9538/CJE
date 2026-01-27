@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants/enums.dart';
 import '../../core/repositories/user_repository.dart';
 import '../../core/repositories/activity_repository.dart';
+import '../../core/repositories/warning_repository.dart';
 import '../../core/services/csv_import_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
@@ -197,6 +198,10 @@ final adminUserProvider = FutureProvider.family<UserModel?, String>((ref, userId
 
 /// Filtered users provider
 /// Uses ref.watch to automatically refresh when user state changes
+/// County filtering applied based on user role:
+/// - BEX: sees only users from their county
+/// - Superadmin: sees all users (or filtered by selected county)
+/// - SchoolRep: sees only users from their school
 final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>((ref, filter) async {
   // Watch currentUserProvider to auto-refresh when user changes (login/logout)
   final currentUser = ref.watch(currentUserProvider);
@@ -205,12 +210,14 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
   }
 
   final repository = ref.read(adminUserRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   try {
     List<UserModel> users;
 
     if (filter.role != null) {
       users = await repository.getUsersByRole(filter.role!);
+      // County filtering will be applied below
     } else if (filter.status == UserStatus.pending) {
       // Apply same filtering as pendingUsersProvider
       String? schoolId;
@@ -219,6 +226,8 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
         schoolId = currentUser.schoolId;
       } else if (currentUser.role == UserRole.bex) {
         countyId = currentUser.city;
+      } else if (currentUser.role == UserRole.superadmin) {
+        countyId = effectiveCounty;
       }
       users = await repository.getPendingUsers(
         schoolId: schoolId,
@@ -228,8 +237,23 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
       users = await repository.getAllUsers();
     }
 
+    // Apply county filtering for BEX users (they should only see users from their county)
+    if (currentUser.role == UserRole.bex && currentUser.city != null && currentUser.city!.isNotEmpty) {
+      users = users.where((u) => u.city == currentUser.city).toList();
+    }
+
+    // Apply county filtering for Superadmin when a county is selected
+    if (currentUser.role == UserRole.superadmin && effectiveCounty != null && effectiveCounty.isNotEmpty) {
+      users = users.where((u) => u.city == effectiveCounty).toList();
+    }
+
     // Apply additional filters
     if (filter.status != null && filter.role != null) {
+      users = users.where((u) => u.status == filter.status).toList();
+    }
+
+    // Apply status filter for non-pending (when coming from "Active" tab)
+    if (filter.status != null && filter.role == null && filter.status != UserStatus.pending) {
       users = users.where((u) => u.status == filter.status).toList();
     }
 
@@ -658,8 +682,9 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
     state = const AsyncValue.loading();
 
+    final absenceId = _uuid.v4();
     final absence = UserAbsence(
-      id: _uuid.v4(),
+      id: absenceId,
       meetingId: meetingId,
       meetingTitle: meetingTitle,
       meetingDate: meetingDate,
@@ -671,6 +696,28 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.addAbsence(userId, absence);
 
     if (success) {
+      // Also add to the absences collection for user's "My Reprimands" view
+      final targetUser = await _repository.getUserById(userId);
+      if (targetUser != null) {
+        final warningRepository = WarningRepository();
+        final absenceModel = AbsenceModel(
+          id: absenceId,
+          meetingId: meetingId,
+          meetingTitle: meetingTitle,
+          meetingDate: meetingDate,
+          userId: userId,
+          userName: targetUser.fullName,
+          userSchoolId: targetUser.schoolId,
+          userSchoolName: targetUser.schoolName,
+          type: AbsenceType.unexcused,
+          recordedById: currentUser.id,
+          recordedByName: currentUser.fullName,
+          recordedAt: DateTime.now(),
+          countyId: currentUser.city ?? '',
+        );
+        await warningRepository.createAbsence(absenceModel);
+      }
+
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
     } else {
@@ -689,6 +736,10 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.removeAbsence(userId, absenceId);
 
     if (success) {
+      // Also remove from the absences collection
+      final warningRepository = WarningRepository();
+      await warningRepository.deleteAbsence(absenceId);
+
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
     } else {
@@ -707,6 +758,13 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.excuseAbsence(userId, absenceId, reason);
 
     if (success) {
+      // Also update in the absences collection
+      final warningRepository = WarningRepository();
+      await warningRepository.updateAbsence(absenceId, {
+        'type': AbsenceType.excused.name,
+        'reason': reason,
+      });
+
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
     } else {
