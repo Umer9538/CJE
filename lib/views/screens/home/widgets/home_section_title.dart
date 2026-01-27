@@ -49,9 +49,10 @@ class HomeSectionTitle extends StatelessWidget {
   Widget _buildSeeAllButton(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onSeeAll,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: context.goldColor.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),

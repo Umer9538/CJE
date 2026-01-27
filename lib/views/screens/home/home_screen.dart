@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
-import '../../../routes/route_names.dart';
-import '../main/main_shell.dart';
 import 'widgets/widgets.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -108,6 +105,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildMainContent(dynamic user) {
+    final responsive = context.responsive;
+
     return SafeArea(
       child: FadeTransition(
         opacity: _fadeAnimation,
@@ -117,35 +116,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             children: [
               HomeHeader(user: user),
               Expanded(
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    SliverToBoxAdapter(child: HomeWelcomeCard(user: user)),
-                    const SliverToBoxAdapter(child: HomeQuickStats()),
-                    SliverToBoxAdapter(
-                      child: HomeSectionTitle(
-                        title: AppLocalizations.of(context).translate('upcoming_events'),
-                        icon: Icons.calendar_month_rounded,
-                        onSeeAll: () {
-                          ref.read(navigationIndexProvider.notifier).state = 3; // Meetings tab
-                          context.go(RouteNames.meetings);
-                        },
-                      ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: responsive.maxContentWidth),
+                    child: CustomScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      slivers: [
+                        SliverToBoxAdapter(child: HomeWelcomeCard(user: user)),
+                        const SliverToBoxAdapter(child: HomeReprimandsStatus()),
+                        const SliverToBoxAdapter(child: HomeQuickStats()),
+                        SliverToBoxAdapter(
+                          child: HomeSectionTitle(
+                            title: AppLocalizations.of(context).translate('upcoming_events'),
+                            icon: Icons.calendar_month_rounded,
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: HomeUpcomingEvents()),
+                        SliverToBoxAdapter(
+                          child: HomeSectionTitle(
+                            title: AppLocalizations.of(context).translate('recent_activity'),
+                            icon: Icons.bolt_rounded,
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: HomeActivityFeed()),
+                        SliverToBoxAdapter(child: SizedBox(height: responsive.value(mobile: 100.0, tablet: 120.0, desktop: 80.0))),
+                      ],
                     ),
-                    const SliverToBoxAdapter(child: HomeUpcomingEvents()),
-                    SliverToBoxAdapter(
-                      child: HomeSectionTitle(
-                        title: AppLocalizations.of(context).translate('recent_activity'),
-                        icon: Icons.bolt_rounded,
-                        onSeeAll: () {
-                          ref.read(navigationIndexProvider.notifier).state = 1; // Announcements tab
-                          context.go(RouteNames.announcements);
-                        },
-                      ),
-                    ),
-                    const SliverToBoxAdapter(child: HomeActivityFeed()),
-                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                  ],
+                  ),
                 ),
               ),
             ],
