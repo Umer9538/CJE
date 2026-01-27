@@ -568,6 +568,9 @@ class AuthController extends StateNotifier<AuthStateData> {
 
     if (success) {
       await _authService.updateProfile(photoUrl: photoUrl);
+      // Update local state with new photo URL
+      final updatedUser = user.copyWith(photoUrl: photoUrl);
+      state = state.copyWith(user: updatedUser);
     }
 
     return success;
