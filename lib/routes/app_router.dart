@@ -28,6 +28,10 @@ import '../views/screens/admin/admin_shell.dart';
 import '../views/screens/bex/bex_shell.dart';
 import '../views/screens/department/department_shell.dart';
 import '../views/screens/admin/user_detail_screen.dart';
+import '../views/screens/admin/admin_schools_screen.dart';
+import '../views/screens/admin/admin_gds_screen.dart' show AdminGDSScreen;
+import '../views/screens/admin/bex_analytics_screen.dart';
+import '../views/screens/admin/county_settings_screen.dart';
 import '../views/screens/search/search_screen.dart';
 import '../views/screens/notifications/notifications_screen.dart';
 import '../views/screens/calendar/calendar_screen.dart';
@@ -36,6 +40,7 @@ import '../views/screens/announcements/announcement_detail_screen.dart';
 import '../views/screens/meetings/meeting_detail_screen.dart';
 import '../views/screens/initiatives/initiative_detail_screen.dart';
 import '../views/screens/polls/poll_detail_screen.dart';
+import '../views/screens/warnings/my_warnings_screen.dart';
 import 'route_names.dart';
 
 /// Auth state notifier for router refresh
@@ -71,6 +76,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           currentPath == RouteNames.calendar ||
           currentPath == RouteNames.search ||
           currentPath == RouteNames.help ||
+          currentPath == RouteNames.myWarnings ||
+          currentPath == RouteNames.adminSchoolsList ||
+          currentPath == RouteNames.adminGdsList ||
+          currentPath == RouteNames.adminAnalytics ||
+          currentPath == RouteNames.adminCountySettings ||
           currentPath.startsWith('/announcements/') ||
           currentPath.startsWith('/meetings/') ||
           currentPath.startsWith('/initiatives/') ||
@@ -305,6 +315,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               child: MenuScreen(),
             ),
           ),
+          // Detail routes inside shell (keeps bottom nav visible)
+          GoRoute(
+            path: RouteNames.announcementDetail,
+            name: 'announcementDetailShell',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _AnnouncementDetailWrapper(announcementId: id);
+            },
+          ),
+          GoRoute(
+            path: RouteNames.meetingDetail,
+            name: 'meetingDetailShell',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _MeetingDetailWrapper(meetingId: id);
+            },
+          ),
+          GoRoute(
+            path: RouteNames.initiativeDetail,
+            name: 'initiativeDetailShell',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _InitiativeDetailWrapper(initiativeId: id);
+            },
+          ),
+          GoRoute(
+            path: RouteNames.pollDetail,
+            name: 'pollDetailShell',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _PollDetailWrapper(pollId: id);
+            },
+          ),
         ],
       ),
 
@@ -411,6 +454,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: RouteNames.help,
         name: 'help',
         builder: (context, state) => const HelpSupportScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.myWarnings,
+        name: 'myWarnings',
+        builder: (context, state) => const MyWarningsScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.adminSchoolsList,
+        name: 'adminSchoolsList',
+        builder: (context, state) => const AdminSchoolsScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.adminGdsList,
+        name: 'adminGdsList',
+        builder: (context, state) => const AdminGDSScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.adminAnalytics,
+        name: 'adminAnalytics',
+        builder: (context, state) => const BexAnalyticsScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.adminCountySettings,
+        name: 'adminCountySettings',
+        builder: (context, state) => const CountySettingsScreen(),
       ),
     ],
     errorBuilder: (context, state) {

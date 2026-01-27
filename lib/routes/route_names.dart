@@ -88,6 +88,11 @@ class RouteNames {
   static const String search = '/search';
   static const String notifications = '/notifications';
   static const String help = '/help';
+  static const String myWarnings = '/my-warnings';
+  static const String adminSchoolsList = '/admin/schools-list';
+  static const String adminGdsList = '/admin/gds-list';
+  static const String adminAnalytics = '/admin/analytics';
+  static const String adminCountySettings = '/admin/county-settings';
 
   // ============================================
   // HELPER METHODS
