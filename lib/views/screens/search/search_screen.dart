@@ -41,20 +41,49 @@ bool _tagsMatch(List<String> tags, String query) {
   return tags.any((tag) => tag.toLowerCase().contains(query));
 }
 
-/// Search results provider - MVP: Title and Tags only
+/// Helper function to check if query matches a type keyword (first 3+ chars)
+/// e.g., "ann" matches "announcement", "mee" matches "meeting"
+bool _matchesTypeKeyword(String query, List<String> keywords) {
+  return keywords.any((keyword) =>
+    keyword.startsWith(query) || query.startsWith(keyword));
+}
+
+/// Type keywords for matching (including Romanian translations)
+const _announcementKeywords = ['ann', 'annou', 'announce', 'announcement', 'announcements', 'anunt', 'anunturi'];
+const _meetingKeywords = ['mee', 'meet', 'meeting', 'meetings', 'sedinta', 'sedinte', 'intalnire'];
+const _initiativeKeywords = ['ini', 'init', 'initiative', 'initiatives', 'initiativa', 'initiative'];
+const _pollKeywords = ['pol', 'poll', 'polls', 'sondaj', 'sondaje', 'vot', 'votare'];
+const _documentKeywords = ['doc', 'docu', 'document', 'documents', 'documente'];
+
+/// Search results provider - Title, Tags, and Type matching
+/// This provider properly watches the user to ensure school-based filtering
 final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
   final query = ref.watch(searchQueryProvider).toLowerCase().trim();
   if (query.isEmpty || query.length < 2) return [];
 
+  // Watch user to ensure search respects school partitioning
+  // This ensures the search rebuilds when user state changes
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return [];
+
   final results = <SearchResult>[];
 
-  // Search announcements by title and tags
+  // Check if query matches content type keywords
+  final searchAnnouncements = _matchesTypeKeyword(query, _announcementKeywords);
+  final searchMeetings = _matchesTypeKeyword(query, _meetingKeywords);
+  final searchInitiatives = _matchesTypeKeyword(query, _initiativeKeywords);
+  final searchPolls = _matchesTypeKeyword(query, _pollKeywords);
+  final searchDocuments = _matchesTypeKeyword(query, _documentKeywords);
+
+  // Search announcements by title, tags, OR type keyword
+  // The announcementsProvider already filters by user's school
   try {
-    final announcementsAsync = await ref.read(
+    final announcementsAsync = await ref.watch(
       announcementsProvider(const AnnouncementFilter(limit: 100)).future,
     );
     for (final announcement in announcementsAsync) {
-      if (announcement.title.toLowerCase().contains(query) ||
+      if (searchAnnouncements ||
+          announcement.title.toLowerCase().contains(query) ||
           _tagsMatch(announcement.tags, query)) {
         results.add(SearchResult(
           id: announcement.id,
@@ -67,13 +96,15 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
     }
   } catch (_) {}
 
-  // Search meetings by title only (no tags field)
+  // Search meetings by title OR type keyword
+  // The meetingsProvider already filters by user's school
   try {
-    final meetingsAsync = await ref.read(
+    final meetingsAsync = await ref.watch(
       meetingsProvider(const MeetingFilter(limit: 100)).future,
     );
     for (final meeting in meetingsAsync) {
-      if (meeting.title.toLowerCase().contains(query)) {
+      if (searchMeetings ||
+          meeting.title.toLowerCase().contains(query)) {
         results.add(SearchResult(
           id: meeting.id,
           title: meeting.title,
@@ -85,13 +116,15 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
     }
   } catch (_) {}
 
-  // Search initiatives by title and tags
+  // Search initiatives by title, tags, OR type keyword
+  // The initiativesProvider already filters by user's school
   try {
-    final initiativesAsync = await ref.read(
+    final initiativesAsync = await ref.watch(
       initiativesProvider(const InitiativeFilter(limit: 100)).future,
     );
     for (final initiative in initiativesAsync) {
-      if (initiative.title.toLowerCase().contains(query) ||
+      if (searchInitiatives ||
+          initiative.title.toLowerCase().contains(query) ||
           _tagsMatch(initiative.tags, query)) {
         results.add(SearchResult(
           id: initiative.id,
@@ -104,13 +137,15 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
     }
   } catch (_) {}
 
-  // Search polls by title only (no tags field)
+  // Search polls by title OR type keyword
+  // The pollsProvider already filters by user's school
   try {
-    final pollsAsync = await ref.read(
+    final pollsAsync = await ref.watch(
       pollsProvider(const PollFilter(limit: 100)).future,
     );
     for (final poll in pollsAsync) {
-      if (poll.question.toLowerCase().contains(query)) {
+      if (searchPolls ||
+          poll.question.toLowerCase().contains(query)) {
         results.add(SearchResult(
           id: poll.id,
           title: poll.question,
@@ -122,13 +157,15 @@ final searchResultsProvider = FutureProvider<List<SearchResult>>((ref) async {
     }
   } catch (_) {}
 
-  // Search documents by title and tags
+  // Search documents by title, tags, OR type keyword
+  // The documentsProvider already filters by user's school
   try {
-    final documentsAsync = await ref.read(
+    final documentsAsync = await ref.watch(
       documentsProvider(const DocumentFilter(limit: 100)).future,
     );
     for (final document in documentsAsync) {
-      if (document.title.toLowerCase().contains(query) ||
+      if (searchDocuments ||
+          document.title.toLowerCase().contains(query) ||
           _tagsMatch(document.tags, query)) {
         results.add(SearchResult(
           id: document.id,
@@ -167,8 +204,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-focus search field
+    // Clear search query when screen opens (reset to initial state)
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(searchQueryProvider.notifier).state = '';
+      _searchController.clear();
       _focusNode.requestFocus();
     });
   }
@@ -196,8 +235,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         title: Container(
           margin: const EdgeInsets.only(right: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.5), width: 1),
           ),
           child: TextField(
             controller: _searchController,
@@ -205,13 +245,13 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             onChanged: (value) {
               ref.read(searchQueryProvider.notifier).state = value;
             },
-            style: const TextStyle(color: AppColors.navy, fontSize: 16),
-            cursorColor: AppColors.navy,
+            style: const TextStyle(color: AppColors.gold, fontSize: 16),
+            cursorColor: AppColors.gold,
             decoration: InputDecoration(
               hintText: l10n.translate('search_placeholder'),
-              hintStyle: TextStyle(color: Colors.grey[400]),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
               border: InputBorder.none,
-              prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[400]),
+              prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.5)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
             textInputAction: TextInputAction.search,

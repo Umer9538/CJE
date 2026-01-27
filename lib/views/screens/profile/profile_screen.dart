@@ -563,7 +563,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 if (hasAdminAccess) ...[
                   _SettingsTile(
                     icon: Icons.admin_panel_settings_rounded,
-                    iconColor: AppColors.navy,
+                    iconColor: const Color(0xFF3B82F6), // Brighter blue for better visibility
                     title: l10n.translate('manage_users'),
                     subtitle: l10n.translate('manage_users_desc'),
                     onTap: () => Navigator.push(

@@ -406,6 +406,10 @@ class _NotificationCard extends StatelessWidget {
         return Icons.poll_rounded;
       case NotificationType.systemAlert:
         return Icons.info_rounded;
+      case NotificationType.warningIssued:
+        return Icons.warning_rounded;
+      case NotificationType.absenceRecorded:
+        return Icons.event_busy_rounded;
     }
   }
 
@@ -421,6 +425,10 @@ class _NotificationCard extends StatelessWidget {
         return const Color(0xFF8B5CF6);
       case NotificationType.systemAlert:
         return const Color(0xFFEF4444);
+      case NotificationType.warningIssued:
+        return const Color(0xFFDC2626);
+      case NotificationType.absenceRecorded:
+        return const Color(0xFFF97316);
     }
   }
 

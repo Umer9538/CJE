@@ -172,8 +172,9 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
                   color: context.scaffoldBackgroundColor,
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
+                child: ResponsiveContainer(
+                  maxWidth: 800,
+                  padding: EdgeInsets.all(context.responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0)),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

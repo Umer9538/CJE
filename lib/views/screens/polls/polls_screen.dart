@@ -52,8 +52,9 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    // Use StreamProvider for real-time updates
     final pollsAsync = ref.watch(
-      pollsProvider(PollFilter(type: _selectedType, activeOnly: _activeOnly)),
+      pollsStreamProvider(PollFilter(type: _selectedType, activeOnly: _activeOnly)),
     );
 
     // Use the provider for permission check

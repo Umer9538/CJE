@@ -305,7 +305,11 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
   }
 
   Widget _buildAgendaTab(BuildContext context, AppLocalizations l10n) {
-    if (widget.meeting.agendaItems.isEmpty) {
+    final description = widget.meeting.getDescription(Localizations.localeOf(context).languageCode);
+    final hasDescription = description != null && description.isNotEmpty;
+    final hasAgenda = widget.meeting.agendaItems.isNotEmpty;
+
+    if (!hasDescription && !hasAgenda) {
       return _buildEmptyState(
         icon: Icons.list_alt_rounded,
         title: l10n.translate('no_agenda'),
@@ -315,9 +319,66 @@ class _MeetingDetailScreenState extends ConsumerState<MeetingDetailScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: widget.meeting.agendaItems.length,
+      itemCount: (hasDescription ? 1 : 0) + widget.meeting.agendaItems.length,
       itemBuilder: (context, index) {
-        final item = widget.meeting.agendaItems[index];
+        // Show description as the first item
+        if (hasDescription && index == 0) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: context.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.3),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: context.shadowColor,
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.description_rounded,
+                      size: 18,
+                      color: AppColors.gold,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      l10n.translate('description'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.gold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  description!,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: context.textPrimary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Adjust index for agenda items when description is shown
+        final agendaIndex = hasDescription ? index - 1 : index;
+        final item = widget.meeting.agendaItems[agendaIndex];
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
