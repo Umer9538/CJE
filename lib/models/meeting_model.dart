@@ -30,6 +30,7 @@ class MeetingModel extends Equatable {
   final List<MeetingDocument> documents; // Meeting documents
   final String? minutesDocumentUrl; // Meeting minutes PDF (legacy)
   final bool isCompleted;
+  final UserRole? minVisibilityRole; // Minimum role required to view (null = visible to all)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -56,6 +57,7 @@ class MeetingModel extends Equatable {
     this.documents = const [],
     this.minutesDocumentUrl,
     this.isCompleted = false,
+    this.minVisibilityRole,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -147,6 +149,9 @@ class MeetingModel extends Equatable {
           .toList() ?? [],
       minutesDocumentUrl: data['minutesDocumentUrl'] as String?,
       isCompleted: data['isCompleted'] as bool? ?? false,
+      minVisibilityRole: data['minVisibilityRole'] != null
+          ? UserRole.fromFirestore(data['minVisibilityRole'] as String)
+          : null,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -176,6 +181,7 @@ class MeetingModel extends Equatable {
       'documents': documents.map((d) => d.toMap()).toList(),
       'minutesDocumentUrl': minutesDocumentUrl,
       'isCompleted': isCompleted,
+      'minVisibilityRole': minVisibilityRole?.toFirestore(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -205,6 +211,7 @@ class MeetingModel extends Equatable {
     List<MeetingDocument>? documents,
     String? minutesDocumentUrl,
     bool? isCompleted,
+    UserRole? minVisibilityRole,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -231,6 +238,7 @@ class MeetingModel extends Equatable {
       documents: documents ?? this.documents,
       minutesDocumentUrl: minutesDocumentUrl ?? this.minutesDocumentUrl,
       isCompleted: isCompleted ?? this.isCompleted,
+      minVisibilityRole: minVisibilityRole ?? this.minVisibilityRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -260,6 +268,7 @@ class MeetingModel extends Equatable {
         documents,
         minutesDocumentUrl,
         isCompleted,
+        minVisibilityRole,
         createdAt,
         updatedAt,
       ];

@@ -295,6 +295,8 @@ class InitiativeComment extends Equatable {
   final String authorId;
   final String authorName;
   final String? authorPhotoUrl;
+  final String? authorSchoolName; // School they represent
+  final String? authorRole; // Their role (e.g., classRep, schoolRep)
   final String content;
   final bool isOfficial; // Official response from BEX/admin
   final DateTime createdAt;
@@ -305,6 +307,8 @@ class InitiativeComment extends Equatable {
     required this.authorId,
     required this.authorName,
     this.authorPhotoUrl,
+    this.authorSchoolName,
+    this.authorRole,
     required this.content,
     this.isOfficial = false,
     required this.createdAt,
@@ -318,6 +322,8 @@ class InitiativeComment extends Equatable {
       authorId: data['authorId'] as String? ?? '',
       authorName: data['authorName'] as String? ?? '',
       authorPhotoUrl: data['authorPhotoUrl'] as String?,
+      authorSchoolName: data['authorSchoolName'] as String?,
+      authorRole: data['authorRole'] as String?,
       content: data['content'] as String? ?? '',
       isOfficial: data['isOfficial'] as bool? ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -330,6 +336,8 @@ class InitiativeComment extends Equatable {
       'authorId': authorId,
       'authorName': authorName,
       'authorPhotoUrl': authorPhotoUrl,
+      'authorSchoolName': authorSchoolName,
+      'authorRole': authorRole,
       'content': content,
       'isOfficial': isOfficial,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -343,6 +351,8 @@ class InitiativeComment extends Equatable {
         authorId,
         authorName,
         authorPhotoUrl,
+        authorSchoolName,
+        authorRole,
         content,
         isOfficial,
         createdAt,

@@ -28,6 +28,7 @@ class AnnouncementModel extends Equatable {
   final bool isPublished;
   final DateTime? publishedAt;
   final int viewCount;
+  final UserRole? minVisibilityRole; // Minimum role required to view (null = visible to all)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -53,6 +54,7 @@ class AnnouncementModel extends Equatable {
     this.isPublished = false,
     this.publishedAt,
     this.viewCount = 0,
+    this.minVisibilityRole,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -139,6 +141,9 @@ class AnnouncementModel extends Equatable {
       isPublished: data['isPublished'] as bool? ?? false,
       publishedAt: (data['publishedAt'] as Timestamp?)?.toDate(),
       viewCount: data['viewCount'] as int? ?? 0,
+      minVisibilityRole: data['minVisibilityRole'] != null
+          ? UserRole.fromFirestore(data['minVisibilityRole'] as String)
+          : null,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -167,6 +172,7 @@ class AnnouncementModel extends Equatable {
       'isPublished': isPublished,
       'publishedAt': publishedAt != null ? Timestamp.fromDate(publishedAt!) : null,
       'viewCount': viewCount,
+      'minVisibilityRole': minVisibilityRole?.toFirestore(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -195,6 +201,7 @@ class AnnouncementModel extends Equatable {
     bool? isPublished,
     DateTime? publishedAt,
     int? viewCount,
+    UserRole? minVisibilityRole,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -220,6 +227,7 @@ class AnnouncementModel extends Equatable {
       isPublished: isPublished ?? this.isPublished,
       publishedAt: publishedAt ?? this.publishedAt,
       viewCount: viewCount ?? this.viewCount,
+      minVisibilityRole: minVisibilityRole ?? this.minVisibilityRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -248,6 +256,7 @@ class AnnouncementModel extends Equatable {
         isPublished,
         publishedAt,
         viewCount,
+        minVisibilityRole,
         createdAt,
         updatedAt,
       ];

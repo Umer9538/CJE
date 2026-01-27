@@ -26,6 +26,7 @@ class PollModel extends Equatable {
   final DateTime endDate;
   final int totalVotes;
   final List<String> voterIds; // Track who voted (not which option if anonymous)
+  final UserRole? minVisibilityRole; // Minimum role required to view (null = visible to all)
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -48,6 +49,7 @@ class PollModel extends Equatable {
     required this.endDate,
     this.totalVotes = 0,
     this.voterIds = const [],
+    this.minVisibilityRole,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -87,16 +89,18 @@ class PollModel extends Equatable {
   bool get isEmpty => id.isEmpty;
   bool get isNotEmpty => id.isNotEmpty;
 
-  /// Check if poll is active
+  /// Check if poll is active (startDate <= now < endDate)
   bool get isActive {
     final now = DateTime.now();
-    return now.isAfter(startDate) && now.isBefore(endDate);
+    // Use inclusive start (>=) and exclusive end (<)
+    // This ensures polls are active immediately when startDate is reached
+    return !now.isBefore(startDate) && now.isBefore(endDate);
   }
 
-  /// Check if poll has ended
-  bool get hasEnded => DateTime.now().isAfter(endDate);
+  /// Check if poll has ended (now >= endDate)
+  bool get hasEnded => !DateTime.now().isBefore(endDate);
 
-  /// Check if poll hasn't started yet
+  /// Check if poll hasn't started yet (now < startDate)
   bool get isPending => DateTime.now().isBefore(startDate);
 
   /// Get poll status
@@ -142,6 +146,9 @@ class PollModel extends Equatable {
           DateTime.now().add(const Duration(days: 7)),
       totalVotes: data['totalVotes'] as int? ?? 0,
       voterIds: List<String>.from(data['voterIds'] ?? []),
+      minVisibilityRole: data['minVisibilityRole'] != null
+          ? UserRole.fromFirestore(data['minVisibilityRole'] as String)
+          : null,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -167,6 +174,7 @@ class PollModel extends Equatable {
       'endDate': Timestamp.fromDate(endDate),
       'totalVotes': totalVotes,
       'voterIds': voterIds,
+      'minVisibilityRole': minVisibilityRole?.toFirestore(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -192,6 +200,7 @@ class PollModel extends Equatable {
     DateTime? endDate,
     int? totalVotes,
     List<String>? voterIds,
+    UserRole? minVisibilityRole,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -214,6 +223,7 @@ class PollModel extends Equatable {
       endDate: endDate ?? this.endDate,
       totalVotes: totalVotes ?? this.totalVotes,
       voterIds: voterIds ?? this.voterIds,
+      minVisibilityRole: minVisibilityRole ?? this.minVisibilityRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -239,6 +249,7 @@ class PollModel extends Equatable {
         endDate,
         totalVotes,
         voterIds,
+        minVisibilityRole,
         createdAt,
         updatedAt,
       ];

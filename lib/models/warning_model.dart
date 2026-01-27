@@ -12,9 +12,9 @@ extension WarningTypeExtension on WarningType {
   String get displayName {
     switch (this) {
       case WarningType.verbal:
-        return 'Verbal Warning';
+        return 'Verbal Reprimand';
       case WarningType.written:
-        return 'Written Warning';
+        return 'Written Reprimand';
       case WarningType.suspension:
         return 'Suspension';
       case WarningType.removal:
@@ -25,9 +25,9 @@ extension WarningTypeExtension on WarningType {
   String get displayNameRo {
     switch (this) {
       case WarningType.verbal:
-        return 'Avertisment Verbal';
+        return 'Mustrare Verbală';
       case WarningType.written:
-        return 'Avertisment Scris';
+        return 'Mustrare Scrisă';
       case WarningType.suspension:
         return 'Suspendare';
       case WarningType.removal:

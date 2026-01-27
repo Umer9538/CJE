@@ -59,6 +59,10 @@ class NotificationModel extends Equatable {
       case NotificationType.pollReminder:
         final pollId = data!['pollId'] as String?;
         return pollId != null ? '/polls/$pollId' : '/polls';
+      case NotificationType.warningIssued:
+      case NotificationType.absenceRecorded:
+        // Navigate to My Warnings screen
+        return '/my-warnings';
       case NotificationType.systemAlert:
         return null;
     }
