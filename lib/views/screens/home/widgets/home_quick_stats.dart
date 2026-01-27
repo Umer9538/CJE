@@ -99,56 +99,38 @@ class HomeQuickStats extends ConsumerWidget {
 
     // Ensure we have exactly 4 actions (or less)
     final displayActions = actions.take(4).toList();
+    final responsive = Responsive(context);
+
+    // Responsive grid columns: 2 on mobile, 4 on tablet/desktop
+    final columns = responsive.value(mobile: 2, tablet: 4, desktop: 4);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.translate('quick_actions'),
             style: TextStyle(
-              fontSize: 18,
+              fontSize: responsive.value(mobile: 18.0, tablet: 20.0, desktop: 22.0),
               fontWeight: FontWeight.bold,
               color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
-          // First row
-          Row(
-            children: [
-              if (displayActions.isNotEmpty)
-                Expanded(
-                  child: _QuickActionButton(data: displayActions[0]),
-                ),
-              if (displayActions.length > 1) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickActionButton(data: displayActions[1]),
-                ),
-              ],
-            ],
-          ),
-          if (displayActions.length > 2) ...[
-            const SizedBox(height: 12),
-            // Second row
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickActionButton(data: displayActions[2]),
-                ),
-                if (displayActions.length > 3) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _QuickActionButton(data: displayActions[3]),
-                  ),
-                ] else ...[
-                  const SizedBox(width: 12),
-                  const Expanded(child: SizedBox()),
-                ],
-              ],
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: responsive.value(mobile: 2.2, tablet: 2.5, desktop: 2.8),
             ),
-          ],
+            itemCount: displayActions.length,
+            itemBuilder: (context, index) => _QuickActionButton(data: displayActions[index]),
+          ),
         ],
       ),
     );
@@ -156,51 +138,55 @@ class HomeQuickStats extends ConsumerWidget {
 
   Widget _buildMinimalQuickActions(BuildContext context, AppLocalizations l10n) {
     final secondaryColor = context.iconColor;
+    final responsive = Responsive(context);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
+
+    final actions = [
+      _QuickActionData(
+        icon: Icons.folder_rounded,
+        label: l10n.translate('documents'),
+        color: secondaryColor,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DocumentsScreen()),
+        ),
+      ),
+      _QuickActionData(
+        icon: Icons.calendar_month_rounded,
+        label: l10n.translate('calendar'),
+        color: AppColors.gold,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CalendarScreen()),
+        ),
+      ),
+    ];
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+      padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             l10n.translate('quick_actions'),
             style: TextStyle(
-              fontSize: 18,
+              fontSize: responsive.value(mobile: 18.0, tablet: 20.0, desktop: 22.0),
               fontWeight: FontWeight.bold,
               color: context.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickActionButton(
-                  data: _QuickActionData(
-                    icon: Icons.folder_rounded,
-                    label: l10n.translate('documents'),
-                    color: secondaryColor,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const DocumentsScreen()),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _QuickActionButton(
-                  data: _QuickActionData(
-                    icon: Icons.calendar_month_rounded,
-                    label: l10n.translate('calendar'),
-                    color: AppColors.gold,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CalendarScreen()),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: responsive.value(mobile: 2, tablet: 4, desktop: 4),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: responsive.value(mobile: 2.2, tablet: 2.5, desktop: 2.8),
+            ),
+            itemCount: actions.length,
+            itemBuilder: (context, index) => _QuickActionButton(data: actions[index]),
           ),
         ],
       ),
