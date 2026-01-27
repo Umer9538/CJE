@@ -298,116 +298,92 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildStatisticsSection(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+    final responsive = Responsive(context);
+    final columns = responsive.value(mobile: 2, tablet: 3, desktop: 4);
+
+    final statCards = <Widget>[
+      _StatCard(
+        icon: Icons.people_rounded,
+        iconColor: Colors.blue,
+        title: l10n.translate('total_users'),
+        valueProvider: ref.watch(allUsersProvider),
+        valueBuilder: (users) => users.length.toString(),
+      ),
+      _StatCard(
+        icon: Icons.pending_actions_rounded,
+        iconColor: Colors.orange,
+        title: l10n.translate('pending'),
+        valueProvider: ref.watch(pendingUsersProvider),
+        valueBuilder: (users) => users.length.toString(),
+      ),
+      _StatCardGeneric<List<SchoolModel>>(
+        icon: Icons.school_rounded,
+        iconColor: Colors.green,
+        title: l10n.translate('schools'),
+        valueProvider: ref.watch(activeSchoolsProvider),
+        valueBuilder: (schools) => schools.length.toString(),
+      ),
+      _StatCardGeneric<List<AnnouncementModel>>(
+        icon: Icons.campaign_rounded,
+        iconColor: Colors.purple,
+        title: l10n.translate('announcements'),
+        valueProvider: ref.watch(announcementsProvider(const AnnouncementFilter())),
+        valueBuilder: (announcements) => announcements.length.toString(),
+      ),
+      _StatCardGeneric<List<PollModel>>(
+        icon: Icons.poll_rounded,
+        iconColor: Colors.orange,
+        title: l10n.translate('active_polls'),
+        valueProvider: ref.watch(pollsProvider(const PollFilter(activeOnly: true))),
+        valueBuilder: (polls) => polls.length.toString(),
+      ),
+      _StatCardGeneric<List<MeetingModel>>(
+        icon: Icons.event_rounded,
+        iconColor: Colors.indigo,
+        title: l10n.translate('upcoming_meetings'),
+        valueProvider: ref.watch(upcomingMeetingsProvider),
+        valueBuilder: (meetings) => meetings.length.toString(),
+      ),
+      _StatCardGeneric<List<GDSModel>>(
+        icon: Icons.groups_rounded,
+        iconColor: Colors.cyan,
+        title: l10n.translate('support_groups'),
+        valueProvider: ref.watch(activeGDSProvider),
+        valueBuilder: (gds) => gds.length.toString(),
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           l10n.translate('statistics'),
           style: TextStyle(
-            fontSize: 18,
+            fontSize: responsive.value(mobile: 18.0, tablet: 20.0, desktop: 22.0),
             fontWeight: FontWeight.bold,
             color: context.textPrimary,
           ),
         ),
         const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.people_rounded,
-                iconColor: Colors.blue,
-                title: l10n.translate('total_users'),
-                valueProvider: ref.watch(allUsersProvider),
-                valueBuilder: (users) => users.length.toString(),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.pending_actions_rounded,
-                iconColor: Colors.orange,
-                title: l10n.translate('pending'),
-                valueProvider: ref.watch(pendingUsersProvider),
-                valueBuilder: (users) => users.length.toString(),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCardGeneric<List<SchoolModel>>(
-                icon: Icons.school_rounded,
-                iconColor: Colors.green,
-                title: l10n.translate('schools'),
-                valueProvider: ref.watch(activeSchoolsProvider),
-                valueBuilder: (schools) => schools.length.toString(),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCardGeneric<List<AnnouncementModel>>(
-                icon: Icons.campaign_rounded,
-                iconColor: Colors.purple,
-                title: l10n.translate('announcements'),
-                valueProvider: ref.watch(announcementsProvider(const AnnouncementFilter())),
-                valueBuilder: (announcements) => announcements.length.toString(),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCardGeneric<List<PollModel>>(
-                icon: Icons.poll_rounded,
-                iconColor: Colors.orange,
-                title: l10n.translate('active_polls'),
-                valueProvider: ref.watch(pollsProvider(const PollFilter(activeOnly: true))),
-                valueBuilder: (polls) => polls.length.toString(),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCardGeneric<List<MeetingModel>>(
-                icon: Icons.event_rounded,
-                iconColor: Colors.indigo,
-                title: l10n.translate('upcoming_meetings'),
-                valueProvider: ref.watch(upcomingMeetingsProvider),
-                valueBuilder: (meetings) => meetings.length.toString(),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCardGeneric<List<GDSModel>>(
-                icon: Icons.groups_rounded,
-                iconColor: Colors.cyan,
-                title: l10n.translate('support_groups'),
-                valueProvider: ref.watch(activeGDSProvider),
-                valueBuilder: (gds) => gds.length.toString(),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(child: SizedBox()), // Placeholder for balance
-          ],
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: responsive.value(mobile: 1.4, tablet: 1.5, desktop: 1.6),
+          ),
+          itemCount: statCards.length,
+          itemBuilder: (context, index) => statCards[index],
         ),
       ],
     );
   }
 
   Widget _buildQuickActionsSection(BuildContext context, AppLocalizations l10n) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    // Calculate columns based on screen width - minimum 4, max 5 for tablets
-    final crossAxisCount = screenWidth > 600 ? 5 : 4;
-    // Calculate aspect ratio based on available width
-    final itemWidth = (screenWidth - 40 - (crossAxisCount - 1) * 12) / crossAxisCount;
-    final aspectRatio = itemWidth / (itemWidth + 16); // More height for text
+    final responsive = Responsive(context);
+    final crossAxisCount = responsive.value(mobile: 4, tablet: 6, desktop: 8);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -415,7 +391,7 @@ class AdminDashboardScreen extends ConsumerWidget {
         Text(
           l10n.translate('quick_actions'),
           style: TextStyle(
-            fontSize: 18,
+            fontSize: responsive.value(mobile: 18.0, tablet: 20.0, desktop: 22.0),
             fontWeight: FontWeight.bold,
             color: context.textPrimary,
           ),
@@ -427,7 +403,7 @@ class AdminDashboardScreen extends ConsumerWidget {
           crossAxisCount: crossAxisCount,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: aspectRatio,
+          childAspectRatio: responsive.value(mobile: 0.85, tablet: 0.9, desktop: 0.95),
           children: [
             _QuickActionButton(
               icon: Icons.people_rounded,

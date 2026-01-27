@@ -17,7 +17,10 @@ class SchoolDetailSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
     final canManage = ref.watch(canManageSchoolsProvider);
-    final usersAsync = ref.watch(usersByRoleProvider(UserRole.schoolRep));
+    // Fetch students at this school for representative selection
+    final schoolStudentsAsync = ref.watch(usersBySchoolStreamProvider(school.id));
+    // Fetch the actual school representative from users collection
+    final actualRepAsync = ref.watch(schoolRepresentativeProvider(school.id));
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -31,12 +34,13 @@ class SchoolDetailSheet extends ConsumerWidget {
           children: [
             _buildHeader(context),
             const SizedBox(height: 24),
-            _buildInfoSection(context, l10n),
+            _buildInfoSection(context, l10n, ref),
             const SizedBox(height: 24),
             _SchoolRepSection(
               school: school,
               canManage: canManage,
-              usersAsync: usersAsync,
+              schoolStudentsAsync: schoolStudentsAsync,
+              actualRepAsync: actualRepAsync,
             ),
             const SizedBox(height: 24),
             _SchoolMembersSection(school: school),
@@ -99,14 +103,22 @@ class SchoolDetailSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoSection(BuildContext context, AppLocalizations l10n) {
+  Widget _buildInfoSection(BuildContext context, AppLocalizations l10n, WidgetRef ref) {
+    // Get actual member count from users collection
+    final membersAsync = ref.watch(usersBySchoolStreamProvider(school.id));
+    final memberCount = membersAsync.when(
+      data: (members) => members.length,
+      loading: () => school.studentCount,
+      error: (_, __) => school.studentCount,
+    );
+
     return Column(
       children: [
         _InfoRow(
           context: context,
           icon: Icons.people_outlined,
-          label: l10n.translate('students'),
-          value: '${school.studentCount}',
+          label: l10n.translate('members'),
+          value: '$memberCount',
         ),
         if (school.city != null)
           _InfoRow(
@@ -191,17 +203,22 @@ class _InfoRow extends StatelessWidget {
 class _SchoolRepSection extends ConsumerWidget {
   final SchoolModel school;
   final bool canManage;
-  final AsyncValue<List<UserModel>> usersAsync;
+  final AsyncValue<List<UserModel>> schoolStudentsAsync;
+  final AsyncValue<UserModel?> actualRepAsync;
 
   const _SchoolRepSection({
     required this.school,
     required this.canManage,
-    required this.usersAsync,
+    required this.schoolStudentsAsync,
+    required this.actualRepAsync,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+
+    // Get the actual rep from the async value
+    final actualRep = actualRepAsync.valueOrNull;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -215,15 +232,15 @@ class _SchoolRepSection extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        if (school.schoolRepName != null)
-          _buildRepCard(context, ref, l10n)
+        if (actualRep != null)
+          _buildRepCard(context, ref, l10n, actualRep)
         else
           _buildNoRepCard(context, ref, l10n),
       ],
     );
   }
 
-  Widget _buildRepCard(BuildContext context, WidgetRef ref, AppLocalizations l10n) {
+  Widget _buildRepCard(BuildContext context, WidgetRef ref, AppLocalizations l10n, UserModel rep) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -237,19 +254,31 @@ class _SchoolRepSection extends ConsumerWidget {
             radius: 20,
             backgroundColor: isDark ? AppColors.gold : AppColors.navy,
             child: Text(
-              school.schoolRepName![0].toUpperCase(),
+              rep.fullName.isNotEmpty ? rep.fullName[0].toUpperCase() : '?',
               style: TextStyle(color: isDark ? AppColors.navy : AppColors.gold, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              school.schoolRepName!,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rep.fullName,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                ),
+                Text(
+                  rep.email,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
           if (canManage)
@@ -299,46 +328,57 @@ class _SchoolRepSection extends ConsumerWidget {
         title: Text(l10n.translate('select_representative')),
         content: SizedBox(
           width: double.maxFinite,
-          child: usersAsync.when(
-            data: (users) => ListView.builder(
-              shrinkWrap: true,
-              itemCount: users.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
+          child: schoolStudentsAsync.when(
+            data: (students) {
+              if (students.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    l10n.translate('no_students_at_school'),
+                    style: TextStyle(color: context.textSecondary),
+                  ),
+                );
+              }
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: students.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return ListTile(
+                      leading: const CircleAvatar(child: Icon(Icons.person_off)),
+                      title: Text(l10n.translate('none')),
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await ref.read(schoolControllerProvider.notifier)
+                            .assignSchoolRep(school.id, null, null);
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                    );
+                  }
+                  final student = students[index - 1];
                   return ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person_off)),
-                    title: Text(l10n.translate('none')),
+                    leading: CircleAvatar(
+                      backgroundColor: student.role.badgeBackgroundColor,
+                      child: Text(
+                        student.fullName.isNotEmpty ? student.fullName[0].toUpperCase() : '?',
+                        style: TextStyle(
+                          color: student.role.badgeTextColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    title: Text(student.fullName),
+                    subtitle: Text('${student.email} • ${student.role.displayName}'),
                     onTap: () async {
                       Navigator.pop(ctx);
                       await ref.read(schoolControllerProvider.notifier)
-                          .assignSchoolRep(school.id, null, null);
+                          .assignSchoolRep(school.id, student.id, student.fullName);
                       if (context.mounted) Navigator.pop(context);
                     },
                   );
-                }
-                final user = users[index - 1];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.gold.withValues(alpha: 0.15),
-                    child: Text(
-                      user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
-                      style: TextStyle(
-                        color: context.textPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  title: Text(user.fullName),
-                  subtitle: Text(user.email),
-                  onTap: () async {
-                    Navigator.pop(ctx);
-                    await ref.read(schoolControllerProvider.notifier)
-                        .assignSchoolRep(school.id, user.id, user.fullName);
-                    if (context.mounted) Navigator.pop(context);
-                  },
-                );
-              },
-            ),
+                },
+              );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => Text(l10n.translate('error_loading')),
           ),

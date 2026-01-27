@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../controllers/admin/admin_controller.dart';
+import '../../../../controllers/schools/school_controller.dart';
 import '../../../../core/core.dart';
 import '../../../../models/models.dart';
 
 /// School card widget for admin schools list
-class SchoolCard extends StatelessWidget {
+class SchoolCard extends ConsumerWidget {
   final SchoolModel school;
   final VoidCallback onTap;
   final VoidCallback? onEdit;
@@ -17,7 +20,11 @@ class SchoolCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Fetch the actual school representative from users collection
+    final schoolRepAsync = ref.watch(schoolRepresentativeProvider(school.id));
+    // Fetch actual member count from users collection
+    final membersAsync = ref.watch(usersBySchoolStreamProvider(school.id));
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -41,7 +48,7 @@ class SchoolCard extends StatelessWidget {
           children: [
             _buildLogo(context),
             const SizedBox(width: 14),
-            Expanded(child: _buildInfo(context)),
+            Expanded(child: _buildInfo(context, schoolRepAsync, membersAsync)),
             _buildTrailing(context),
           ],
         ),
@@ -89,7 +96,7 @@ class SchoolCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfo(BuildContext context) {
+  Widget _buildInfo(BuildContext context, AsyncValue<UserModel?> schoolRepAsync, AsyncValue<List<UserModel>> membersAsync) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -120,7 +127,7 @@ class SchoolCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        _buildStats(context),
+        _buildStats(context, schoolRepAsync, membersAsync),
       ],
     );
   }
@@ -143,22 +150,36 @@ class SchoolCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStats(BuildContext context) {
+  Widget _buildStats(BuildContext context, AsyncValue<UserModel?> schoolRepAsync, AsyncValue<List<UserModel>> membersAsync) {
+    // Get the actual school rep name from the async data
+    final repName = schoolRepAsync.when(
+      data: (rep) => rep?.fullName,
+      loading: () => null,
+      error: (_, __) => null,
+    );
+
+    // Get actual member count from the async data
+    final memberCount = membersAsync.when(
+      data: (members) => members.length,
+      loading: () => school.studentCount, // Fallback to static count while loading
+      error: (_, __) => school.studentCount,
+    );
+
     return Row(
       children: [
         Icon(Icons.people_outline, size: 14, color: context.textSecondary),
         const SizedBox(width: 4),
         Text(
-          '${school.studentCount} students',
+          '$memberCount members',
           style: TextStyle(fontSize: 12, color: context.textSecondary),
         ),
-        if (school.schoolRepName != null) ...[
+        if (repName != null) ...[
           const SizedBox(width: 12),
           Icon(Icons.person_outline, size: 14, color: context.textSecondary),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              school.schoolRepName!,
+              repName,
               style: TextStyle(fontSize: 12, color: context.textSecondary),
               overflow: TextOverflow.ellipsis,
             ),

@@ -389,6 +389,10 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
         return Icons.poll_rounded;
       case NotificationType.systemAlert:
         return Icons.notifications_rounded;
+      case NotificationType.warningIssued:
+        return Icons.warning_rounded;
+      case NotificationType.absenceRecorded:
+        return Icons.event_busy_rounded;
     }
   }
 
@@ -404,6 +408,10 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
         return Colors.orange;
       case NotificationType.systemAlert:
         return Colors.blue;
+      case NotificationType.warningIssued:
+        return Colors.red;
+      case NotificationType.absenceRecorded:
+        return Colors.deepOrange;
     }
   }
 
@@ -419,6 +427,10 @@ class _SendNotificationScreenState extends ConsumerState<SendNotificationScreen>
         return l10n.translate('poll');
       case NotificationType.systemAlert:
         return l10n.translate('general');
+      case NotificationType.warningIssued:
+        return l10n.translate('warning');
+      case NotificationType.absenceRecorded:
+        return l10n.translate('absence');
     }
   }
 
