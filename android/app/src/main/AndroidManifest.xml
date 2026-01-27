@@ -8,7 +8,8 @@
     <application
         android:label="cje"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
 
         <!-- FCM Default Notification Channel -->
         <meta-data
