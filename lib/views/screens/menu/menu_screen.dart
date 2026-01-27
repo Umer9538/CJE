@@ -14,6 +14,7 @@ import '../calendar/calendar_screen.dart';
 import '../documents/documents_screen.dart';
 import '../polls/polls_screen.dart';
 import '../profile/profile_screen.dart';
+import '../warnings/my_warnings_screen.dart';
 
 /// Menu/More screen containing navigation to various app sections
 class MenuScreen extends ConsumerStatefulWidget {
@@ -318,6 +319,17 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                  ),
+                ),
+                _buildDivider(),
+                _MenuTile(
+                  icon: Icons.warning_amber_rounded,
+                  iconColor: Colors.orange,
+                  title: l10n.translate('my_warnings_absences'),
+                  subtitle: l10n.translate('my_warnings_absences_subtitle'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const MyWarningsScreen()),
                   ),
                 ),
               ],
