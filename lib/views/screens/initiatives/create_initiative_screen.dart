@@ -312,7 +312,8 @@ class _CreateInitiativeScreenState
                   ),
                 ),
               ),
-            const SizedBox(height: 32),
+            // Extra padding to ensure button doesn't overlap with bottom navigation
+            const SizedBox(height: 120),
           ],
         ),
       ),
@@ -833,24 +834,31 @@ class _CreateInitiativeScreenState
       }
     } else {
       // Create new initiative
-      final id = await controller.createInitiative(
-        title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
-        problem: _problemController.text.trim().isEmpty
-            ? null
-            : _problemController.text.trim(),
-        solution: _solutionController.text.trim().isEmpty
-            ? null
-            : _solutionController.text.trim(),
-        impact: _impactController.text.trim().isEmpty
-            ? null
-            : _impactController.text.trim(),
-        tags: _tags.isEmpty ? null : _tags,
-        submitImmediately: submitImmediately,
-        type: _selectedType,
-        schoolId: _selectedType == InitiativeType.school ? _selectedSchoolId : null,
-        schoolName: _selectedType == InitiativeType.school ? _selectedSchoolName : null,
-      );
+      String? errorMessage;
+      String? id;
+
+      try {
+        id = await controller.createInitiative(
+          title: _titleController.text.trim(),
+          description: _descriptionController.text.trim(),
+          problem: _problemController.text.trim().isEmpty
+              ? null
+              : _problemController.text.trim(),
+          solution: _solutionController.text.trim().isEmpty
+              ? null
+              : _solutionController.text.trim(),
+          impact: _impactController.text.trim().isEmpty
+              ? null
+              : _impactController.text.trim(),
+          tags: _tags.isEmpty ? null : _tags,
+          submitImmediately: submitImmediately,
+          type: _selectedType,
+          schoolId: _selectedType == InitiativeType.school ? _selectedSchoolId : null,
+          schoolName: _selectedType == InitiativeType.school ? _selectedSchoolName : null,
+        );
+      } catch (e) {
+        errorMessage = e.toString();
+      }
 
       setState(() => _isLoading = false);
 
@@ -867,10 +875,52 @@ class _CreateInitiativeScreenState
           ),
         );
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.translate('error_creating_initiative')),
-            backgroundColor: Colors.red,
+        // Show detailed error dialog
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.red),
+                const SizedBox(width: 8),
+                Text(l10n.translate('error_creating_initiative')),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Failed to create initiative. Error details:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SelectableText(
+                      errorMessage ?? 'Unknown error - check network connection',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Please screenshot this and send to the developer.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
       }

@@ -34,6 +34,9 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
   String? _selectedSchoolId;
   String? _selectedSchoolName;
 
+  // Visibility role (null = visible to all)
+  UserRole? _minVisibilityRole;
+
   @override
   void dispose() {
     _questionController.dispose();
@@ -324,6 +327,66 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             ),
             const SizedBox(height: 24),
 
+            // Visibility Role Selector
+            Text(
+              l10n.translate('visibility'),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.borderColor),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<UserRole?>(
+                  value: _minVisibilityRole,
+                  hint: Text(
+                    l10n.translate('visible_to_all'),
+                    style: TextStyle(color: context.textPrimary),
+                  ),
+                  isExpanded: true,
+                  dropdownColor: context.cardColor,
+                  items: [
+                    DropdownMenuItem<UserRole?>(
+                      value: null,
+                      child: Text(
+                        l10n.translate('visible_to_all'),
+                        style: TextStyle(color: context.textPrimary),
+                      ),
+                    ),
+                    ...UserRole.values.where((role) => role != UserRole.superadmin).map((role) {
+                      return DropdownMenuItem<UserRole?>(
+                        value: role,
+                        child: Text(
+                          '${l10n.translate(role.translationKey)} ${l10n.translate('and_above')}',
+                          style: TextStyle(color: context.textPrimary),
+                        ),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _minVisibilityRole = value);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.translate('visibility_hint'),
+              style: TextStyle(
+                fontSize: 12,
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Dates
             Text(
               l10n.translate('voting_period'),
@@ -387,7 +450,8 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
                       ),
               ),
             ),
-            const SizedBox(height: 32),
+            // Extra padding to ensure button doesn't overlap with bottom navigation
+            const SizedBox(height: 120),
           ],
         ),
       ),
@@ -602,20 +666,28 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
       voteCount: 0,
     )).toList();
 
-    final id = await controller.createPoll(
-      question: _questionController.text.trim(),
-      description: _descriptionController.text.trim().isEmpty
-          ? null
-          : _descriptionController.text.trim(),
-      type: _selectedType,
-      options: options,
-      isAnonymous: _isAnonymous,
-      allowMultipleVotes: _allowMultipleVotes,
-      startDate: _startDate,
-      endDate: _endDate,
-      schoolId: _selectedSchoolId,
-      schoolName: _selectedSchoolName,
-    );
+    String? errorMessage;
+    String? id;
+
+    try {
+      id = await controller.createPoll(
+        question: _questionController.text.trim(),
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        type: _selectedType,
+        options: options,
+        isAnonymous: _isAnonymous,
+        allowMultipleVotes: _allowMultipleVotes,
+        startDate: _startDate,
+        endDate: _endDate,
+        schoolId: _selectedSchoolId,
+        schoolName: _selectedSchoolName,
+        minVisibilityRole: _minVisibilityRole,
+      );
+    } catch (e) {
+      errorMessage = e.toString();
+    }
 
     setState(() => _isLoading = false);
 
@@ -629,10 +701,53 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppLocalizations.of(context).translate('error_creating_poll')),
-            backgroundColor: Colors.red,
+        final l10n = AppLocalizations.of(context);
+        // Show detailed error dialog
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.red),
+                const SizedBox(width: 8),
+                Text(l10n.translate('error_creating_poll')),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Failed to create poll. Error details:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: SelectableText(
+                      errorMessage ?? 'Unknown error - check network connection',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Please screenshot this and send to the developer.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
           ),
         );
       }

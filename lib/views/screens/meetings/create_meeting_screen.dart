@@ -43,6 +43,9 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
   String? _selectedSchoolName;
   DepartmentType? _selectedDepartment;
 
+  // Visibility role (null = visible to all)
+  UserRole? _minVisibilityRole;
+
   final List<String> _agendaItems = [];
   final _agendaController = TextEditingController();
 
@@ -73,6 +76,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
     // Check which types user can create
     final canCreatePlenary = user != null &&
         (user.role == UserRole.bex || user.role == UserRole.superadmin);
+    // Department meetings can only be created by department, BEX, or superadmin
+    final canCreateDepartment = user != null &&
+        (user.role == UserRole.department ||
+         user.role == UserRole.bex ||
+         user.role == UserRole.superadmin);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -106,11 +114,20 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
         ),
         centerTitle: true,
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: context.responsive.maxContentWidth),
+            child: Form(
+              key: _formKey,
+              child: ListView(
+                padding: EdgeInsets.fromLTRB(
+                  context.responsive.value(mobile: 20.0, tablet: 32.0, desktop: 48.0),
+                  context.responsive.value(mobile: 16.0, tablet: 24.0, desktop: 32.0),
+                  context.responsive.value(mobile: 20.0, tablet: 32.0, desktop: 48.0),
+                  MediaQuery.of(context).padding.bottom + context.responsive.value(mobile: 100.0, tablet: 120.0, desktop: 80.0),
+                ),
+                children: [
             // Meeting Type
             Text(
               l10n.translate('meeting_type'),
@@ -135,7 +152,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                   label: l10n.translate('department'),
                   icon: Icons.groups_rounded,
                   isSelected: _selectedType == MeetingType.department,
-                  onTap: () => setState(() => _selectedType = MeetingType.department),
+                  isDisabled: !canCreateDepartment,
+                  onTap: canCreateDepartment
+                      ? () => setState(() => _selectedType = MeetingType.department)
+                      : null,
                 ),
                 _TypeChip(
                   label: l10n.translate('meeting_type_county_ag'),
@@ -159,7 +179,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             ),
 
             // School Dropdown (when School type is selected)
-            if (_selectedType == MeetingType.school) ...[
+            // Only show for BEX/Superadmin who can create meetings for any school
+            // School Reps can only create meetings for their own school (enforced in controller)
+            if (_selectedType == MeetingType.school &&
+                user != null &&
+                (user.role == UserRole.bex || user.role == UserRole.superadmin)) ...[
               const SizedBox(height: 16),
               _buildSchoolSelector(l10n),
             ],
@@ -170,6 +194,67 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
               _buildDepartmentSelector(l10n),
             ],
 
+            const SizedBox(height: 24),
+
+            // Visibility Role Selector
+            Text(
+              l10n.translate('visibility'),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: context.borderColor),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<UserRole?>(
+                  value: _minVisibilityRole,
+                  hint: Text(
+                    l10n.translate('visible_to_all'),
+                    style: TextStyle(color: context.textPrimary),
+                  ),
+                  isExpanded: true,
+                  icon: Icon(Icons.keyboard_arrow_down, color: context.iconColor),
+                  dropdownColor: context.cardColor,
+                  items: [
+                    DropdownMenuItem<UserRole?>(
+                      value: null,
+                      child: Text(
+                        l10n.translate('visible_to_all'),
+                        style: TextStyle(color: context.textPrimary),
+                      ),
+                    ),
+                    ...UserRole.values.where((role) => role != UserRole.superadmin).map((role) {
+                      return DropdownMenuItem<UserRole?>(
+                        value: role,
+                        child: Text(
+                          '${l10n.translate(role.translationKey)} ${l10n.translate('and_above')}',
+                          style: TextStyle(color: context.textPrimary),
+                        ),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _minVisibilityRole = value);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.translate('visibility_hint'),
+              style: TextStyle(
+                fontSize: 12,
+                color: context.textSecondary,
+              ),
+            ),
             const SizedBox(height: 24),
 
             // Title
@@ -452,8 +537,12 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                       ),
               ),
             ),
-            const SizedBox(height: 32),
-          ],
+            // Extra padding to ensure button doesn't overlap with bottom navigation
+            const SizedBox(height: 120),
+              ],
+            ),
+          ),
+        ),
         ),
       ),
     );
@@ -1101,21 +1190,29 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
     );
 
     final controller = ref.read(meetingControllerProvider.notifier);
-    final id = await controller.createMeeting(
-      title: _titleController.text.trim(),
-      type: _selectedType,
-      dateTime: dateTime,
-      description: _descriptionController.text.trim(),
-      durationMinutes: _duration,
-      location: _isOnline ? null : _locationController.text.trim(),
-      isOnline: _isOnline,
-      onlineLink: _isOnline ? _onlineLinkController.text.trim() : null,
-      schoolId: _selectedSchoolId,
-      schoolName: _selectedSchoolName,
-      department: _selectedDepartment,
-      agendaItems: _agendaItems.isEmpty ? null : _agendaItems,
-      documents: uploadedDocuments.isEmpty ? null : uploadedDocuments,
-    );
+    String? errorMessage;
+    String? id;
+
+    try {
+      id = await controller.createMeeting(
+        title: _titleController.text.trim(),
+        type: _selectedType,
+        dateTime: dateTime,
+        description: _descriptionController.text.trim(),
+        durationMinutes: _duration,
+        location: _isOnline ? null : _locationController.text.trim(),
+        isOnline: _isOnline,
+        onlineLink: _isOnline ? _onlineLinkController.text.trim() : null,
+        schoolId: _selectedSchoolId,
+        schoolName: _selectedSchoolName,
+        department: _selectedDepartment,
+        agendaItems: _agendaItems.isEmpty ? null : _agendaItems,
+        documents: uploadedDocuments.isEmpty ? null : uploadedDocuments,
+        minVisibilityRole: _minVisibilityRole,
+      );
+    } catch (e) {
+      errorMessage = e.toString();
+    }
 
     setState(() => _isLoading = false);
 
@@ -1128,10 +1225,53 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
         ),
       );
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).translate('error_creating_meeting')),
-          backgroundColor: Colors.red,
+      final l10n = AppLocalizations.of(context);
+      // Show detailed error dialog
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.red),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l10n.translate('error_creating_meeting'))),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Failed to create meeting. Error details:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SelectableText(
+                    errorMessage ?? 'Unknown error - check network connection',
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Please screenshot this and send to the developer.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
         ),
       );
     }

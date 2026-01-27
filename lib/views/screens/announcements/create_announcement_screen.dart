@@ -8,10 +8,13 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../../../controllers/admin/admin_controller.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
+import '../../../models/models.dart';
 
-/// Screen for creating a new announcement
+/// Screen for creating a new announcement or editing a draft
 class CreateAnnouncementScreen extends ConsumerStatefulWidget {
-  const CreateAnnouncementScreen({super.key});
+  final AnnouncementModel? draftAnnouncement;
+
+  const CreateAnnouncementScreen({super.key, this.draftAnnouncement});
 
   @override
   ConsumerState<CreateAnnouncementScreen> createState() =>
@@ -29,12 +32,33 @@ class _CreateAnnouncementScreenState
   String? _selectedSchoolName;
   bool _isPinned = false;
   bool _isLoading = false;
+  UserRole? _minVisibilityRole; // null = visible to all
   bool _isUploading = false;
   double _uploadProgress = 0;
 
   // Image and attachments
   File? _selectedImage;
   final List<PlatformFile> _selectedAttachments = [];
+
+  // For editing drafts
+  bool get _isEditing => widget.draftAnnouncement != null;
+  String? _existingImageUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-populate form if editing a draft
+    if (widget.draftAnnouncement != null) {
+      final draft = widget.draftAnnouncement!;
+      _titleController.text = draft.title;
+      _contentController.text = draft.content;
+      _selectedType = draft.type;
+      _selectedSchoolId = draft.schoolId;
+      _selectedSchoolName = draft.schoolName;
+      _isPinned = draft.isPinned;
+      _existingImageUrl = draft.imageUrl;
+    }
+  }
 
   @override
   void dispose() {
@@ -76,7 +100,7 @@ class _CreateAnnouncementScreenState
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          l10n.translate('create_announcement'),
+          l10n.translate(_isEditing ? 'edit_draft' : 'create_announcement'),
           style: TextStyle(
             color: context.textPrimary,
             fontWeight: FontWeight.bold,
@@ -102,8 +126,10 @@ class _CreateAnnouncementScreenState
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(24),
+        child: ResponsiveContainer(
+          maxWidth: 600,
+          child: ListView(
+            padding: EdgeInsets.all(context.responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0)),
           children: [
             // Type selector
             Text(
@@ -317,6 +343,67 @@ class _CreateAnnouncementScreenState
             ),
             const SizedBox(height: 24),
 
+            // Visibility Role Selector
+            Text(
+              l10n.translate('visibility'),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: context.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: context.borderColor),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<UserRole?>(
+                  value: _minVisibilityRole,
+                  hint: Text(
+                    l10n.translate('visible_to_all'),
+                    style: TextStyle(color: context.textPrimary),
+                  ),
+                  isExpanded: true,
+                  borderRadius: BorderRadius.circular(16),
+                  dropdownColor: context.cardColor,
+                  items: [
+                    DropdownMenuItem<UserRole?>(
+                      value: null,
+                      child: Text(
+                        l10n.translate('visible_to_all'),
+                        style: TextStyle(color: context.textPrimary),
+                      ),
+                    ),
+                    ...UserRole.values.where((role) => role != UserRole.superadmin).map((role) {
+                      return DropdownMenuItem<UserRole?>(
+                        value: role,
+                        child: Text(
+                          '${l10n.translate(role.translationKey)} ${l10n.translate('and_above')}',
+                          style: TextStyle(color: context.textPrimary),
+                        ),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setState(() => _minVisibilityRole = value);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.translate('visibility_hint'),
+              style: TextStyle(
+                fontSize: 12,
+                color: context.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+
             // Featured Image Section
             Text(
               l10n.translate('featured_image'),
@@ -329,6 +416,8 @@ class _CreateAnnouncementScreenState
             const SizedBox(height: 12),
             if (_selectedImage != null)
               _buildImagePreview()
+            else if (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
+              _buildExistingImagePreview()
             else
               _buildAddButton(
                 icon: Icons.image_rounded,
@@ -430,6 +519,7 @@ class _CreateAnnouncementScreenState
             ),
             const SizedBox(height: 100), // Extra padding for bottom navigation bar
           ],
+          ),
         ),
       ),
     );
@@ -498,6 +588,58 @@ class _CreateAnnouncementScreenState
               ),
               child: const Icon(Icons.close, color: Colors.white, size: 20),
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExistingImagePreview() {
+    return Stack(
+      children: [
+        Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            image: DecorationImage(
+              image: NetworkImage(_existingImageUrl!),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Replace image button
+              GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.edit, color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Remove image button
+              GestureDetector(
+                onTap: () => setState(() => _existingImageUrl = null),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -657,7 +799,7 @@ class _CreateAnnouncementScreenState
                 return DropdownMenuItem<String>(
                   value: school.id,
                   child: Text(
-                    school.shortName.isNotEmpty ? school.shortName : school.name,
+                    school.name, // Always show full name for consistency
                     style: TextStyle(color: context.textPrimary),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -860,28 +1002,58 @@ class _CreateAnnouncementScreenState
       }
     }
 
+    // Use existing image URL if no new image was selected
+    final effectiveImageUrl = imageUrl ?? _existingImageUrl;
+
     setState(() => _isUploading = false);
 
     final controller = ref.read(announcementControllerProvider.notifier);
-    final id = await controller.createAnnouncement(
-      title: _titleController.text.trim(),
-      content: _contentController.text.trim(),
-      type: _selectedType,
-      imageUrl: imageUrl,
-      attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
-      publishImmediately: true,
-      schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
-      schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
-    );
+    bool success = false;
+    String? resultId;
 
-    // Pin the announcement if needed
-    if (id != null && _isPinned) {
-      await controller.togglePin(id, true);
+    if (_isEditing) {
+      // Update existing draft and publish it
+      final updatedAnnouncement = widget.draftAnnouncement!.copyWith(
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        type: _selectedType,
+        imageUrl: effectiveImageUrl,
+        attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : widget.draftAnnouncement!.attachmentUrls,
+        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
+        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
+        isPinned: _isPinned,
+        isPublished: true,
+        publishedAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      success = await controller.updateAnnouncement(updatedAnnouncement);
+      resultId = success ? widget.draftAnnouncement!.id : null;
+    } else {
+      // Create new announcement
+      resultId = await controller.createAnnouncement(
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        type: _selectedType,
+        imageUrl: effectiveImageUrl,
+        attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
+        publishImmediately: true,
+        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
+        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
+        minVisibilityRole: _minVisibilityRole,
+      );
+      success = resultId != null;
+    }
+
+    // Pin the announcement if needed (only for new announcements, editing handles it in the update)
+    if (!_isEditing && resultId != null && _isPinned) {
+      await controller.togglePin(resultId, true);
     }
 
     setState(() => _isLoading = false);
 
-    if (id != null && mounted) {
+    if (success && mounted) {
+      // Invalidate draft announcements provider to refresh the list
+      ref.invalidate(myDraftAnnouncementsProvider);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -933,32 +1105,67 @@ class _CreateAnnouncementScreenState
       }
     }
 
+    // Use existing image URL if no new image was selected
+    final effectiveImageUrl = imageUrl ?? _existingImageUrl;
+
     setState(() => _isUploading = false);
 
     final controller = ref.read(announcementControllerProvider.notifier);
-    final id = await controller.createAnnouncement(
-      title: _titleController.text.trim(),
-      content: _contentController.text.trim(),
-      type: _selectedType,
-      imageUrl: imageUrl,
-      attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
-      publishImmediately: false,
-      schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
-      schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
-    );
+    bool success = false;
+    String? resultId;
 
-    // Pin the announcement if needed
-    if (id != null && _isPinned) {
-      await controller.togglePin(id, true);
+    if (_isEditing) {
+      // Update existing draft
+      final updatedAnnouncement = widget.draftAnnouncement!.copyWith(
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        type: _selectedType,
+        imageUrl: effectiveImageUrl,
+        attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : widget.draftAnnouncement!.attachmentUrls,
+        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
+        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
+        isPinned: _isPinned,
+        updatedAt: DateTime.now(),
+      );
+      success = await controller.updateAnnouncement(updatedAnnouncement);
+      resultId = success ? widget.draftAnnouncement!.id : null;
+    } else {
+      // Create new draft
+      resultId = await controller.createAnnouncement(
+        title: _titleController.text.trim(),
+        content: _contentController.text.trim(),
+        type: _selectedType,
+        imageUrl: effectiveImageUrl,
+        attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
+        publishImmediately: false,
+        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
+        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
+        minVisibilityRole: _minVisibilityRole,
+      );
+      success = resultId != null;
+    }
+
+    // Pin the announcement if needed (only for new drafts, editing handles it in the update)
+    if (!_isEditing && resultId != null && _isPinned) {
+      await controller.togglePin(resultId, true);
     }
 
     setState(() => _isLoading = false);
 
-    if (id != null && mounted) {
+    if (success && mounted) {
+      // Invalidate draft announcements provider to refresh the list
+      ref.invalidate(myDraftAnnouncementsProvider);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context).translate('draft_saved')),
+        ),
+      );
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).translate('error_saving_draft')),
+          backgroundColor: Colors.red,
         ),
       );
     }
