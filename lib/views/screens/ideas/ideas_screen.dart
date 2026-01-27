@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
-import '../initiatives/initiative_detail_screen.dart';
+import '../../../routes/route_names.dart';
 import '../initiatives/create_initiative_screen.dart';
-import '../polls/poll_detail_screen.dart';
+import '../main/main_shell.dart';
 import '../polls/create_poll_screen.dart';
 
 /// Provider to track selected idea type (initiatives or polls)
@@ -75,34 +76,49 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
       }
     }
 
-    return Scaffold(
-      backgroundColor: context.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(context, l10n),
+    // Determine back route based on user role
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
 
-              // Type Selector (Initiatives / Polls)
-              _buildTypeSelector(context, l10n, selectedType),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        debugPrint('IdeasScreen: PopScope triggered, didPop=$didPop, backRoute=$backRoute');
+        if (didPop) return;
+        // Handle system back button
+        ref.read(navigationIndexProvider.notifier).state = 0;
+        context.go(backRoute);
+      },
+      child: Scaffold(
+        backgroundColor: context.scaffoldBackgroundColor,
+        body: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Column(
+              children: [
+                // Header
+                _buildHeader(context, l10n, backRoute),
 
-              // Content based on selected type
-              Expanded(
-                child: selectedType == IdeaType.initiatives
-                    ? _buildInitiativesContent(context, l10n, currentUser)
-                    : _buildPollsContent(context, l10n),
-              ),
-            ],
+                // Type Selector (Initiatives / Polls)
+                _buildTypeSelector(context, l10n, selectedType),
+
+                // Content based on selected type
+                Expanded(
+                  child: selectedType == IdeaType.initiatives
+                      ? _buildInitiativesContent(context, l10n, currentUser)
+                      : _buildPollsContent(context, l10n),
+                ),
+              ],
+            ),
           ),
         ),
+        floatingActionButton: _buildFAB(context, l10n, selectedType),
       ),
-      floatingActionButton: _buildFAB(context, l10n, selectedType),
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n, String backRoute) {
     final selectedType = ref.watch(selectedIdeaTypeProvider);
     final hasActiveFilters = selectedType == IdeaType.initiatives
         ? (_showOnlyMyInitiatives || (_selectedSchoolId != null && !_showAllSchools))
@@ -112,15 +128,44 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          Text(
-            l10n.translate('ideas'),
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: context.goldColor,
+          // Back button
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              debugPrint('IdeasScreen: Back button tapped, navigating to $backRoute');
+              ref.read(navigationIndexProvider.notifier).state = 0;
+              context.go(backRoute);
+            },
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: context.cardColor,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: context.shadowColor,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Icon(Icons.arrow_back_rounded, color: context.iconColor, size: 20),
+              ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              l10n.translate('ideas'),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: context.goldColor,
+              ),
+            ),
+          ),
           _buildFilterButton(context, hasActiveFilters, selectedType),
         ],
       ),
@@ -300,26 +345,44 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
   }
 
   Widget _buildInitiativesList(List<InitiativeModel> initiatives) {
+    final responsive = Responsive(context);
+    final columns = responsive.value(mobile: 1, tablet: 2, desktop: 3);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
+
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(initiativesProvider),
       color: AppColors.gold,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: initiatives.length,
-        itemBuilder: (context, index) {
-          final initiative = initiatives[index];
-          return _InitiativeCard(
-            initiative: initiative,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => InitiativeDetailScreen(initiative: initiative),
+      child: columns == 1
+          ? ListView.builder(
+              padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: initiatives.length,
+              itemBuilder: (context, index) {
+                final initiative = initiatives[index];
+                return _InitiativeCard(
+                  initiative: initiative,
+                  onTap: () => context.push(RouteNames.initiativeDetailPath(initiative.id)),
+                );
+              },
+            )
+          : GridView.builder(
+              padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: responsive.value(mobile: 1.0, tablet: 1.1, desktop: 1.2),
               ),
+              itemCount: initiatives.length,
+              itemBuilder: (context, index) {
+                final initiative = initiatives[index];
+                return _InitiativeCard(
+                  initiative: initiative,
+                  onTap: () => context.push(RouteNames.initiativeDetailPath(initiative.id)),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 
@@ -394,6 +457,26 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
               builder: (context, ref, _) {
                 final user = ref.watch(currentUserProvider);
                 if (user?.schoolId == null) return const SizedBox.shrink();
+
+                // Only BEX/Superadmin/Department can toggle school filter
+                // Regular users always see only their school's initiatives
+                final canToggleSchoolFilter = user?.role == UserRole.superadmin ||
+                                               user?.role == UserRole.bex ||
+                                               user?.role == UserRole.department;
+
+                if (!canToggleSchoolFilter) {
+                  // For regular users, show as always-on indicator (not tappable)
+                  return _FilterOption(
+                    icon: Icons.school_outlined,
+                    title: l10n.translate('my_school'),
+                    subtitle: user?.schoolName ?? l10n.translate('show_school_initiatives'),
+                    isSelected: true,
+                    onTap: () {
+                      // No action for regular users - always filtered by their school
+                      Navigator.pop(ctx);
+                    },
+                  );
+                }
 
                 return _FilterOption(
                   icon: Icons.school_outlined,
@@ -552,26 +635,44 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
   }
 
   Widget _buildPollsList(List<PollModel> polls) {
+    final responsive = Responsive(context);
+    final columns = responsive.value(mobile: 1, tablet: 2, desktop: 3);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
+
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(pollsProvider),
       color: AppColors.gold,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: polls.length,
-        itemBuilder: (context, index) {
-          final poll = polls[index];
-          return _PollCard(
-            poll: poll,
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PollDetailScreen(poll: poll),
+      child: columns == 1
+          ? ListView.builder(
+              padding: EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: polls.length,
+              itemBuilder: (context, index) {
+                final poll = polls[index];
+                return _PollCard(
+                  poll: poll,
+                  onTap: () => context.push(RouteNames.pollDetailPath(poll.id)),
+                );
+              },
+            )
+          : GridView.builder(
+              padding: EdgeInsets.fromLTRB(horizontalPadding, 8, horizontalPadding, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: responsive.value(mobile: 1.0, tablet: 1.3, desktop: 1.5),
               ),
+              itemCount: polls.length,
+              itemBuilder: (context, index) {
+                final poll = polls[index];
+                return _PollCard(
+                  poll: poll,
+                  onTap: () => context.push(RouteNames.pollDetailPath(poll.id)),
+                );
+              },
             ),
-          );
-        },
-      ),
     );
   }
 
@@ -922,6 +1023,37 @@ class _InitiativeCard extends StatelessWidget {
               Row(
                 children: [
                   _InitiativeStatusBadge(status: initiative.status),
+                  if (initiative.schoolName != null) ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: context.textSecondary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.school_rounded, size: 12, color: context.textSecondary),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                initiative.schoolName!,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: context.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const Spacer(),
                   Text(
                     dateFormat.format(initiative.createdAt),
@@ -1169,13 +1301,29 @@ class _PollCard extends StatelessWidget {
                           color: context.goldColor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          l10n.translate(poll.type.translationKey),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (poll.type == PollType.school) ...[
+                              Icon(Icons.school_rounded, size: 12, color: context.textPrimary),
+                              const SizedBox(width: 4),
+                            ],
+                            Flexible(
+                              child: Text(
+                                // Show school name for school polls, type label for county
+                                poll.type == PollType.school && poll.schoolName != null
+                                    ? poll.schoolName!
+                                    : l10n.translate(poll.type.translationKey),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

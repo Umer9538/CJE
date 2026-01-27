@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../controllers/controllers.dart';
 import '../../../../core/core.dart';
-import '../../announcements/announcement_detail_screen.dart';
-import '../../initiatives/initiative_detail_screen.dart';
+import '../../../../routes/route_names.dart';
 
 class HomeActivityFeed extends ConsumerWidget {
   const HomeActivityFeed({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recentAnnouncements = ref.watch(recentAnnouncementsProvider);
-    final recentInitiatives = ref.watch(recentInitiativesProvider);
+    // Use StreamProviders for real-time updates
+    final recentAnnouncements = ref.watch(recentAnnouncementsStreamProvider);
+    final recentInitiatives = ref.watch(recentInitiativesStreamProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -33,13 +34,7 @@ class HomeActivityFeed extends ConsumerWidget {
       data: (list) => Column(
         children: list.take(2).map((announcement) {
           return GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    AnnouncementDetailScreen(announcement: announcement),
-              ),
-            ),
+            onTap: () => context.push(RouteNames.announcementDetailPath(announcement.id)),
             child: ActivityCard(
               avatarColor: announcement.type == AnnouncementType.county
                   ? const Color(0xFF3B82F6)
@@ -63,12 +58,7 @@ class HomeActivityFeed extends ConsumerWidget {
       data: (list) => Column(
         children: list.take(2).map((initiative) {
           return GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => InitiativeDetailScreen(initiative: initiative),
-              ),
-            ),
+            onTap: () => context.push(RouteNames.initiativeDetailPath(initiative.id)),
             child: ActivityCard(
               avatarColor: const Color(0xFF8B5CF6),
               title: initiative.title,

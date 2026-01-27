@@ -7,7 +7,7 @@ import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
-import 'meeting_detail_screen.dart';
+import '../main/main_shell.dart';
 import 'create_meeting_screen.dart';
 
 /// Main meetings list screen
@@ -65,18 +65,33 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
         ? currentUser?.schoolId
         : null;
 
+    // Use StreamProvider for real-time updates
     final meetingsAsync = ref.watch(
-      meetingsProvider(MeetingFilter(
+      meetingsStreamProvider(MeetingFilter(
         type: _selectedType,
         schoolId: schoolIdFilter,
         upcomingOnly: _upcomingOnly,
+        pastOnly: !_upcomingOnly, // When not showing upcoming, show past only
       )),
     );
 
     // Use the provider for permission check
     final canCreate = ref.watch(canCreateMeetingsProvider);
 
-    return Scaffold(
+    // Determine back route based on user role
+    final String backRoute = currentUser?.role == UserRole.bex
+        ? RouteNames.bexDashboard
+        : RouteNames.home;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // Handle system back button
+        ref.read(navigationIndexProvider.notifier).state = 0;
+        context.go(backRoute);
+      },
+      child: Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
@@ -118,6 +133,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
               ),
             )
           : null,
+    ),
     );
   }
 
@@ -135,11 +151,9 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go(backRoute);
-              }
+              // Navigate to home and update bottom nav index
+              ref.read(navigationIndexProvider.notifier).state = 0;
+              context.go(backRoute);
             },
             child: Container(
               width: 44,
@@ -263,23 +277,46 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
   }
 
   Widget _buildMeetingsList(List<MeetingModel> meetings) {
+    final responsive = Responsive(context);
+    final columns = responsive.value(mobile: 1, tablet: 2, desktop: 3);
+    final horizontalPadding = responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0);
+
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(meetingsProvider);
+        ref.invalidate(meetingsStreamProvider);
       },
       color: AppColors.gold,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: meetings.length,
-        itemBuilder: (context, index) {
-          final meeting = meetings[index];
-          return _MeetingCard(
-            meeting: meeting,
-            onTap: () => _navigateToDetail(context, meeting),
-          );
-        },
-      ),
+      child: columns == 1
+          ? ListView.builder(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: meetings.length,
+              itemBuilder: (context, index) {
+                final meeting = meetings[index];
+                return _MeetingCard(
+                  meeting: meeting,
+                  onTap: () => _navigateToDetail(context, meeting),
+                );
+              },
+            )
+          : GridView.builder(
+              padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, 100),
+              physics: const AlwaysScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: responsive.value(mobile: 2.0, tablet: 2.2, desktop: 2.5),
+              ),
+              itemCount: meetings.length,
+              itemBuilder: (context, index) {
+                final meeting = meetings[index];
+                return _MeetingCard(
+                  meeting: meeting,
+                  onTap: () => _navigateToDetail(context, meeting),
+                );
+              },
+            ),
     );
   }
 
@@ -338,7 +375,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
           ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () => ref.invalidate(meetingsProvider),
+            onPressed: () => ref.invalidate(meetingsStreamProvider),
             icon: const Icon(Icons.refresh),
             label: Text(l10n.translate('retry')),
             style: ElevatedButton.styleFrom(
@@ -352,12 +389,7 @@ class _MeetingsScreenState extends ConsumerState<MeetingsScreen>
   }
 
   void _navigateToDetail(BuildContext context, MeetingModel meeting) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MeetingDetailScreen(meeting: meeting),
-      ),
-    );
+    context.push(RouteNames.meetingDetailPath(meeting.id));
   }
 
   void _navigateToCreate(BuildContext context) {

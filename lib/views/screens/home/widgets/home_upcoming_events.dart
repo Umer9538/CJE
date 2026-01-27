@@ -1,10 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../controllers/controllers.dart';
 import '../../../../core/core.dart';
-import '../../meetings/meeting_detail_screen.dart';
+import '../../../../models/models.dart';
+import '../../../../routes/route_names.dart';
+
+/// Unified event type for home screen
+enum UpcomingEventType { meeting, poll, initiative }
+
+/// Unified event model for combining different event types
+class UpcomingEvent {
+  final String id;
+  final String title;
+  final String subtitle;
+  final DateTime date;
+  final UpcomingEventType type;
+  final dynamic originalData;
+
+  const UpcomingEvent({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.date,
+    required this.type,
+    required this.originalData,
+  });
+}
 
 class HomeUpcomingEvents extends ConsumerWidget {
   const HomeUpcomingEvents({super.key});
@@ -12,28 +36,114 @@ class HomeUpcomingEvents extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final upcomingMeetings = ref.watch(upcomingMeetingsProvider);
 
-    return SizedBox(
-      height: 180,
-      child: upcomingMeetings.when(
-        data: (meetings) {
-          if (meetings.isEmpty) {
-            return _buildEmptyState(context, l10n);
-          }
-          return _buildMeetingsList(context, meetings);
-        },
-        loading: () => const Center(
+    // Watch all three data sources
+    final meetingsAsync = ref.watch(upcomingMeetingsStreamProvider);
+    final pollsAsync = ref.watch(activePollsStreamProvider);
+    final initiativesAsync = ref.watch(recentInitiativesStreamProvider);
+
+    // Combine loading states
+    final isLoading = meetingsAsync.isLoading || pollsAsync.isLoading || initiativesAsync.isLoading;
+    final hasError = meetingsAsync.hasError && pollsAsync.hasError && initiativesAsync.hasError;
+
+    if (isLoading && !meetingsAsync.hasValue && !pollsAsync.hasValue && !initiativesAsync.hasValue) {
+      return const SizedBox(
+        height: 180,
+        child: Center(
           child: CircularProgressIndicator(color: AppColors.gold),
         ),
-        error: (_, __) => Center(
+      );
+    }
+
+    if (hasError) {
+      return SizedBox(
+        height: 180,
+        child: Center(
           child: Text(
-            'Failed to load meetings',
+            l10n.translate('error_loading_data'),
             style: TextStyle(color: context.textSecondary),
           ),
         ),
-      ),
+      );
+    }
+
+    // Combine all events
+    final events = _combineEvents(
+      meetings: meetingsAsync.valueOrNull ?? [],
+      polls: pollsAsync.valueOrNull ?? [],
+      initiatives: initiativesAsync.valueOrNull ?? [],
     );
+
+    if (events.isEmpty) {
+      return SizedBox(
+        height: 180,
+        child: _buildEmptyState(context, l10n),
+      );
+    }
+
+    return SizedBox(
+      height: 180,
+      child: _buildEventsList(context, l10n, events),
+    );
+  }
+
+  List<UpcomingEvent> _combineEvents({
+    required List<MeetingModel> meetings,
+    required List<PollModel> polls,
+    required List<InitiativeModel> initiatives,
+  }) {
+    final List<UpcomingEvent> events = [];
+    final now = DateTime.now();
+
+    // Add upcoming meetings
+    for (final meeting in meetings) {
+      if (meeting.dateTime.isAfter(now)) {
+        events.add(UpcomingEvent(
+          id: meeting.id,
+          title: meeting.title,
+          subtitle: _getMeetingTypeLabel(meeting.type),
+          date: meeting.dateTime,
+          type: UpcomingEventType.meeting,
+          originalData: meeting,
+        ));
+      }
+    }
+
+    // Add active polls (ending soon)
+    for (final poll in polls) {
+      if (poll.isActive && poll.endDate.isAfter(now)) {
+        events.add(UpcomingEvent(
+          id: poll.id,
+          title: poll.question,
+          subtitle: _getPollTypeLabel(poll),
+          date: poll.endDate,
+          type: UpcomingEventType.poll,
+          originalData: poll,
+        ));
+      }
+    }
+
+    // Add initiatives in voting phase
+    for (final initiative in initiatives) {
+      if (initiative.status == InitiativeStatus.voting && initiative.votingEndedAt != null) {
+        if (initiative.votingEndedAt!.isAfter(now)) {
+          events.add(UpcomingEvent(
+            id: initiative.id,
+            title: initiative.title,
+            subtitle: _getInitiativeLabel(),
+            date: initiative.votingEndedAt!,
+            type: UpcomingEventType.initiative,
+            originalData: initiative,
+          ));
+        }
+      }
+    }
+
+    // Sort by date (soonest first)
+    events.sort((a, b) => a.date.compareTo(b.date));
+
+    // Limit to 10 events
+    return events.take(10).toList();
   }
 
   Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
@@ -60,7 +170,7 @@ class HomeUpcomingEvents extends ConsumerWidget {
               Icon(Icons.event_available, color: context.textSecondary, size: 40),
               const SizedBox(height: 12),
               Text(
-                l10n.translate('no_upcoming_meetings'),
+                l10n.translate('no_upcoming_events'),
                 style: TextStyle(color: context.textSecondary, fontSize: 14),
               ),
             ],
@@ -70,32 +180,76 @@ class HomeUpcomingEvents extends ConsumerWidget {
     );
   }
 
-  Widget _buildMeetingsList(BuildContext context, List meetings) {
+  Widget _buildEventsList(BuildContext context, AppLocalizations l10n, List<UpcomingEvent> events) {
     return ListView.builder(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemCount: meetings.length,
+      itemCount: events.length,
       itemBuilder: (context, index) {
-        final meeting = meetings[index];
+        final event = events[index];
         return GestureDetector(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => MeetingDetailScreen(meeting: meeting),
-            ),
-          ),
+          onTap: () => _navigateToDetail(context, event),
           child: EventCard(
-            title: meeting.title,
-            subtitle: meeting.description ?? _getMeetingTypeLabel(meeting.type),
-            date: DateFormat('MMM d').format(meeting.dateTime),
-            time: DateFormat('h:mm a').format(meeting.dateTime),
-            gradient: _getMeetingGradient(meeting.type),
-            icon: _getMeetingIcon(meeting.type),
+            title: event.title,
+            subtitle: event.subtitle,
+            date: DateFormat('MMM d').format(event.date),
+            time: _getTimeLabel(event, l10n),
+            gradient: _getGradient(event),
+            icon: _getIcon(event),
           ),
         );
       },
     );
+  }
+
+  void _navigateToDetail(BuildContext context, UpcomingEvent event) {
+    switch (event.type) {
+      case UpcomingEventType.meeting:
+        context.push(RouteNames.meetingDetailPath(event.id));
+        break;
+      case UpcomingEventType.poll:
+        context.push(RouteNames.pollDetailPath(event.id));
+        break;
+      case UpcomingEventType.initiative:
+        context.push(RouteNames.initiativeDetailPath(event.id));
+        break;
+    }
+  }
+
+  String _getTimeLabel(UpcomingEvent event, AppLocalizations l10n) {
+    switch (event.type) {
+      case UpcomingEventType.meeting:
+        return DateFormat('h:mm a').format(event.date);
+      case UpcomingEventType.poll:
+        return l10n.translate('ends');
+      case UpcomingEventType.initiative:
+        return l10n.translate('vote_ends');
+    }
+  }
+
+  List<Color> _getGradient(UpcomingEvent event) {
+    switch (event.type) {
+      case UpcomingEventType.meeting:
+        final meeting = event.originalData as MeetingModel;
+        return _getMeetingGradient(meeting.type);
+      case UpcomingEventType.poll:
+        return const [Color(0xFF7C3AED), Color(0xFF5B21B6)]; // Purple for polls
+      case UpcomingEventType.initiative:
+        return const [Color(0xFF059669), Color(0xFF047857)]; // Green for initiatives
+    }
+  }
+
+  IconData _getIcon(UpcomingEvent event) {
+    switch (event.type) {
+      case UpcomingEventType.meeting:
+        final meeting = event.originalData as MeetingModel;
+        return _getMeetingIcon(meeting.type);
+      case UpcomingEventType.poll:
+        return Icons.how_to_vote_rounded;
+      case UpcomingEventType.initiative:
+        return Icons.lightbulb_rounded;
+    }
   }
 
   List<Color> _getMeetingGradient(MeetingType type) {
@@ -135,6 +289,18 @@ class HomeUpcomingEvents extends ConsumerWidget {
       case MeetingType.school:
         return 'School Meeting';
     }
+  }
+
+  String _getPollTypeLabel(PollModel poll) {
+    // If schoolId is null, it's a county-wide poll
+    if (poll.schoolId == null || poll.schoolId!.isEmpty) {
+      return 'County Poll';
+    }
+    return 'School Poll';
+  }
+
+  String _getInitiativeLabel() {
+    return 'Initiative Vote';
   }
 }
 
