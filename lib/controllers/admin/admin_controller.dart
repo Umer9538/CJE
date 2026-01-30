@@ -602,8 +602,9 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
     state = const AsyncValue.loading();
 
+    final warningId = _uuid.v4();
     final warning = UserWarning(
-      id: _uuid.v4(),
+      id: warningId,
       reason: reason,
       issuedById: currentUser.id,
       issuedByName: currentUser.fullName,
@@ -613,6 +614,27 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.addWarning(userId, warning);
 
     if (success) {
+      // Also add to the warnings collection for user's "My Reprimands" view
+      final targetUser = await _repository.getUserById(userId);
+      if (targetUser != null) {
+        final warningRepository = WarningRepository();
+        final warningModel = WarningModel(
+          id: warningId,
+          userId: userId,
+          userName: targetUser.fullName,
+          userSchoolId: targetUser.schoolId,
+          userSchoolName: targetUser.schoolName,
+          type: WarningType.written,
+          reason: reason,
+          issuedById: currentUser.id,
+          issuedByName: currentUser.fullName,
+          issuedAt: DateTime.now(),
+          isActive: true,
+          countyId: currentUser.city ?? '',
+        );
+        await warningRepository.createWarning(warningModel);
+      }
+
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
     } else {
@@ -631,6 +653,10 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.removeWarning(userId, warningId);
 
     if (success) {
+      // Also remove from the warnings collection
+      final warningRepository = WarningRepository();
+      await warningRepository.deleteWarning(warningId);
+
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
     } else {
@@ -657,6 +683,15 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     );
 
     if (success) {
+      // Also update the warning in the warnings collection
+      final warningRepository = WarningRepository();
+      await warningRepository.updateWarning(warningId, {
+        'isActive': false,
+        'resolvedAt': DateTime.now(),
+        'resolvedByName': currentUser.fullName,
+        'resolutionNote': resolutionNote,
+      });
+
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
     } else {
