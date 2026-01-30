@@ -123,19 +123,26 @@ class HomeUpcomingEvents extends ConsumerWidget {
       }
     }
 
-    // Add initiatives in voting phase
+    // Add initiatives in active statuses (debate, voting, submitted)
     for (final initiative in initiatives) {
-      if (initiative.status == InitiativeStatus.voting && initiative.votingEndedAt != null) {
-        if (initiative.votingEndedAt!.isAfter(now)) {
-          events.add(UpcomingEvent(
-            id: initiative.id,
-            title: initiative.title,
-            subtitle: _getInitiativeLabel(),
-            date: initiative.votingEndedAt!,
-            type: UpcomingEventType.initiative,
-            originalData: initiative,
-          ));
-        }
+      // Include initiatives that are in active phases
+      final isActivePhase = initiative.status == InitiativeStatus.voting ||
+          initiative.status == InitiativeStatus.debate ||
+          initiative.status == InitiativeStatus.submitted;
+
+      if (isActivePhase) {
+        // Use votingEndedAt if available, otherwise use createdAt + 7 days as estimated date
+        final eventDate = initiative.votingEndedAt ??
+            initiative.createdAt.add(const Duration(days: 7));
+
+        events.add(UpcomingEvent(
+          id: initiative.id,
+          title: initiative.title,
+          subtitle: _getInitiativeStatusLabel(initiative.status),
+          date: eventDate,
+          type: UpcomingEventType.initiative,
+          originalData: initiative,
+        ));
       }
     }
 
@@ -299,8 +306,17 @@ class HomeUpcomingEvents extends ConsumerWidget {
     return 'School Poll';
   }
 
-  String _getInitiativeLabel() {
-    return 'Initiative Vote';
+  String _getInitiativeStatusLabel(InitiativeStatus status) {
+    switch (status) {
+      case InitiativeStatus.voting:
+        return 'Initiative Vote';
+      case InitiativeStatus.debate:
+        return 'In Debate';
+      case InitiativeStatus.submitted:
+        return 'Under Review';
+      default:
+        return 'Initiative';
+    }
   }
 }
 
