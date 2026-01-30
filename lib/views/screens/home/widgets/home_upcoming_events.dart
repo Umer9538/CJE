@@ -241,9 +241,9 @@ class HomeUpcomingEvents extends ConsumerWidget {
         final meeting = event.originalData as MeetingModel;
         return _getMeetingGradient(meeting.type);
       case UpcomingEventType.poll:
-        return const [Color(0xFF7C3AED), Color(0xFF5B21B6)]; // Purple for polls
+        return const [AppColors.gold, Color(0xFFB8962F)]; // Gold gradient for polls
       case UpcomingEventType.initiative:
-        return const [Color(0xFF059669), Color(0xFF047857)]; // Green for initiatives
+        return const [AppColors.navy, Color(0xFF1E3A5F)]; // Navy gradient for initiatives
     }
   }
 
