@@ -179,11 +179,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
             ),
 
             // School Dropdown (when School type is selected)
-            // Only show for BEX/Superadmin who can create meetings for any school
+            // Show for Department/BEX/Superadmin who can create meetings for any school
             // School Reps can only create meetings for their own school (enforced in controller)
             if (_selectedType == MeetingType.school &&
                 user != null &&
-                (user.role == UserRole.bex || user.role == UserRole.superadmin)) ...[
+                (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin)) ...[
               const SizedBox(height: 16),
               _buildSchoolSelector(l10n),
             ],

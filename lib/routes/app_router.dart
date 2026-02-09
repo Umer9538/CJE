@@ -54,7 +54,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: RouteNames.splash,
-    debugLogDiagnostics: false, // Disable verbose logging to reduce noise
+    debugLogDiagnostics: false,
     refreshListenable: authNotifier,
     redirect: (context, state) {
       // Get current auth state directly from container
@@ -180,6 +180,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // If BEX user trying to access regular user home or admin, redirect to BEX
       if (authState.isAuthenticated && isBexUser && (isMainAppPath || isAdminPath) && !isBexPath) {
+        debugPrint('AppRouter: BEX user on mainAppPath/adminPath, redirecting to bexDashboard from $currentPath');
         return RouteNames.bexDashboard;
       }
 

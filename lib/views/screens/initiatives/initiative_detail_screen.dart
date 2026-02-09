@@ -237,6 +237,31 @@ class _InitiativeHeader extends StatelessWidget {
                   InitiativeStatusBadge(status: initiative.status),
                   const SizedBox(height: 12),
                   _buildTitle(),
+                  // School name under title
+                  if (initiative.schoolName != null) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.school_outlined,
+                          size: 14,
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            initiative.schoolName!,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   _buildAuthorInfo(),
                 ],

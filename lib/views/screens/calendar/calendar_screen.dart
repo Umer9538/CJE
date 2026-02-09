@@ -108,6 +108,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     List<PollModel> polls,
     AppLocalizations l10n,
   ) {
+    // Get current locale for calendar localization
+    final locale = ref.watch(languageProvider);
+
     // Convert all events to CalendarEvent
     final allEvents = _convertToCalendarEvents(meetings, announcements, polls);
     final eventsByDay = _groupEventsByDay(allEvents);
@@ -115,7 +118,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return Column(
       children: [
-        _buildCalendar(eventsByDay, l10n),
+        // Calendar with flexible height to prevent overflow
+        Flexible(
+          flex: 0,
+          child: _buildCalendar(eventsByDay, l10n, locale),
+        ),
         const Divider(height: 1),
         Expanded(
           child: _buildEventsList(selectedEvents, l10n),
@@ -191,9 +198,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
   }
 
-  Widget _buildCalendar(Map<DateTime, List<CalendarEvent>> eventsByDay, AppLocalizations l10n) {
+  Widget _buildCalendar(Map<DateTime, List<CalendarEvent>> eventsByDay, AppLocalizations l10n, Locale locale) {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: context.cardColor,
         borderRadius: BorderRadius.circular(20),
@@ -205,77 +212,91 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           ),
         ],
       ),
-      child: TableCalendar<CalendarEvent>(
-        firstDay: DateTime.utc(2020, 1, 1),
-        lastDay: DateTime.utc(2030, 12, 31),
-        focusedDay: _focusedDay,
-        calendarFormat: _calendarFormat,
-        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        eventLoader: (day) {
-          final normalizedDay = DateTime(day.year, day.month, day.day);
-          return eventsByDay[normalizedDay] ?? [];
-        },
-        onDaySelected: (selectedDay, focusedDay) {
-          setState(() {
-            _selectedDay = selectedDay;
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: TableCalendar<CalendarEvent>(
+          // Localization - use app's selected language
+          locale: locale.languageCode,
+          firstDay: DateTime.utc(2020, 1, 1),
+          lastDay: DateTime.utc(2030, 12, 31),
+          focusedDay: _focusedDay,
+          calendarFormat: _calendarFormat,
+          selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+          eventLoader: (day) {
+            final normalizedDay = DateTime(day.year, day.month, day.day);
+            return eventsByDay[normalizedDay] ?? [];
+          },
+          onDaySelected: (selectedDay, focusedDay) {
+            setState(() {
+              _selectedDay = selectedDay;
+              _focusedDay = focusedDay;
+            });
+          },
+          // MVP: Disabled format changing - monthly view only
+          availableCalendarFormats: const {CalendarFormat.month: 'Month'},
+          onFormatChanged: null,
+          onPageChanged: (focusedDay) {
             _focusedDay = focusedDay;
-          });
-        },
-        // MVP: Disabled format changing - monthly view only
-        availableCalendarFormats: const {CalendarFormat.month: 'Month'},
-        onFormatChanged: null,
-        onPageChanged: (focusedDay) {
-          _focusedDay = focusedDay;
-        },
-        calendarStyle: CalendarStyle(
-          outsideDaysVisible: false,
-          defaultTextStyle: TextStyle(color: context.textPrimary),
-          weekendTextStyle: TextStyle(color: context.textPrimary),
-          holidayTextStyle: TextStyle(color: context.textPrimary),
-          todayDecoration: BoxDecoration(
-            color: context.goldColor.withValues(alpha: 0.3),
-            shape: BoxShape.circle,
+          },
+          // Reduce row height to fit better on screen
+          rowHeight: 42,
+          daysOfWeekHeight: 20,
+          calendarStyle: CalendarStyle(
+            outsideDaysVisible: false,
+            cellMargin: const EdgeInsets.all(2),
+            defaultTextStyle: TextStyle(color: context.textPrimary, fontSize: 14),
+            weekendTextStyle: TextStyle(color: context.textPrimary, fontSize: 14),
+            holidayTextStyle: TextStyle(color: context.textPrimary, fontSize: 14),
+            todayDecoration: BoxDecoration(
+              color: context.goldColor.withValues(alpha: 0.3),
+              shape: BoxShape.circle,
+            ),
+            todayTextStyle: TextStyle(
+              color: context.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+            selectedDecoration: BoxDecoration(
+              color: context.goldColor,
+              shape: BoxShape.circle,
+            ),
+            selectedTextStyle: const TextStyle(
+              color: AppColors.navy,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+            markerDecoration: BoxDecoration(
+              color: context.goldColor,
+              shape: BoxShape.circle,
+            ),
+            markersMaxCount: 3,
+            markerSize: 5,
+            markerMargin: const EdgeInsets.symmetric(horizontal: 0.5),
           ),
-          todayTextStyle: TextStyle(
-            color: context.textPrimary,
-            fontWeight: FontWeight.bold,
+          headerStyle: HeaderStyle(
+            // MVP: Hide format button - monthly view only
+            formatButtonVisible: false,
+            titleCentered: true,
+            headerPadding: const EdgeInsets.symmetric(vertical: 8),
+            titleTextStyle: TextStyle(
+              color: context.textPrimary,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            leftChevronIcon: Icon(Icons.chevron_left, color: context.textPrimary, size: 24),
+            rightChevronIcon: Icon(Icons.chevron_right, color: context.textPrimary, size: 24),
           ),
-          selectedDecoration: BoxDecoration(
-            color: context.goldColor,
-            shape: BoxShape.circle,
-          ),
-          selectedTextStyle: const TextStyle(
-            color: AppColors.navy,
-            fontWeight: FontWeight.bold,
-          ),
-          markerDecoration: BoxDecoration(
-            color: context.goldColor,
-            shape: BoxShape.circle,
-          ),
-          markersMaxCount: 3,
-          markerSize: 6,
-          markerMargin: const EdgeInsets.symmetric(horizontal: 1),
-        ),
-        headerStyle: HeaderStyle(
-          // MVP: Hide format button - monthly view only
-          formatButtonVisible: false,
-          titleCentered: true,
-          titleTextStyle: TextStyle(
-            color: context.textPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 17,
-          ),
-          leftChevronIcon: Icon(Icons.chevron_left, color: context.textPrimary),
-          rightChevronIcon: Icon(Icons.chevron_right, color: context.textPrimary),
-        ),
-        daysOfWeekStyle: DaysOfWeekStyle(
-          weekdayStyle: TextStyle(
-            color: context.textSecondary,
-            fontWeight: FontWeight.w600,
-          ),
-          weekendStyle: TextStyle(
-            color: context.textSecondary,
-            fontWeight: FontWeight.w600,
+          daysOfWeekStyle: DaysOfWeekStyle(
+            weekdayStyle: TextStyle(
+              color: context.textSecondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            weekendStyle: TextStyle(
+              color: context.textSecondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
           ),
         ),
       ),

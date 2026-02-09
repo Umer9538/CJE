@@ -34,6 +34,7 @@ class InitiativeModel extends Equatable {
   final String? rejectionReason;
   final String? reviewNotes;
   final UserRole minimumVotingRole; // Minimum role required to vote on this initiative
+  final UserRole? minVisibilityRole; // Minimum role required to view this initiative
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -67,6 +68,7 @@ class InitiativeModel extends Equatable {
     this.rejectionReason,
     this.reviewNotes,
     this.minimumVotingRole = UserRole.classRep, // Default: classRep and above can vote
+    this.minVisibilityRole, // Null means visible to all
     required this.createdAt,
     required this.updatedAt,
   });
@@ -112,6 +114,14 @@ class InitiativeModel extends Equatable {
   /// Create from Firestore document
   factory InitiativeModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final minVisRoleRaw = data['minVisibilityRole'];
+    final minVisRole = minVisRoleRaw != null
+        ? UserRole.fromFirestore(minVisRoleRaw as String)
+        : null;
+    // Debug log to verify visibility role is being read correctly
+    if (minVisRoleRaw != null) {
+      print('Initiative ${doc.id}: minVisibilityRole raw=$minVisRoleRaw, parsed=$minVisRole');
+    }
     return InitiativeModel(
       id: doc.id,
       title: data['title'] as String? ?? '',
@@ -142,6 +152,7 @@ class InitiativeModel extends Equatable {
       rejectionReason: data['rejectionReason'] as String?,
       reviewNotes: data['reviewNotes'] as String?,
       minimumVotingRole: UserRole.fromFirestore(data['minimumVotingRole'] as String? ?? 'classRep'),
+      minVisibilityRole: minVisRole,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -178,6 +189,7 @@ class InitiativeModel extends Equatable {
       'rejectionReason': rejectionReason,
       'reviewNotes': reviewNotes,
       'minimumVotingRole': minimumVotingRole.toFirestore(),
+      'minVisibilityRole': minVisibilityRole?.toFirestore(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -214,6 +226,7 @@ class InitiativeModel extends Equatable {
     String? rejectionReason,
     String? reviewNotes,
     UserRole? minimumVotingRole,
+    UserRole? minVisibilityRole,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -247,6 +260,7 @@ class InitiativeModel extends Equatable {
       rejectionReason: rejectionReason ?? this.rejectionReason,
       reviewNotes: reviewNotes ?? this.reviewNotes,
       minimumVotingRole: minimumVotingRole ?? this.minimumVotingRole,
+      minVisibilityRole: minVisibilityRole ?? this.minVisibilityRole,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -283,6 +297,7 @@ class InitiativeModel extends Equatable {
         rejectionReason,
         reviewNotes,
         minimumVotingRole,
+        minVisibilityRole,
         createdAt,
         updatedAt,
       ];

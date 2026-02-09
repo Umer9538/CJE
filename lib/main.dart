@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'app.dart';
 import 'controllers/controllers.dart';
@@ -13,6 +14,10 @@ import 'core/services/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize intl date formatting for Romanian and English locales
+  await initializeDateFormatting('ro', null);
+  await initializeDateFormatting('en', null);
 
   // Initialize Firebase
   await Firebase.initializeApp(

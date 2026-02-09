@@ -8,6 +8,9 @@ import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
 import '../main/main_shell.dart';
+import '../bex/bex_shell.dart';
+import '../department/department_shell.dart';
+import '../admin/admin_shell.dart';
 import 'initiative_detail_screen.dart';
 import 'create_initiative_screen.dart';
 
@@ -66,6 +69,30 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
     super.dispose();
   }
 
+  /// Navigate back - pop if possible, otherwise go to home
+  void _navigateBack(UserRole? role) {
+    // If we can pop (opened from elsewhere), pop back
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    // Otherwise navigate to home using shell navigation provider
+    if (role == UserRole.superadmin) {
+      // AdminShell uses IndexedStack - just update provider
+      ref.read(adminNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.bex) {
+      // BexShell uses IndexedStack - just update provider
+      ref.read(bexNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.department) {
+      // DepartmentShell uses IndexedStack - just update provider
+      ref.read(departmentNavigationIndexProvider.notifier).state = 0;
+    } else {
+      // MainShell uses GoRouter - need both provider update and navigation
+      ref.read(navigationIndexProvider.notifier).state = 0;
+      context.go(RouteNames.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -99,18 +126,12 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
     final canCreate = ref.watch(canDraftInitiativesProvider);
     final hasActiveFilters = _showOnlyMine || (_selectedSchoolId != null && !_showAllSchools);
 
-    // Determine back route based on user role
-    final String backRoute = currentUser?.role == UserRole.bex
-        ? RouteNames.bexDashboard
-        : RouteNames.home;
-
     return PopScope(
-      canPop: false,
+      canPop: Navigator.of(context).canPop(),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        // Handle system back button
-        ref.read(navigationIndexProvider.notifier).state = 0;
-        context.go(backRoute);
+        // Handle system back button - navigate back or to home
+        _navigateBack(currentUser?.role);
       },
       child: Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -157,22 +178,15 @@ class _InitiativesScreenState extends ConsumerState<InitiativesScreen>
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n, bool hasActiveFilters) {
     final currentUser = ref.watch(currentUserProvider);
-    final String backRoute = currentUser?.role == UserRole.bex
-        ? RouteNames.bexDashboard
-        : RouteNames.home;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          // Back button
+          // Back button - pop or navigate to home
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () {
-              // Navigate to home and update bottom nav index
-              ref.read(navigationIndexProvider.notifier).state = 0;
-              context.go(backRoute);
-            },
+            onTap: () => _navigateBack(currentUser?.role),
             child: Container(
               width: 44,
               height: 44,
@@ -590,6 +604,31 @@ class _InitiativeCard extends ConsumerWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
+              // School name under title
+              if (currentInitiative.schoolName != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.school_outlined,
+                      size: 14,
+                      color: context.textSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        currentInitiative.schoolName!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
 
               // Description preview
@@ -840,6 +879,8 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -859,7 +900,7 @@ class _StatusBadge extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Text(
-            _getStatusLabel(status),
+            _getStatusLabel(status, l10n),
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -890,22 +931,22 @@ class _StatusBadge extends StatelessWidget {
     }
   }
 
-  String _getStatusLabel(InitiativeStatus status) {
+  String _getStatusLabel(InitiativeStatus status, AppLocalizations l10n) {
     switch (status) {
       case InitiativeStatus.draft:
-        return 'Draft';
+        return l10n.translate('draft');
       case InitiativeStatus.submitted:
-        return 'Submitted';
+        return l10n.translate('submitted');
       case InitiativeStatus.review:
-        return 'In Review';
+        return l10n.translate('review');
       case InitiativeStatus.debate:
-        return 'In Debate';
+        return l10n.translate('in_debate');
       case InitiativeStatus.voting:
-        return 'Voting';
+        return l10n.translate('voting');
       case InitiativeStatus.adopted:
-        return 'Adopted';
+        return l10n.translate('adopted');
       case InitiativeStatus.rejected:
-        return 'Rejected';
+        return l10n.translate('rejected');
     }
   }
 }

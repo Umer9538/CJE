@@ -366,6 +366,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     }
                     return DropdownButtonFormField<String>(
                       value: schoolExists ? _selectedSchoolId : null,
+                      isExpanded: true,
                       decoration: InputDecoration(
                         labelText: l10n.translate('school'),
                         prefixIcon: const Icon(Icons.school_outlined),
@@ -374,8 +375,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                         return DropdownMenuItem(
                           value: school.id,
                           child: Text(
-                            school.shortName.isNotEmpty ? school.shortName : school.name,
+                            school.name, // Always show full school name, not abbreviation
                             overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
                           ),
                         );
                       }).toList(),

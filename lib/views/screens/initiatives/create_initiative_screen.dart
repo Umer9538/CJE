@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../controllers/admin/admin_controller.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
@@ -34,9 +33,12 @@ class _CreateInitiativeScreenState
   // Initiative type (school or county level)
   InitiativeType _selectedType = InitiativeType.school;
 
-  // School selection for BEX/Superadmin
+  // School selection for BEX/Superadmin/Department
   String? _selectedSchoolId;
   String? _selectedSchoolName;
+
+  // Visibility level (minimum role required to view)
+  UserRole? _minVisibilityRole;
 
   bool get _isEditing => widget.initiative != null;
 
@@ -55,6 +57,7 @@ class _CreateInitiativeScreenState
       _selectedType = initiative.type;
       _selectedSchoolId = initiative.schoolId;
       _selectedSchoolName = initiative.schoolName;
+      _minVisibilityRole = initiative.minVisibilityRole;
     }
   }
 
@@ -158,9 +161,12 @@ class _CreateInitiativeScreenState
             // Initiative type selector
             _buildTypeSelector(context, l10n),
 
-            // School selection for BEX/Superadmin (only for school-level initiatives)
+            // School selection for BEX/Superadmin/Department (only for school-level initiatives)
             if (_selectedType == InitiativeType.school)
               _buildSchoolDropdown(context, l10n),
+
+            // Visibility selector for privileged users
+            _buildVisibilitySelector(context, l10n),
 
             // Title
             _buildLabel(context, l10n.translate('initiative_title'), required: true),
@@ -320,13 +326,15 @@ class _CreateInitiativeScreenState
     );
   }
 
-  /// Build school dropdown for BEX/Superadmin users
+  /// Build school dropdown for BEX/Superadmin/Department users
   Widget _buildSchoolDropdown(BuildContext context, AppLocalizations l10n) {
     final user = ref.watch(currentUserProvider);
     if (user == null) return const SizedBox.shrink();
 
-    // Only show for BEX and Superadmin
-    if (user.role != UserRole.bex && user.role != UserRole.superadmin) {
+    // Only show for BEX, Superadmin, and Department
+    if (user.role != UserRole.bex &&
+        user.role != UserRole.superadmin &&
+        user.role != UserRole.department) {
       return const SizedBox.shrink();
     }
 
@@ -443,6 +451,98 @@ class _CreateInitiativeScreenState
             child: Text(
               l10n.translate('error_loading_schools'),
               style: TextStyle(color: context.textSecondary),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  /// Build visibility selector for privileged users
+  Widget _buildVisibilitySelector(BuildContext context, AppLocalizations l10n) {
+    final user = ref.watch(currentUserProvider);
+    if (user == null) return const SizedBox.shrink();
+
+    // Only show for SchoolRep, Department, BEX, and Superadmin
+    if (user.role != UserRole.bex &&
+        user.role != UserRole.superadmin &&
+        user.role != UserRole.department &&
+        user.role != UserRole.schoolRep) {
+      return const SizedBox.shrink();
+    }
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Available visibility levels based on role
+    // SchoolRep can choose: visible to all, class reps & above, school reps & above
+    // Department can additionally choose: departments & above
+    // BEX/Superadmin can additionally choose: BEx only
+    final List<({UserRole? role, String label, String description})> visibilityOptions = [
+      (role: null, label: l10n.translate('visible_to_all'), description: l10n.translate('everyone_can_see')),
+      (role: UserRole.classRep, label: l10n.translate('class_reps_above'), description: l10n.translate('class_reps_and_higher')),
+      (role: UserRole.schoolRep, label: l10n.translate('school_reps_above'), description: l10n.translate('school_reps_and_higher')),
+      if (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin)
+        (role: UserRole.department, label: l10n.translate('departments_above'), description: l10n.translate('departments_and_higher')),
+      if (user.role == UserRole.bex || user.role == UserRole.superadmin)
+        (role: UserRole.bex, label: l10n.translate('bex_only'), description: l10n.translate('bex_members_only')),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel(context, l10n.translate('visibility_level')),
+        const SizedBox(height: 8),
+        Text(
+          l10n.translate('who_can_see_initiative'),
+          style: TextStyle(
+            fontSize: 12,
+            color: context.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: BoxDecoration(
+            color: context.cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: isDark ? Border.all(color: Colors.grey[700]!) : null,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<UserRole?>(
+              isExpanded: true,
+              value: _minVisibilityRole,
+              dropdownColor: context.cardColor,
+              style: TextStyle(color: context.textPrimary),
+              icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
+              items: visibilityOptions.map((option) {
+                return DropdownMenuItem<UserRole?>(
+                  value: option.role,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        option.label,
+                        style: TextStyle(
+                          color: context.textPrimary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        option.description,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() => _minVisibilityRole = value);
+              },
             ),
           ),
         ),
@@ -764,11 +864,13 @@ class _CreateInitiativeScreenState
       return;
     }
 
-    // Validate school selection for BEX/Superadmin when school type is selected
+    // Validate school selection for BEX/Superadmin/Department when school type is selected
     final user = ref.read(currentUserProvider);
     if (user != null &&
         _selectedType == InitiativeType.school &&
-        (user.role == UserRole.bex || user.role == UserRole.superadmin) &&
+        (user.role == UserRole.bex ||
+            user.role == UserRole.superadmin ||
+            user.role == UserRole.department) &&
         _selectedSchoolId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -803,6 +905,7 @@ class _CreateInitiativeScreenState
         schoolId: _selectedType == InitiativeType.school ? _selectedSchoolId : null,
         schoolName: _selectedType == InitiativeType.school ? _selectedSchoolName : null,
         tags: _tags.isEmpty ? [] : _tags,
+        minVisibilityRole: _minVisibilityRole,
         status: submitImmediately && widget.initiative!.status == InitiativeStatus.draft
             ? InitiativeStatus.submitted
             : widget.initiative!.status,
@@ -855,6 +958,7 @@ class _CreateInitiativeScreenState
           type: _selectedType,
           schoolId: _selectedType == InitiativeType.school ? _selectedSchoolId : null,
           schoolName: _selectedType == InitiativeType.school ? _selectedSchoolName : null,
+          minVisibilityRole: _minVisibilityRole,
         );
       } catch (e) {
         errorMessage = e.toString();

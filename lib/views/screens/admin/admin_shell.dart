@@ -9,24 +9,20 @@ import '../ideas/ideas_screen.dart';
 import '../meetings/meetings_screen.dart';
 import '../menu/menu_screen.dart';
 
-/// Admin Shell - Main navigation for admin users (superadmin and BEX)
+/// Admin navigation index provider - controls which tab is shown in AdminShell
+final adminNavigationIndexProvider = StateProvider<int>((ref) => 0);
+
+/// Admin Shell - Main navigation for admin users (superadmin)
 /// Same navigation structure as main app:
 /// - Home
 /// - Announcements
 /// - Ideas (Initiatives + Polls)
 /// - Meetings
 /// - Menu (contains Users, Schools, GDS, Analytics, Settings)
-class AdminShell extends ConsumerStatefulWidget {
+class AdminShell extends ConsumerWidget {
   const AdminShell({super.key});
 
-  @override
-  ConsumerState<AdminShell> createState() => _AdminShellState();
-}
-
-class _AdminShellState extends ConsumerState<AdminShell> {
-  int _currentIndex = 0;
-
-  final List<Widget> _screens = const [
+  static const List<Widget> _screens = [
     HomeScreen(),
     AnnouncementsScreen(),
     IdeasScreen(),
@@ -35,10 +31,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final currentIndex = ref.watch(adminNavigationIndexProvider);
     // Clamp index to valid range (safety for hot reload)
-    final safeIndex = _currentIndex.clamp(0, _screens.length - 1);
+    final safeIndex = currentIndex.clamp(0, _screens.length - 1);
 
     return Scaffold(
       body: IndexedStack(
@@ -47,8 +44,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
       ),
       extendBody: true,
       bottomNavigationBar: _FloatingBottomNav(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        currentIndex: currentIndex,
+        onTap: (index) => ref.read(adminNavigationIndexProvider.notifier).state = index,
         labels: [
           l10n.translate('home'),
           l10n.translate('announcements'),

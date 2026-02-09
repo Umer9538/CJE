@@ -76,6 +76,10 @@ class _CreateAnnouncementScreenState
     final canCreateCounty = user != null &&
         (user.role == UserRole.bex || user.role == UserRole.superadmin);
 
+    // Check if user can select a school (Department/BEX/Superadmin)
+    final canSelectSchool = user != null &&
+        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin);
+
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -168,8 +172,8 @@ class _CreateAnnouncementScreenState
               ],
             ),
 
-            // School dropdown (only for BEX/Superadmin when School type is selected)
-            if (_selectedType == AnnouncementType.school && canCreateCounty) ...[
+            // School dropdown (for Department/BEX/Superadmin when School type is selected)
+            if (_selectedType == AnnouncementType.school && canSelectSchool) ...[
               const SizedBox(height: 16),
               Text(
                 l10n.translate('select_school'),
@@ -969,11 +973,11 @@ class _CreateAnnouncementScreenState
 
     final l10n = AppLocalizations.of(context);
     final user = ref.read(currentUserProvider);
-    final canCreateCounty = user != null &&
-        (user.role == UserRole.bex || user.role == UserRole.superadmin);
+    final canSelectSchool = user != null &&
+        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin);
 
-    // Validate school selection for BEX/Superadmin when School type is selected
-    if (_selectedType == AnnouncementType.school && canCreateCounty && _selectedSchoolId == null) {
+    // Validate school selection for Department/BEX/Superadmin when School type is selected
+    if (_selectedType == AnnouncementType.school && canSelectSchool && _selectedSchoolId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.translate('select_school')),
@@ -1019,8 +1023,8 @@ class _CreateAnnouncementScreenState
         type: _selectedType,
         imageUrl: effectiveImageUrl,
         attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : widget.draftAnnouncement!.attachmentUrls,
-        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
-        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
         isPinned: _isPinned,
         isPublished: true,
         publishedAt: DateTime.now(),
@@ -1037,8 +1041,8 @@ class _CreateAnnouncementScreenState
         imageUrl: effectiveImageUrl,
         attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
         publishImmediately: true,
-        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
-        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : null,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : null,
         minVisibilityRole: _minVisibilityRole,
       );
       success = resultId != null;
@@ -1083,8 +1087,8 @@ class _CreateAnnouncementScreenState
     }
 
     final user = ref.read(currentUserProvider);
-    final canCreateCounty = user != null &&
-        (user.role == UserRole.bex || user.role == UserRole.superadmin);
+    final canSelectSchool = user != null &&
+        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin);
 
     setState(() {
       _isLoading = true;
@@ -1122,8 +1126,8 @@ class _CreateAnnouncementScreenState
         type: _selectedType,
         imageUrl: effectiveImageUrl,
         attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : widget.draftAnnouncement!.attachmentUrls,
-        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
-        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
         isPinned: _isPinned,
         updatedAt: DateTime.now(),
       );
@@ -1138,8 +1142,8 @@ class _CreateAnnouncementScreenState
         imageUrl: effectiveImageUrl,
         attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
         publishImmediately: false,
-        schoolId: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolId : null,
-        schoolName: _selectedType == AnnouncementType.school && canCreateCounty ? _selectedSchoolName : null,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : null,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : null,
         minVisibilityRole: _minVisibilityRole,
       );
       success = resultId != null;

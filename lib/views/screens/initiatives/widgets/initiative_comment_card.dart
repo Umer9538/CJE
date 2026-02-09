@@ -138,23 +138,27 @@ class InitiativeCommentCard extends StatelessWidget {
   }
 
   Widget _buildInfoBadge(BuildContext context, String text, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Use navy/gold colors for better visibility
+    final badgeColor = isDark ? AppColors.gold : AppColors.navy;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: context.textSecondary.withValues(alpha: 0.1),
+        color: badgeColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: context.textSecondary),
+          Icon(icon, size: 12, color: badgeColor),
           const SizedBox(width: 4),
           Flexible(
             child: Text(
               text,
               style: TextStyle(
                 fontSize: 11,
-                color: context.textSecondary,
+                color: badgeColor,
                 fontWeight: FontWeight.w500,
               ),
               overflow: TextOverflow.ellipsis,

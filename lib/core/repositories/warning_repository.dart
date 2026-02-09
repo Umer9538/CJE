@@ -74,10 +74,17 @@ class WarningRepository {
   }
 
   /// Create a new warning
+  /// If warning.id is provided (non-empty), use it as the document ID
   Future<String?> createWarning(WarningModel warning) async {
     try {
-      final docRef = await _warningsCollection.add(warning.toFirestore());
-      return docRef.id;
+      if (warning.id.isNotEmpty) {
+        // Use specific document ID for syncing with user's embedded warning
+        await _warningsCollection.doc(warning.id).set(warning.toFirestore());
+        return warning.id;
+      } else {
+        final docRef = await _warningsCollection.add(warning.toFirestore());
+        return docRef.id;
+      }
     } catch (e) {
       debugPrint('Error creating warning: $e');
       return null;
@@ -124,8 +131,8 @@ class WarningRepository {
       return warnings;
     }).handleError((error, stackTrace) {
       debugPrint('getUserWarningsStream ERROR: $error');
-      debugPrint('Stack trace: $stackTrace');
-      throw error;
+      // Return empty list on error instead of propagating
+      return <WarningModel>[];
     });
   }
 
@@ -144,8 +151,8 @@ class WarningRepository {
       return snapshot.docs.length;
     }).handleError((error, stackTrace) {
       debugPrint('getWarningCountStream ERROR: $error');
-      debugPrint('Stack trace: $stackTrace');
-      throw error;
+      // Return 0 on error instead of propagating to avoid UI error state
+      return 0;
     });
   }
 
@@ -303,8 +310,8 @@ class WarningRepository {
       return absences;
     }).handleError((error, stackTrace) {
       debugPrint('getUserAbsencesStream ERROR: $error');
-      debugPrint('Stack trace: $stackTrace');
-      throw error;
+      // Return empty list on error instead of propagating
+      return <AbsenceModel>[];
     });
   }
 
@@ -324,8 +331,8 @@ class WarningRepository {
       };
     }).handleError((error, stackTrace) {
       debugPrint('getAbsenceCountStream ERROR: $error');
-      debugPrint('Stack trace: $stackTrace');
-      throw error;
+      // Return empty counts on error instead of propagating to avoid UI error state
+      return {'total': 0, 'excused': 0, 'unexcused': 0};
     });
   }
 

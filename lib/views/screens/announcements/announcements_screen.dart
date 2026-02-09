@@ -8,6 +8,9 @@ import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
 import '../main/main_shell.dart';
+import '../bex/bex_shell.dart';
+import '../department/department_shell.dart';
+import '../admin/admin_shell.dart';
 import 'create_announcement_screen.dart';
 
 /// Main announcements list screen
@@ -19,18 +22,26 @@ class AnnouncementsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   TabController? _tabController;
   AnnouncementType? _selectedFilter;
   bool _showDrafts = false;
   bool? _canCreateCached;
+  bool _isDisposed = false;
 
   void _initTabController(bool canCreate) {
+    // Don't initialize if disposed
+    if (_isDisposed) return;
+
     // Only reinitialize if canCreate changed or controller doesn't exist
     if (_canCreateCached == canCreate && _tabController != null) return;
 
-    _tabController?.removeListener(_onTabChanged);
-    _tabController?.dispose();
+    // Dispose old controller if exists
+    if (_tabController != null) {
+      _tabController!.removeListener(_onTabChanged);
+      _tabController!.dispose();
+      _tabController = null;
+    }
 
     final tabCount = canCreate ? 4 : 3;
     _tabController = TabController(length: tabCount, vsync: this);
@@ -61,21 +72,44 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
 
   @override
   void dispose() {
+    _isDisposed = true;
     _tabController?.removeListener(_onTabChanged);
     _tabController?.dispose();
+    _tabController = null;
     super.dispose();
+  }
+
+  /// Navigate back - pop if possible, otherwise go to home
+  void _navigateBack(UserRole? role) {
+    // If we can pop (opened from elsewhere), pop back
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    // Otherwise navigate to home using shell navigation provider
+    if (role == UserRole.superadmin) {
+      // AdminShell uses IndexedStack - just update provider
+      ref.read(adminNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.bex) {
+      // BexShell uses IndexedStack - just update provider
+      ref.read(bexNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.department) {
+      // DepartmentShell uses IndexedStack - just update provider
+      ref.read(departmentNavigationIndexProvider.notifier).state = 0;
+    } else {
+      // MainShell uses GoRouter - need both provider update and navigation
+      ref.read(navigationIndexProvider.notifier).state = 0;
+      context.go(RouteNames.home);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
 
     // Check if user can create announcements (and thus see drafts)
-    final canCreate = user != null &&
-        (user.role == UserRole.schoolRep ||
-            user.role == UserRole.bex ||
-            user.role == UserRole.superadmin);
+    // Uses provider which includes department role
+    final canCreate = ref.watch(canCreateAnnouncementsProvider);
 
     // Initialize or update tab controller based on permissions
     _initTabController(canCreate);
@@ -86,19 +120,14 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
         ? ref.watch(myDraftAnnouncementsProvider)
         : ref.watch(announcementsStreamProvider(AnnouncementFilter(type: _selectedFilter)));
 
-    // Determine back route based on user role
     final currentUser = ref.watch(currentUserProvider);
-    final String backRoute = currentUser?.role == UserRole.bex
-        ? RouteNames.bexDashboard
-        : RouteNames.home;
 
     return PopScope(
-      canPop: false,
+      canPop: Navigator.of(context).canPop(),
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        // Handle system back button
-        ref.read(navigationIndexProvider.notifier).state = 0;
-        context.go(backRoute);
+        // Handle system back button - navigate back or to home
+        _navigateBack(currentUser?.role);
       },
       child: Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -145,22 +174,15 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
     final currentUser = ref.watch(currentUserProvider);
-    final String backRoute = currentUser?.role == UserRole.bex
-        ? RouteNames.bexDashboard
-        : RouteNames.home;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          // Back button
+          // Back button - pop or navigate to home
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () {
-              // Navigate to home and update bottom nav index
-              ref.read(navigationIndexProvider.notifier).state = 0;
-              context.go(backRoute);
-            },
+            onTap: () => _navigateBack(currentUser?.role),
             child: Container(
               width: 44,
               height: 44,

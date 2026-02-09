@@ -594,6 +594,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
               builder: (context) {
                 final user = ref.watch(currentUserProvider);
                 final isSchoolRep = user?.role == UserRole.schoolRep;
+                final isDepartment = user?.role == UserRole.department;
                 final canUploadCounty = ref.watch(canUploadCountyDocumentsProvider);
 
                 // If schoolRep, always mark as school document
@@ -603,43 +604,108 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                   });
                 }
 
+                // If department role, always mark as department document
+                if (isDepartment && !_isDepartmentDocument) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    setState(() => _isDepartmentDocument = true);
+                  });
+                }
+
                 return Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: context.cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: SwitchListTile(
-                        title: Text(l10n.translate('school_document')),
-                        subtitle: Text(
-                          isSchoolRep
-                              ? l10n.translate('school_document_required')
-                              : l10n.translate('school_document_desc'),
-                          style: TextStyle(fontSize: 12, color: context.textSecondary),
+                    // Department document info (for department role)
+                    if (isDepartment) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF92400E).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF92400E).withValues(alpha: 0.3),
+                          ),
                         ),
-                        value: _isSchoolDocument,
-                        onChanged: isSchoolRep
-                            ? null // SchoolRep can't toggle - always school document
-                            : (value) {
-                                setState(() {
-                                  _isSchoolDocument = value;
-                                  // Clear school selection when toggling off
-                                  if (!value) {
-                                    _selectedSchoolId = null;
-                                    _selectedSchoolName = null;
-                                  }
-                                });
-                              },
-                        activeColor: AppColors.gold,
-                        contentPadding: EdgeInsets.zero,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF92400E).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.folder_special_rounded,
+                                color: Color(0xFF92400E),
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    l10n.translate('department_document'),
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '${l10n.translate('will_be_added_to')} ${user?.department?.displayName ?? l10n.translate('department')}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: context.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    // School dropdown for BEX/Superadmin when school document is selected
-                    if (_isSchoolDocument && canUploadCounty) ...[
                       const SizedBox(height: 16),
-                      _buildSchoolDropdown(context, l10n),
+                    ],
+                    // School document toggle (hide for department role)
+                    if (!isDepartment) ...[
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: context.cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: SwitchListTile(
+                          title: Text(l10n.translate('school_document')),
+                          subtitle: Text(
+                            isSchoolRep
+                                ? l10n.translate('school_document_required')
+                                : l10n.translate('school_document_desc'),
+                            style: TextStyle(fontSize: 12, color: context.textSecondary),
+                          ),
+                          value: _isSchoolDocument,
+                          onChanged: isSchoolRep
+                              ? null // SchoolRep can't toggle - always school document
+                              : (value) {
+                                  setState(() {
+                                    _isSchoolDocument = value;
+                                    // Clear school selection when toggling off
+                                    if (!value) {
+                                      _selectedSchoolId = null;
+                                      _selectedSchoolName = null;
+                                    }
+                                  });
+                                },
+                          activeColor: AppColors.gold,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      // School dropdown for BEX/Superadmin when school document is selected
+                      if (_isSchoolDocument && canUploadCounty) ...[
+                        const SizedBox(height: 16),
+                        _buildSchoolDropdown(context, l10n),
+                      ],
                     ],
                   ],
                 );

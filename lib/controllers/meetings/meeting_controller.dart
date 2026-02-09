@@ -292,9 +292,10 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     if (type == MeetingType.countyAG || type == MeetingType.bex) {
       return role == UserRole.bex || role == UserRole.superadmin;
     }
-    // School meetings can be managed by schoolRep, bex, superadmin (NOT department)
+    // School meetings can be managed by schoolRep, department, bex, superadmin
     if (type == MeetingType.school) {
       return role == UserRole.schoolRep ||
+             role == UserRole.department ||
              role == UserRole.bex ||
              role == UserRole.superadmin;
     }
@@ -361,7 +362,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
         meetingSchoolId = user.schoolId;
         meetingSchoolName = user.schoolName;
       } else {
-        // BEX/Superadmin can specify a school or use their own
+        // Department/BEX/Superadmin can specify a school or use their own
         meetingSchoolId = schoolId ?? user.schoolId;
         meetingSchoolName = schoolName ?? user.schoolName;
       }
@@ -439,6 +440,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       }
 
       // Send automatic notification for new meeting
+      // Pass minVisibilityRole to filter recipients
       await _sendMeetingNotification(
         title: title,
         dateTime: dateTime,
@@ -446,6 +448,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
         schoolId: meetingSchoolId,
         location: isOnline ? 'Online' : location,
         meetingId: id,
+        minVisibilityRole: minVisibilityRole,
       );
     } else {
       state = AsyncValue.error('Failed to create meeting', StackTrace.current);
@@ -472,7 +475,30 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       return false;
     }
 
-    final success = await _repository.updateMeeting(meeting);
+    // Re-translate title and description so translations reflect the edited text
+    Map<String, String>? titleTranslations;
+    Map<String, String>? descriptionTranslations;
+
+    try {
+      await Future<void>(() async {
+        final translatedTitle = await TranslatableContent.fromText(meeting.title);
+        titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+
+        if (meeting.description != null && meeting.description!.isNotEmpty) {
+          final translatedDescription = await TranslatableContent.fromText(meeting.description!);
+          descriptionTranslations = {'en': translatedDescription.en, 'ro': translatedDescription.ro};
+        }
+      }).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('MeetingController: Translation failed/timeout during update - $e, continuing without translations');
+    }
+
+    final updatedMeeting = meeting.copyWith(
+      titleTranslations: titleTranslations ?? {'en': meeting.title, 'ro': meeting.title},
+      descriptionTranslations: descriptionTranslations ?? (meeting.description != null ? {'en': meeting.description!, 'ro': meeting.description!} : null),
+    );
+
+    final success = await _repository.updateMeeting(updatedMeeting);
 
     if (success) {
       state = const AsyncValue.data(null);
@@ -630,6 +656,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Send notification for a new meeting
+  /// - minVisibilityRole: Only notify users with this role or higher
   Future<void> _sendMeetingNotification({
     required String title,
     required DateTime dateTime,
@@ -637,6 +664,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     String? schoolId,
     String? location,
     required String meetingId,
+    UserRole? minVisibilityRole,
   }) async {
     try {
       final notificationRepo = _ref.read(notificationRepositoryProvider);
@@ -650,11 +678,22 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
 
       final notificationBody = 'Scheduled for $dateStr at $timeStr${location != null ? ' - $location' : ''}';
 
+      // Determine effective minVisibilityRole based on meeting type
+      // BEx/CountyAG meetings should only notify BEx/Superadmin
+      // Department meetings should only notify Department and above
+      UserRole? effectiveMinRole = minVisibilityRole;
+      if (type == MeetingType.bex || type == MeetingType.countyAG) {
+        effectiveMinRole = _higherRole(minVisibilityRole, UserRole.bex);
+      } else if (type == MeetingType.department) {
+        effectiveMinRole = _higherRole(minVisibilityRole, UserRole.department);
+      }
+
       await notificationRepo.sendCountyWideNotification(
         title: 'New ${type.displayName} Meeting: $title',
         body: notificationBody,
         type: NotificationType.meetingReminder,
         schoolId: type == MeetingType.school ? schoolId : null,
+        minVisibilityRole: effectiveMinRole,
         senderId: user?.id ?? '',
         senderName: user?.fullName ?? 'System',
         additionalData: {'meetingId': meetingId},
@@ -664,6 +703,12 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     } catch (e) {
       debugPrint('Error sending meeting notification: $e');
     }
+  }
+
+  /// Returns the higher of two roles (by hierarchy level), or the non-null one
+  UserRole _higherRole(UserRole? a, UserRole b) {
+    if (a == null) return b;
+    return a.hierarchyLevel >= b.hierarchyLevel ? a : b;
   }
 }
 

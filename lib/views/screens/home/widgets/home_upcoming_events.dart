@@ -8,16 +8,13 @@ import '../../../../core/core.dart';
 import '../../../../models/models.dart';
 import '../../../../routes/route_names.dart';
 
-/// Unified event type for home screen
-enum UpcomingEventType { meeting, poll, initiative }
-
-/// Unified event model for combining different event types
+/// Unified event model for upcoming meetings
 class UpcomingEvent {
   final String id;
   final String title;
   final String subtitle;
   final DateTime date;
-  final UpcomingEventType type;
+  final MeetingType meetingType;
   final dynamic originalData;
 
   const UpcomingEvent({
@@ -25,7 +22,7 @@ class UpcomingEvent {
     required this.title,
     required this.subtitle,
     required this.date,
-    required this.type,
+    required this.meetingType,
     required this.originalData,
   });
 }
@@ -37,16 +34,10 @@ class HomeUpcomingEvents extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
 
-    // Watch all three data sources
+    // Only watch meetings for Upcoming Events section
     final meetingsAsync = ref.watch(upcomingMeetingsStreamProvider);
-    final pollsAsync = ref.watch(activePollsStreamProvider);
-    final initiativesAsync = ref.watch(recentInitiativesStreamProvider);
 
-    // Combine loading states
-    final isLoading = meetingsAsync.isLoading || pollsAsync.isLoading || initiativesAsync.isLoading;
-    final hasError = meetingsAsync.hasError && pollsAsync.hasError && initiativesAsync.hasError;
-
-    if (isLoading && !meetingsAsync.hasValue && !pollsAsync.hasValue && !initiativesAsync.hasValue) {
+    if (meetingsAsync.isLoading && !meetingsAsync.hasValue) {
       return const SizedBox(
         height: 180,
         child: Center(
@@ -55,7 +46,7 @@ class HomeUpcomingEvents extends ConsumerWidget {
       );
     }
 
-    if (hasError) {
+    if (meetingsAsync.hasError) {
       return SizedBox(
         height: 180,
         child: Center(
@@ -67,11 +58,10 @@ class HomeUpcomingEvents extends ConsumerWidget {
       );
     }
 
-    // Combine all events
-    final events = _combineEvents(
+    // Convert meetings to events
+    final events = _buildMeetingEvents(
       meetings: meetingsAsync.valueOrNull ?? [],
-      polls: pollsAsync.valueOrNull ?? [],
-      initiatives: initiativesAsync.valueOrNull ?? [],
+      l10n: l10n,
     );
 
     if (events.isEmpty) {
@@ -87,61 +77,23 @@ class HomeUpcomingEvents extends ConsumerWidget {
     );
   }
 
-  List<UpcomingEvent> _combineEvents({
+  List<UpcomingEvent> _buildMeetingEvents({
     required List<MeetingModel> meetings,
-    required List<PollModel> polls,
-    required List<InitiativeModel> initiatives,
+    required AppLocalizations l10n,
   }) {
     final List<UpcomingEvent> events = [];
     final now = DateTime.now();
 
-    // Add upcoming meetings
+    // Add upcoming meetings only
     for (final meeting in meetings) {
       if (meeting.dateTime.isAfter(now)) {
         events.add(UpcomingEvent(
           id: meeting.id,
           title: meeting.title,
-          subtitle: _getMeetingTypeLabel(meeting.type),
+          subtitle: _getMeetingTypeLabel(meeting.type, l10n),
           date: meeting.dateTime,
-          type: UpcomingEventType.meeting,
+          meetingType: meeting.type,
           originalData: meeting,
-        ));
-      }
-    }
-
-    // Add active polls (ending soon)
-    for (final poll in polls) {
-      if (poll.isActive && poll.endDate.isAfter(now)) {
-        events.add(UpcomingEvent(
-          id: poll.id,
-          title: poll.question,
-          subtitle: _getPollTypeLabel(poll),
-          date: poll.endDate,
-          type: UpcomingEventType.poll,
-          originalData: poll,
-        ));
-      }
-    }
-
-    // Add initiatives in active statuses (debate, voting, submitted)
-    for (final initiative in initiatives) {
-      // Include initiatives that are in active phases
-      final isActivePhase = initiative.status == InitiativeStatus.voting ||
-          initiative.status == InitiativeStatus.debate ||
-          initiative.status == InitiativeStatus.submitted;
-
-      if (isActivePhase) {
-        // Use votingEndedAt if available, otherwise use createdAt + 7 days as estimated date
-        final eventDate = initiative.votingEndedAt ??
-            initiative.createdAt.add(const Duration(days: 7));
-
-        events.add(UpcomingEvent(
-          id: initiative.id,
-          title: initiative.title,
-          subtitle: _getInitiativeStatusLabel(initiative.status),
-          date: eventDate,
-          type: UpcomingEventType.initiative,
-          originalData: initiative,
         ));
       }
     }
@@ -201,7 +153,7 @@ class HomeUpcomingEvents extends ConsumerWidget {
             title: event.title,
             subtitle: event.subtitle,
             date: DateFormat('MMM d').format(event.date),
-            time: _getTimeLabel(event, l10n),
+            time: _getTimeLabel(event),
             gradient: _getGradient(event),
             icon: _getIcon(event),
           ),
@@ -211,52 +163,19 @@ class HomeUpcomingEvents extends ConsumerWidget {
   }
 
   void _navigateToDetail(BuildContext context, UpcomingEvent event) {
-    switch (event.type) {
-      case UpcomingEventType.meeting:
-        context.push(RouteNames.meetingDetailPath(event.id));
-        break;
-      case UpcomingEventType.poll:
-        context.push(RouteNames.pollDetailPath(event.id));
-        break;
-      case UpcomingEventType.initiative:
-        context.push(RouteNames.initiativeDetailPath(event.id));
-        break;
-    }
+    context.push(RouteNames.meetingDetailPath(event.id));
   }
 
-  String _getTimeLabel(UpcomingEvent event, AppLocalizations l10n) {
-    switch (event.type) {
-      case UpcomingEventType.meeting:
-        return DateFormat('h:mm a').format(event.date);
-      case UpcomingEventType.poll:
-        return l10n.translate('ends');
-      case UpcomingEventType.initiative:
-        return l10n.translate('vote_ends');
-    }
+  String _getTimeLabel(UpcomingEvent event) {
+    return DateFormat('h:mm a').format(event.date);
   }
 
   List<Color> _getGradient(UpcomingEvent event) {
-    switch (event.type) {
-      case UpcomingEventType.meeting:
-        final meeting = event.originalData as MeetingModel;
-        return _getMeetingGradient(meeting.type);
-      case UpcomingEventType.poll:
-        return const [AppColors.gold, Color(0xFFB8962F)]; // Gold gradient for polls
-      case UpcomingEventType.initiative:
-        return const [AppColors.navy, Color(0xFF1E3A5F)]; // Navy gradient for initiatives
-    }
+    return _getMeetingGradient(event.meetingType);
   }
 
   IconData _getIcon(UpcomingEvent event) {
-    switch (event.type) {
-      case UpcomingEventType.meeting:
-        final meeting = event.originalData as MeetingModel;
-        return _getMeetingIcon(meeting.type);
-      case UpcomingEventType.poll:
-        return Icons.how_to_vote_rounded;
-      case UpcomingEventType.initiative:
-        return Icons.lightbulb_rounded;
-    }
+    return _getMeetingIcon(event.meetingType);
   }
 
   List<Color> _getMeetingGradient(MeetingType type) {
@@ -285,37 +204,16 @@ class HomeUpcomingEvents extends ConsumerWidget {
     }
   }
 
-  String _getMeetingTypeLabel(MeetingType type) {
+  String _getMeetingTypeLabel(MeetingType type, AppLocalizations l10n) {
     switch (type) {
       case MeetingType.countyAG:
-        return 'County Assembly';
+        return l10n.translate('meeting_type_county_ag');
       case MeetingType.bex:
-        return 'BEx Meeting';
+        return l10n.translate('meeting_type_bex');
       case MeetingType.department:
-        return 'Department Meeting';
+        return l10n.translate('meeting_type_department');
       case MeetingType.school:
-        return 'School Meeting';
-    }
-  }
-
-  String _getPollTypeLabel(PollModel poll) {
-    // If schoolId is null, it's a county-wide poll
-    if (poll.schoolId == null || poll.schoolId!.isEmpty) {
-      return 'County Poll';
-    }
-    return 'School Poll';
-  }
-
-  String _getInitiativeStatusLabel(InitiativeStatus status) {
-    switch (status) {
-      case InitiativeStatus.voting:
-        return 'Initiative Vote';
-      case InitiativeStatus.debate:
-        return 'In Debate';
-      case InitiativeStatus.submitted:
-        return 'Under Review';
-      default:
-        return 'Initiative';
+        return l10n.translate('meeting_type_school');
     }
   }
 }

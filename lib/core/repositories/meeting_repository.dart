@@ -172,11 +172,32 @@ class MeetingRepository {
   }
 
   /// Update meeting
+  /// Note: Uses partial update to preserve attendeeIds, documents, and other engagement data
   Future<bool> updateMeeting(MeetingModel meeting) async {
     try {
-      await _collection.doc(meeting.id).update(
-        meeting.copyWith(updatedAt: DateTime.now()).toFirestore(),
-      );
+      await _collection.doc(meeting.id).update({
+        'title': meeting.title,
+        'description': meeting.description,
+        'titleTranslations': meeting.titleTranslations,
+        'descriptionTranslations': meeting.descriptionTranslations,
+        'type': meeting.type.toFirestore(),
+        'dateTime': Timestamp.fromDate(meeting.dateTime),
+        'durationMinutes': meeting.durationMinutes,
+        'location': meeting.location,
+        'isOnline': meeting.isOnline,
+        'onlineLink': meeting.onlineLink,
+        'countyId': meeting.countyId,
+        'schoolId': meeting.schoolId,
+        'schoolName': meeting.schoolName,
+        'department': meeting.department?.toFirestore(),
+        'agendaItems': meeting.agendaItems,
+        'attendeeIds': meeting.attendeeIds,
+        'minutesDocumentUrl': meeting.minutesDocumentUrl,
+        'minVisibilityRole': meeting.minVisibilityRole?.toFirestore(),
+        'updatedAt': Timestamp.now(),
+        // Note: documents and isCompleted are intentionally NOT updated here
+        // to preserve data modified through other operations
+      });
       return true;
     } catch (e) {
       debugPrint('Error updating meeting: $e');

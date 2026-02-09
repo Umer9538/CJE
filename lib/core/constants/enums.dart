@@ -87,6 +87,8 @@ enum UserRole {
   }
 
   /// Get hierarchy level (higher = more permissions)
+  /// Used for visibility filtering - content with minVisibilityRole will only
+  /// be visible to users with hierarchyLevel >= that role's level
   int get hierarchyLevel {
     switch (this) {
       case UserRole.student:
@@ -96,11 +98,11 @@ enum UserRole {
       case UserRole.schoolRep:
         return 3;
       case UserRole.department:
-        return 3; // Same level as school rep
+        return 4; // Higher than school rep for visibility filtering
       case UserRole.bex:
-        return 4;
-      case UserRole.superadmin:
         return 5;
+      case UserRole.superadmin:
+        return 6;
     }
   }
 

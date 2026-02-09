@@ -194,7 +194,7 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                isCounty ? 'CJE' : widget.announcement.schoolName ?? 'School',
+                                isCounty ? 'CJE' : widget.announcement.schoolName ?? l10n.translate('school'),
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

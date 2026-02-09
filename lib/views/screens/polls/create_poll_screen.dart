@@ -73,6 +73,10 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
     final canCreateCountyPoll = user != null &&
         (user.role == UserRole.bex || user.role == UserRole.superadmin);
 
+    // Check if user can select a school (Department/BEX/Superadmin)
+    final canSelectSchool = user != null &&
+        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin);
+
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -122,8 +126,8 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
             ),
             const SizedBox(height: 24),
 
-            // School selection for BEX/Superadmin when School type is selected
-            if (_selectedType == PollType.school && canCreateCountyPoll)
+            // School selection for Department/BEX/Superadmin when School type is selected
+            if (_selectedType == PollType.school && canSelectSchool)
               _buildSchoolDropdown(context, l10n),
 
             // Question
@@ -640,11 +644,11 @@ class _CreatePollScreenState extends ConsumerState<CreatePollScreen> {
       return;
     }
 
-    // Validate school selection for BEX/Superadmin when School type is selected
+    // Validate school selection for Department/BEX/Superadmin when School type is selected
     final user = ref.read(currentUserProvider);
     if (user != null &&
         _selectedType == PollType.school &&
-        (user.role == UserRole.bex || user.role == UserRole.superadmin) &&
+        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin) &&
         _selectedSchoolId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

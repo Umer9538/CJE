@@ -165,6 +165,7 @@ class NotificationController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Send county-wide notification to all users in the county
+  /// - minVisibilityRole: Only send to users with this role or higher (based on hierarchy level)
   Future<bool> sendCountyWideNotification({
     required String title,
     required String body,
@@ -172,6 +173,7 @@ class NotificationController extends StateNotifier<AsyncValue<void>> {
     String? countyId,
     String? schoolId,
     List<UserRole>? targetRoles,
+    UserRole? minVisibilityRole,
   }) async {
     state = const AsyncValue.loading();
 
@@ -195,6 +197,7 @@ class NotificationController extends StateNotifier<AsyncValue<void>> {
         countyId: countyId, // Let repository handle if null
         schoolId: schoolId,
         targetRoles: targetRoles,
+        minVisibilityRole: minVisibilityRole,
         senderId: user.id,
         senderName: user.fullName,
       );

@@ -601,13 +601,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     schoolsAsync.when(
                       data: (schools) => DropdownButtonFormField<String>(
                         value: _selectedSchoolId,
+                        isExpanded: true,
                         decoration: _inputDecoration('${l10n.translate('select')} ${l10n.translate('school')}...'),
                         items: schools.map((school) {
                           return DropdownMenuItem(
                             value: school.id,
                             child: Text(
-                              school.shortName.isNotEmpty ? school.shortName : school.name,
+                              school.name, // Always show full school name, not abbreviation
                               overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
                             ),
                           );
                         }).toList(),

@@ -87,7 +87,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      user?.fullName ?? 'Department',
+                      user?.fullName ?? l10n.translate('role_department'),
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -175,6 +175,10 @@ class DepartmentDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildQuickActionsSection(BuildContext context, AppLocalizations l10n, UserModel? user) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Use gold in dark mode for better visibility, navy in light mode
+    final secondaryColor = isDark ? AppColors.gold : AppColors.navy;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Column(
@@ -212,7 +216,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                 child: _QuickActionButton(
                   icon: Icons.upload_file_rounded,
                   label: l10n.translate('upload_document'),
-                  color: AppColors.navy,
+                  color: secondaryColor,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -242,7 +246,7 @@ class DepartmentDashboardScreen extends ConsumerWidget {
                 child: _QuickActionButton(
                   icon: Icons.calendar_month_rounded,
                   label: l10n.translate('calendar'),
-                  color: AppColors.navy,
+                  color: secondaryColor,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const CalendarScreen()),

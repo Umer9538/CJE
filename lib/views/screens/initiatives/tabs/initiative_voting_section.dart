@@ -150,10 +150,13 @@ class _InitiativeVotingSectionState extends ConsumerState<InitiativeVotingSectio
 
   Widget _buildVotingRequirement(BuildContext context, AppLocalizations l10n) {
     final minRole = widget.initiative.minimumVotingRole;
+    // Use the role's badge colors for consistency and better visibility
+    final badgeColor = minRole.badgeBackgroundColor;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: minRole.badgeBackgroundColor.withValues(alpha: 0.2),
+        color: badgeColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -162,14 +165,14 @@ class _InitiativeVotingSectionState extends ConsumerState<InitiativeVotingSectio
           Icon(
             Icons.groups_rounded,
             size: 14,
-            color: context.textSecondary,
+            color: badgeColor,
           ),
           const SizedBox(width: 6),
           Text(
             '${l10n.translate('eligible_voters')}: ${minRole.displayName} ${l10n.translate('and_above')}',
             style: TextStyle(
               fontSize: 12,
-              color: context.textSecondary,
+              color: badgeColor,
               fontWeight: FontWeight.w500,
             ),
           ),

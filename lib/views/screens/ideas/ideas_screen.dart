@@ -9,6 +9,9 @@ import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
 import '../initiatives/create_initiative_screen.dart';
 import '../main/main_shell.dart';
+import '../bex/bex_shell.dart';
+import '../department/department_shell.dart';
+import '../admin/admin_shell.dart';
 import '../polls/create_poll_screen.dart';
 
 /// Provider to track selected idea type (initiatives or polls)
@@ -59,6 +62,30 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
     super.dispose();
   }
 
+  /// Navigate back - pop if possible, otherwise go to home
+  void _navigateBack(UserRole? role) {
+    // If we can pop (opened from elsewhere), pop back
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    // Otherwise navigate to home using shell navigation provider
+    if (role == UserRole.superadmin) {
+      // AdminShell uses IndexedStack - just update provider
+      ref.read(adminNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.bex) {
+      // BexShell uses IndexedStack - just update provider
+      ref.read(bexNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.department) {
+      // DepartmentShell uses IndexedStack - just update provider
+      ref.read(departmentNavigationIndexProvider.notifier).state = 0;
+    } else {
+      // MainShell uses GoRouter - need both provider update and navigation
+      ref.read(navigationIndexProvider.notifier).state = 0;
+      context.go(RouteNames.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -76,19 +103,12 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
       }
     }
 
-    // Determine back route based on user role
-    final String backRoute = currentUser?.role == UserRole.bex
-        ? RouteNames.bexDashboard
-        : RouteNames.home;
-
     return PopScope(
-      canPop: false,
+      canPop: Navigator.of(context).canPop(),
       onPopInvokedWithResult: (didPop, result) {
-        debugPrint('IdeasScreen: PopScope triggered, didPop=$didPop, backRoute=$backRoute');
         if (didPop) return;
-        // Handle system back button
-        ref.read(navigationIndexProvider.notifier).state = 0;
-        context.go(backRoute);
+        // Handle system back button - navigate back or to home
+        _navigateBack(currentUser?.role);
       },
       child: Scaffold(
         backgroundColor: context.scaffoldBackgroundColor,
@@ -98,7 +118,7 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
             child: Column(
               children: [
                 // Header
-                _buildHeader(context, l10n, backRoute),
+                _buildHeader(context, l10n, currentUser),
 
                 // Type Selector (Initiatives / Polls)
                 _buildTypeSelector(context, l10n, selectedType),
@@ -118,7 +138,7 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppLocalizations l10n, String backRoute) {
+  Widget _buildHeader(BuildContext context, AppLocalizations l10n, dynamic currentUser) {
     final selectedType = ref.watch(selectedIdeaTypeProvider);
     final hasActiveFilters = selectedType == IdeaType.initiatives
         ? (_showOnlyMyInitiatives || (_selectedSchoolId != null && !_showAllSchools))
@@ -128,14 +148,10 @@ class _IdeasScreenState extends ConsumerState<IdeasScreen>
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          // Back button
+          // Back button - pop or navigate to home
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () {
-              debugPrint('IdeasScreen: Back button tapped, navigating to $backRoute');
-              ref.read(navigationIndexProvider.notifier).state = 0;
-              context.go(backRoute);
-            },
+            onTap: () => _navigateBack(currentUser?.role),
             child: Container(
               width: 44,
               height: 44,

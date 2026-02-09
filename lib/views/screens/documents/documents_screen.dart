@@ -8,6 +8,10 @@ import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
+import '../main/main_shell.dart';
+import '../bex/bex_shell.dart';
+import '../department/department_shell.dart';
+import '../admin/admin_shell.dart';
 import 'upload_document_screen.dart';
 
 /// Main documents list screen
@@ -57,6 +61,30 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     super.dispose();
   }
 
+  /// Navigate back - pop if possible, otherwise go to home
+  void _navigateBack(UserRole? role) {
+    // If we can pop (opened from Menu), pop back
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    // Otherwise navigate to home using shell navigation provider
+    if (role == UserRole.superadmin) {
+      // AdminShell uses IndexedStack - just update provider
+      ref.read(adminNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.bex) {
+      // BexShell uses IndexedStack - just update provider
+      ref.read(bexNavigationIndexProvider.notifier).state = 0;
+    } else if (role == UserRole.department) {
+      // DepartmentShell uses IndexedStack - just update provider
+      ref.read(departmentNavigationIndexProvider.notifier).state = 0;
+    } else {
+      // MainShell uses GoRouter - need both provider update and navigation
+      ref.read(navigationIndexProvider.notifier).state = 0;
+      context.go(RouteNames.home);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -83,7 +111,14 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     // SchoolRep can upload school documents, BEX/Superadmin can upload any
     final canUpload = ref.watch(canUploadDocumentsProvider);
 
-    return Scaffold(
+    return PopScope(
+      canPop: Navigator.of(context).canPop(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // Handle system back button - navigate back or to home
+        _navigateBack(currentUser?.role);
+      },
+      child: Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
@@ -151,29 +186,21 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
               ),
             )
           : null,
+      ),
     );
   }
 
   Widget _buildHeader(BuildContext context, AppLocalizations l10n) {
     final currentUser = ref.watch(currentUserProvider);
-    final String backRoute = currentUser?.role == UserRole.bex
-        ? RouteNames.bexDashboard
-        : RouteNames.home;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
       child: Row(
         children: [
-          // Back button - navigate to home or BEX dashboard
+          // Back button - pop or navigate to home
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go(backRoute);
-              }
-            },
+            onTap: () => _navigateBack(currentUser?.role),
             child: Container(
               width: 44,
               height: 44,

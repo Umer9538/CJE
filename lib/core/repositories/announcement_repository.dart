@@ -149,11 +149,30 @@ class AnnouncementRepository {
   }
 
   /// Update announcement
+  /// Note: Uses partial update to preserve viewCount and other engagement data
   Future<bool> updateAnnouncement(AnnouncementModel announcement) async {
     try {
-      await _collection.doc(announcement.id).update(
-        announcement.copyWith(updatedAt: DateTime.now()).toFirestore(),
-      );
+      // Use partial update to avoid overwriting viewCount and other counters
+      await _collection.doc(announcement.id).update({
+        'title': announcement.title,
+        'content': announcement.content,
+        'summary': announcement.summary,
+        'titleTranslations': announcement.titleTranslations,
+        'contentTranslations': announcement.contentTranslations,
+        'summaryTranslations': announcement.summaryTranslations,
+        'type': announcement.type.toFirestore(),
+        'countyId': announcement.countyId,
+        'schoolId': announcement.schoolId,
+        'schoolName': announcement.schoolName,
+        'imageUrl': announcement.imageUrl,
+        'attachmentUrls': announcement.attachmentUrls,
+        'tags': announcement.tags,
+        'isPinned': announcement.isPinned,
+        'isPublished': announcement.isPublished,
+        'minVisibilityRole': announcement.minVisibilityRole?.toFirestore(),
+        'updatedAt': Timestamp.now(),
+        // Note: viewCount is intentionally NOT updated here to preserve engagement data
+      });
       return true;
     } catch (e) {
       debugPrint('Error updating announcement: $e');

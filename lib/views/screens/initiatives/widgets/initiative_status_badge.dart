@@ -10,6 +10,8 @@ class InitiativeStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
@@ -17,7 +19,7 @@ class InitiativeStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        _getStatusLabel(status),
+        _getStatusLabel(status, l10n),
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -46,22 +48,22 @@ class InitiativeStatusBadge extends StatelessWidget {
     }
   }
 
-  String _getStatusLabel(InitiativeStatus status) {
+  String _getStatusLabel(InitiativeStatus status, AppLocalizations l10n) {
     switch (status) {
       case InitiativeStatus.draft:
-        return 'Draft';
+        return l10n.translate('draft');
       case InitiativeStatus.submitted:
-        return 'Submitted';
+        return l10n.translate('submitted');
       case InitiativeStatus.review:
-        return 'In Review';
+        return l10n.translate('review');
       case InitiativeStatus.debate:
-        return 'In Debate';
+        return l10n.translate('in_debate');
       case InitiativeStatus.voting:
-        return 'Voting';
+        return l10n.translate('voting');
       case InitiativeStatus.adopted:
-        return 'Adopted';
+        return l10n.translate('adopted');
       case InitiativeStatus.rejected:
-        return 'Rejected';
+        return l10n.translate('rejected');
     }
   }
 }

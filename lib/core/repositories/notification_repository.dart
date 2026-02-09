@@ -171,6 +171,7 @@ class NotificationRepository {
   }
 
   /// Send county-wide notification to all users in the county
+  /// - minVisibilityRole: Only send to users with this role or higher (based on hierarchy level)
   Future<bool> sendCountyWideNotification({
     required String title,
     required String body,
@@ -178,6 +179,7 @@ class NotificationRepository {
     String? countyId,
     String? schoolId,
     List<UserRole>? targetRoles,
+    UserRole? minVisibilityRole,
     required String senderId,
     required String senderName,
     Map<String, dynamic>? additionalData,
@@ -213,7 +215,25 @@ class NotificationRepository {
           }
         }
 
-        // Filter by roles if specified
+        // Filter by minimum visibility role (hierarchy-based)
+        if (minVisibilityRole != null) {
+          final userRoleStr = userData['role'] as String?;
+          if (userRoleStr != null) {
+            final userRole = UserRole.fromFirestore(userRoleStr);
+            // Skip users whose role hierarchy is lower than required
+            final userLevel = userRole.hierarchyLevel;
+            final requiredLevel = minVisibilityRole.hierarchyLevel;
+            if (userLevel < requiredLevel) {
+              debugPrint('Notification: Skipping user ${doc.id} with role $userRole (level $userLevel < required $requiredLevel)');
+              continue;
+            }
+            debugPrint('Notification: Including user ${doc.id} with role $userRole (level $userLevel >= required $requiredLevel)');
+          } else {
+            continue; // Skip users with no role
+          }
+        }
+
+        // Filter by specific target roles if specified
         if (targetRoles != null && targetRoles.isNotEmpty) {
           final userRole = userData['role'] as String?;
           if (userRole != null && targetRoles.any((r) => r.name == userRole)) {

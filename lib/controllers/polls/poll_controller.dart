@@ -9,6 +9,7 @@ import '../../core/services/translation_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
 import '../admin/admin_controller.dart';
+import '../notifications/notification_controller.dart';
 
 /// Poll repository provider
 final pollRepositoryProvider = Provider<PollRepository>((ref) {
@@ -234,8 +235,9 @@ class PollController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
-    // Permission check - only schoolRep, bex, superadmin can create polls
+    // Permission check - schoolRep, department, bex, superadmin can create polls
     if (user.role != UserRole.schoolRep &&
+        user.role != UserRole.department &&
         user.role != UserRole.bex &&
         user.role != UserRole.superadmin) {
       state = AsyncValue.error('Permission denied', StackTrace.current);
@@ -329,6 +331,16 @@ class PollController extends StateNotifier<AsyncValue<void>> {
         createdBy: user.fullName,
       );
       _ref.invalidate(recentActivitiesProvider);
+
+      // Send notification for new poll
+      await _sendPollNotification(
+        question: question,
+        pollId: id,
+        type: type,
+        schoolId: effectiveSchoolId,
+        minVisibilityRole: minVisibilityRole,
+        endDate: endDate,
+      );
     } else {
       state = AsyncValue.error('Failed to create poll', StackTrace.current);
     }
@@ -388,6 +400,45 @@ class PollController extends StateNotifier<AsyncValue<void>> {
     }
 
     return success;
+  }
+
+  /// Send notification for a new poll
+  Future<void> _sendPollNotification({
+    required String question,
+    required String pollId,
+    required PollType type,
+    String? schoolId,
+    UserRole? minVisibilityRole,
+    DateTime? endDate,
+  }) async {
+    try {
+      final notificationRepo = _ref.read(notificationRepositoryProvider);
+      final user = _ref.read(currentUserProvider);
+
+      // Truncate question for notification body
+      final notificationBody = question.length > 100
+          ? '${question.substring(0, 100)}...'
+          : question;
+
+      final endDateStr = endDate != null
+          ? ' (ends ${endDate.day}/${endDate.month}/${endDate.year})'
+          : '';
+
+      await notificationRepo.sendCountyWideNotification(
+        title: 'New Poll: Vote Now!$endDateStr',
+        body: notificationBody,
+        type: NotificationType.pollReminder,
+        schoolId: type == PollType.school ? schoolId : null,
+        minVisibilityRole: minVisibilityRole,
+        senderId: user?.id ?? '',
+        senderName: user?.fullName ?? 'System',
+        additionalData: {'pollId': pollId},
+      );
+
+      debugPrint('Sent notification for poll: $question');
+    } catch (e) {
+      debugPrint('Error sending poll notification: $e');
+    }
   }
 }
 

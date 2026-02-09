@@ -9,6 +9,9 @@ import '../ideas/ideas_screen.dart';
 import '../meetings/meetings_screen.dart';
 import '../menu/menu_screen.dart';
 
+/// BEX navigation index provider - controls which tab is shown in BexShell
+final bexNavigationIndexProvider = StateProvider<int>((ref) => 0);
+
 /// BEX Shell - Main navigation for BEX (County Executive Bureau) users
 /// Same navigation structure as main app:
 /// - Home
@@ -16,17 +19,10 @@ import '../menu/menu_screen.dart';
 /// - Ideas (Initiatives + Polls)
 /// - Meetings
 /// - Menu (contains Users, Schools, GDS, Analytics, Settings)
-class BexShell extends ConsumerStatefulWidget {
+class BexShell extends ConsumerWidget {
   const BexShell({super.key});
 
-  @override
-  ConsumerState<BexShell> createState() => _BexShellState();
-}
-
-class _BexShellState extends ConsumerState<BexShell> {
-  int _currentIndex = 0;
-
-  final List<Widget> _screens = const [
+  static const List<Widget> _screens = [
     HomeScreen(),
     AnnouncementsScreen(),
     IdeasScreen(),
@@ -35,10 +31,11 @@ class _BexShellState extends ConsumerState<BexShell> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
+    final currentIndex = ref.watch(bexNavigationIndexProvider);
     // Clamp index to valid range (safety for hot reload)
-    final safeIndex = _currentIndex.clamp(0, _screens.length - 1);
+    final safeIndex = currentIndex.clamp(0, _screens.length - 1);
 
     return Scaffold(
       body: IndexedStack(
@@ -47,8 +44,8 @@ class _BexShellState extends ConsumerState<BexShell> {
       ),
       extendBody: true,
       bottomNavigationBar: _FloatingBottomNav(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        currentIndex: currentIndex,
+        onTap: (index) => ref.read(bexNavigationIndexProvider.notifier).state = index,
         labels: [
           l10n.translate('home'),
           l10n.translate('announcements'),

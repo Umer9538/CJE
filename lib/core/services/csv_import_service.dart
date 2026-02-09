@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../models/models.dart';
@@ -354,6 +357,154 @@ class CSVImportService {
     }
   }
 
+  /// Parse Excel file content and return user models
+  ///
+  /// Supports both .xls and .xlsx formats
+  /// First row must contain headers (same as CSV format)
+  CSVImportResult parseExcel(Uint8List bytes) {
+    final List<UserModel> successfulUsers = [];
+    final List<CSVImportError> errors = [];
+
+    try {
+      final excel = Excel.decodeBytes(bytes);
+
+      if (excel.tables.isEmpty) {
+        errors.add(CSVImportError(
+          rowNumber: 0,
+          message: 'Excel file has no sheets',
+        ));
+        return CSVImportResult(
+          successfulUsers: successfulUsers,
+          errors: errors,
+          totalRows: 0,
+        );
+      }
+
+      // Get first sheet
+      final sheetName = excel.tables.keys.first;
+      final sheet = excel.tables[sheetName]!;
+
+      if (sheet.rows.isEmpty) {
+        errors.add(CSVImportError(
+          rowNumber: 0,
+          message: 'Excel sheet is empty',
+        ));
+        return CSVImportResult(
+          successfulUsers: successfulUsers,
+          errors: errors,
+          totalRows: 0,
+        );
+      }
+
+      // Parse headers from first row
+      final headerRow = sheet.rows[0];
+      final headers = headerRow
+          .map((cell) => cell?.value?.toString().toLowerCase().trim() ?? '')
+          .toList();
+
+      // Validate required headers
+      for (final required in requiredHeaders) {
+        if (!headers.contains(required)) {
+          errors.add(CSVImportError(
+            rowNumber: 1,
+            message: 'Missing required header: $required',
+          ));
+        }
+      }
+
+      if (errors.isNotEmpty) {
+        return CSVImportResult(
+          successfulUsers: successfulUsers,
+          errors: errors,
+          totalRows: sheet.rows.length - 1,
+        );
+      }
+
+      // Create header index map
+      final headerIndex = <String, int>{};
+      for (var i = 0; i < headers.length; i++) {
+        if (headers[i].isNotEmpty) {
+          headerIndex[headers[i]] = i;
+        }
+      }
+
+      // Parse data rows (skip header row)
+      for (var i = 1; i < sheet.rows.length; i++) {
+        final row = sheet.rows[i];
+
+        // Skip empty rows
+        if (row.every((cell) => cell?.value == null || cell!.value.toString().trim().isEmpty)) {
+          continue;
+        }
+
+        try {
+          final rowData = <String, String>{};
+
+          // Map values to headers
+          for (var j = 0; j < row.length && j < headers.length; j++) {
+            final cellValue = row[j]?.value?.toString().trim() ?? '';
+            if (headers[j].isNotEmpty) {
+              rowData[headers[j]] = cellValue;
+            }
+          }
+
+          // Validate and create user
+          final user = _createUserFromRow(rowData, i + 1, errors);
+          if (user != null) {
+            successfulUsers.add(user);
+          }
+        } catch (e) {
+          errors.add(CSVImportError(
+            rowNumber: i + 1,
+            message: 'Failed to parse row: $e',
+          ));
+        }
+      }
+
+      return CSVImportResult(
+        successfulUsers: successfulUsers,
+        errors: errors,
+        totalRows: sheet.rows.length - 1,
+      );
+    } catch (e) {
+      debugPrint('Excel parsing error: $e');
+      errors.add(CSVImportError(
+        rowNumber: 0,
+        message: 'Failed to parse Excel file: $e',
+      ));
+      return CSVImportResult(
+        successfulUsers: successfulUsers,
+        errors: errors,
+        totalRows: 0,
+      );
+    }
+  }
+
+  /// Parse file based on extension (CSV or Excel)
+  Future<CSVImportResult> parseFile(String filePath) async {
+    final file = File(filePath);
+    final extension = filePath.toLowerCase().split('.').last;
+
+    if (extension == 'csv') {
+      final content = await file.readAsString();
+      return parseCSV(content);
+    } else if (extension == 'xls' || extension == 'xlsx') {
+      final bytes = await file.readAsBytes();
+      return parseExcel(bytes);
+    } else {
+      return CSVImportResult(
+        successfulUsers: [],
+        errors: [
+          CSVImportError(
+            rowNumber: 0,
+            message: 'Unsupported file format: .$extension. Please use .csv, .xls, or .xlsx',
+          ),
+        ],
+        totalRows: 0,
+      );
+    }
+  }
+
   /// Generate a sample CSV template
   static String generateTemplate() {
     const headers = 'email,fullName,phoneNumber,city,role,schoolId,schoolName,className,department';
@@ -367,7 +518,7 @@ class CSVImportService {
   /// Get template description for display
   static String getTemplateDescription() {
     return '''
-CSV Import Format:
+Supported formats: CSV, XLS, XLSX
 
 Required columns:
 - email: User's email address
@@ -376,7 +527,7 @@ Required columns:
 Optional columns:
 - phoneNumber: Phone number
 - city: City name
-- role: student, classRep, schoolRep, department, bex, superadmin (default: student)
+- role: student, classRep, schoolRep, department, bex (default: student)
 - schoolId: School document ID
 - schoolName: School name (display)
 - className: Class name (e.g., 12A, 11B)
@@ -386,7 +537,7 @@ Notes:
 - First row must contain headers
 - Imported users will have 'pending' status
 - Email addresses must be unique
-- Use UTF-8 encoding for special characters
+- Use UTF-8 encoding for CSV files
 ''';
   }
 }

@@ -12,17 +12,20 @@ class HomeActivityFeed extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     // Use StreamProviders for real-time updates
     final recentAnnouncements = ref.watch(recentAnnouncementsStreamProvider);
     final recentInitiatives = ref.watch(recentInitiativesStreamProvider);
+    final activePolls = ref.watch(activePollsStreamProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Column(
         children: [
           _buildAnnouncements(context, recentAnnouncements),
-          _buildInitiatives(context, recentInitiatives),
-          _buildEmptyState(context, recentAnnouncements, recentInitiatives),
+          _buildInitiatives(context, recentInitiatives, l10n),
+          _buildPolls(context, activePolls, l10n),
+          _buildEmptyState(context, recentAnnouncements, recentInitiatives, activePolls),
         ],
       ),
     );
@@ -53,7 +56,7 @@ class HomeActivityFeed extends ConsumerWidget {
   }
 
   Widget _buildInitiatives(
-      BuildContext context, AsyncValue<List<dynamic>> initiatives) {
+      BuildContext context, AsyncValue<List<dynamic>> initiatives, AppLocalizations l10n) {
     return initiatives.when(
       data: (list) => Column(
         children: list.take(2).map((initiative) {
@@ -63,7 +66,7 @@ class HomeActivityFeed extends ConsumerWidget {
               avatarColor: const Color(0xFF8B5CF6),
               title: initiative.title,
               subtitle:
-                  '${initiative.supportCount} supporters • ${_getStatusLabel(initiative.status)}',
+                  '${initiative.supportCount} ${l10n.translate('supporters')} • ${_getStatusLabel(initiative.status, l10n)}',
               time: _formatTimeAgo(initiative.createdAt),
               icon: Icons.lightbulb_rounded,
               isUrgent: initiative.status == InitiativeStatus.voting,
@@ -76,10 +79,57 @@ class HomeActivityFeed extends ConsumerWidget {
     );
   }
 
+  Widget _buildPolls(
+      BuildContext context, AsyncValue<List<dynamic>> polls, AppLocalizations l10n) {
+    return polls.when(
+      data: (list) => Column(
+        children: list.take(2).map((poll) {
+          final isEnding = poll.endDate.difference(DateTime.now()).inDays <= 1;
+          return GestureDetector(
+            onTap: () => context.push(RouteNames.pollDetailPath(poll.id)),
+            child: ActivityCard(
+              avatarColor: AppColors.gold,
+              title: poll.question,
+              subtitle: '${poll.totalVotes} ${l10n.translate('votes')} • ${_getPollTypeLabel(poll, l10n)}',
+              time: _formatPollEndTime(poll.endDate, l10n),
+              icon: Icons.how_to_vote_rounded,
+              isUrgent: isEnding,
+            ),
+          );
+        }).toList(),
+      ),
+      loading: () => const SizedBox(),
+      error: (_, __) => const SizedBox(),
+    );
+  }
+
+  String _getPollTypeLabel(dynamic poll, AppLocalizations l10n) {
+    if (poll.schoolId == null || poll.schoolId.isEmpty) {
+      return l10n.translate('poll_county');
+    }
+    return l10n.translate('poll_school');
+  }
+
+  String _formatPollEndTime(DateTime endDate, AppLocalizations l10n) {
+    final now = DateTime.now();
+    final difference = endDate.difference(now);
+
+    if (difference.isNegative) {
+      return l10n.translate('ended');
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ${l10n.translate('left')}';
+    } else if (difference.inDays == 1) {
+      return '1 ${l10n.translate('day_left')}';
+    } else {
+      return '${difference.inDays} ${l10n.translate('days_left')}';
+    }
+  }
+
   Widget _buildEmptyState(BuildContext context, AsyncValue<List<dynamic>> announcements,
-      AsyncValue<List<dynamic>> initiatives) {
+      AsyncValue<List<dynamic>> initiatives, AsyncValue<List<dynamic>> polls) {
     if (announcements.valueOrNull?.isEmpty == true &&
-        initiatives.valueOrNull?.isEmpty == true) {
+        initiatives.valueOrNull?.isEmpty == true &&
+        polls.valueOrNull?.isEmpty == true) {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -125,22 +175,22 @@ class HomeActivityFeed extends ConsumerWidget {
     }
   }
 
-  String _getStatusLabel(InitiativeStatus status) {
+  String _getStatusLabel(InitiativeStatus status, AppLocalizations l10n) {
     switch (status) {
       case InitiativeStatus.draft:
-        return 'Draft';
+        return l10n.translate('draft');
       case InitiativeStatus.submitted:
-        return 'Submitted';
+        return l10n.translate('submitted');
       case InitiativeStatus.review:
-        return 'In Review';
+        return l10n.translate('review');
       case InitiativeStatus.debate:
-        return 'In Debate';
+        return l10n.translate('in_debate');
       case InitiativeStatus.voting:
-        return 'Voting';
+        return l10n.translate('voting');
       case InitiativeStatus.adopted:
-        return 'Adopted';
+        return l10n.translate('adopted');
       case InitiativeStatus.rejected:
-        return 'Rejected';
+        return l10n.translate('rejected');
     }
   }
 }

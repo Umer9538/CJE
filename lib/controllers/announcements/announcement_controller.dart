@@ -213,6 +213,7 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
     } else {
       // School announcement
       if (user.role != UserRole.schoolRep &&
+          user.role != UserRole.department &&
           user.role != UserRole.bex &&
           user.role != UserRole.superadmin) {
         state = AsyncValue.error('Permission denied', StackTrace.current);
@@ -300,12 +301,14 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(recentActivitiesProvider);
 
         // Send automatic notification for published announcement
+        // Pass minVisibilityRole to filter recipients
         await _sendAnnouncementNotification(
           title: title,
           summary: summary ?? content,
           type: type,
-          schoolId: type == AnnouncementType.school ? user.schoolId : null,
+          schoolId: effectiveSchoolId,
           announcementId: id,
+          minVisibilityRole: minVisibilityRole,
         );
       }
     } else {
@@ -319,7 +322,35 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
   Future<bool> updateAnnouncement(AnnouncementModel announcement) async {
     state = const AsyncValue.loading();
 
-    final success = await _repository.updateAnnouncement(announcement);
+    // Re-translate title, content, and summary so translations reflect the edited text
+    Map<String, String>? titleTranslations;
+    Map<String, String>? contentTranslations;
+    Map<String, String>? summaryTranslations;
+
+    try {
+      await Future<void>(() async {
+        final translatedTitle = await TranslatableContent.fromText(announcement.title);
+        titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+
+        final translatedContent = await TranslatableContent.fromText(announcement.content);
+        contentTranslations = {'en': translatedContent.en, 'ro': translatedContent.ro};
+
+        if (announcement.summary != null && announcement.summary!.isNotEmpty) {
+          final translatedSummary = await TranslatableContent.fromText(announcement.summary!);
+          summaryTranslations = {'en': translatedSummary.en, 'ro': translatedSummary.ro};
+        }
+      }).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      debugPrint('AnnouncementController: Translation failed/timeout during update - $e, continuing without translations');
+    }
+
+    final updatedAnnouncement = announcement.copyWith(
+      titleTranslations: titleTranslations ?? {'en': announcement.title, 'ro': announcement.title},
+      contentTranslations: contentTranslations ?? {'en': announcement.content, 'ro': announcement.content},
+      summaryTranslations: summaryTranslations ?? (announcement.summary != null ? {'en': announcement.summary!, 'ro': announcement.summary!} : null),
+    );
+
+    final success = await _repository.updateAnnouncement(updatedAnnouncement);
 
     if (success) {
       state = const AsyncValue.data(null);
@@ -351,15 +382,21 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
 
   /// Publish announcement
   Future<bool> publishAnnouncement(String id) async {
-    // Get announcement title before publishing for logging
+    // Get announcement before publishing for logging
     final announcement = await _repository.getAnnouncementById(id);
+
+    // Check if already published to avoid duplicate notifications
+    if (announcement?.isPublished == true) {
+      debugPrint('Announcement $id is already published, skipping notification');
+      return true; // Already published, no action needed
+    }
 
     final success = await _repository.publishAnnouncement(id);
     if (success) {
       _ref.invalidate(announcementsProvider);
       _ref.invalidate(announcementProvider(id));
 
-      // Log activity
+      // Log activity and send notification only for newly published announcements
       if (announcement != null) {
         final activityRepo = _ref.read(activityRepositoryProvider);
         final user = _ref.read(currentUserProvider);
@@ -371,12 +408,14 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
         _ref.invalidate(recentActivitiesProvider);
 
         // Send automatic notification for published announcement
+        // Pass minVisibilityRole to filter recipients
         await _sendAnnouncementNotification(
           title: announcement.title,
           summary: announcement.summary ?? announcement.content,
           type: announcement.type,
           schoolId: announcement.schoolId,
           announcementId: id,
+          minVisibilityRole: announcement.minVisibilityRole,
         );
       }
     }
@@ -384,12 +423,14 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Send notification for a new announcement
+  /// - minVisibilityRole: Only notify users with this role or higher
   Future<void> _sendAnnouncementNotification({
     required String title,
     required String summary,
     required AnnouncementType type,
     String? schoolId,
     required String announcementId,
+    UserRole? minVisibilityRole,
   }) async {
     try {
       final notificationRepo = _ref.read(notificationRepositoryProvider);
@@ -405,6 +446,7 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
         body: notificationBody,
         type: NotificationType.newAnnouncement,
         schoolId: type == AnnouncementType.school ? schoolId : null,
+        minVisibilityRole: minVisibilityRole,
         senderId: user?.id ?? '',
         senderName: user?.fullName ?? 'System',
         additionalData: {'announcementId': announcementId},

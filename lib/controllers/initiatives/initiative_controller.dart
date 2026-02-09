@@ -6,6 +6,22 @@ import '../../core/constants/enums.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
 import '../admin/admin_controller.dart';
+import '../notifications/notification_controller.dart';
+
+/// Helper to check if a user can view content based on role hierarchy
+/// Returns true if user's role hierarchy level >= content's minimum visibility role
+bool _canViewContent(UserRole? userRole, UserRole? minVisibilityRole) {
+  // No user = no access
+  if (userRole == null) return false;
+  // No restriction = everyone can see
+  if (minVisibilityRole == null) return true;
+  // BEX and Superadmin can see everything
+  if (userRole == UserRole.bex || userRole == UserRole.superadmin) return true;
+  // Compare hierarchy levels
+  final canView = userRole.hierarchyLevel >= minVisibilityRole.hierarchyLevel;
+  debugPrint('_canViewContent: userRole=$userRole (level ${userRole.hierarchyLevel}), minVisibilityRole=$minVisibilityRole (level ${minVisibilityRole.hierarchyLevel}), canView=$canView');
+  return canView;
+}
 
 /// Initiative repository provider
 final initiativeRepositoryProvider = Provider<InitiativeRepository>((ref) {
@@ -26,13 +42,16 @@ final initiativesProvider = FutureProvider.family<List<InitiativeModel>, Initiat
                            user?.role == UserRole.department;
   final effectiveSchoolId = isPrivilegedUser ? filter.schoolId : user?.schoolId;
 
-  return repository.getInitiatives(
+  final initiatives = await repository.getInitiatives(
     status: filter.status,
     schoolId: effectiveSchoolId,
     countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
     authorId: filter.authorId,
     limit: filter.limit,
   );
+
+  // Filter by visibility role
+  return initiatives.where((i) => _canViewContent(user?.role, i.minVisibilityRole)).toList();
 });
 
 /// Initiatives stream provider
@@ -54,6 +73,8 @@ final initiativesStreamProvider = StreamProvider.family<List<InitiativeModel>, I
     schoolId: effectiveSchoolId,
     countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
     limit: filter.limit,
+  ).map((initiatives) =>
+    initiatives.where((i) => _canViewContent(user?.role, i.minVisibilityRole)).toList()
   );
 });
 
@@ -89,7 +110,8 @@ final recentInitiativesProvider = FutureProvider<List<InitiativeModel>>((ref) as
       },
     );
     debugPrint('recentInitiativesProvider: returned ${initiatives.length} initiatives');
-    return initiatives;
+    // Filter by visibility role
+    return initiatives.where((i) => _canViewContent(user?.role, i.minVisibilityRole)).toList();
   } catch (e) {
     debugPrint('recentInitiativesProvider: error $e');
     return <InitiativeModel>[];
@@ -114,6 +136,8 @@ final recentInitiativesStreamProvider = StreamProvider<List<InitiativeModel>>((r
     schoolId: effectiveSchoolId,
     countyId: effectiveCounty,
     limit: 5,
+  ).map((initiatives) =>
+    initiatives.where((i) => _canViewContent(user.role, i.minVisibilityRole)).toList()
   );
 });
 
@@ -201,6 +225,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
   /// Create new initiative
   /// - type: Initiative type (school or county level)
   /// - schoolId/schoolName: Optional overrides for BEX/Superadmin to create initiatives for specific schools
+  /// - minVisibilityRole: Minimum role required to view this initiative (null = visible to all)
   Future<String?> createInitiative({
     required String title,
     required String description,
@@ -213,6 +238,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     InitiativeType type = InitiativeType.school,
     String? schoolId,
     String? schoolName,
+    UserRole? minVisibilityRole,
   }) async {
     state = const AsyncValue.loading();
 
@@ -236,6 +262,8 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     }
     // For county-level initiatives, schoolId and schoolName remain null
 
+    debugPrint('createInitiative: minVisibilityRole being saved = $minVisibilityRole');
+
     final initiative = InitiativeModel(
       id: '',
       title: title,
@@ -253,6 +281,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       tags: tags ?? [],
       attachmentUrls: attachmentUrls ?? [],
       submittedAt: submitImmediately ? DateTime.now() : null,
+      minVisibilityRole: minVisibilityRole,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -503,6 +532,17 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
       _ref.invalidate(initiativeProvider(id));
+
+      // Send notification to eligible voters
+      if (initiative != null) {
+        await _sendInitiativeVotingNotification(
+          title: initiative.title,
+          initiativeId: id,
+          schoolId: initiative.schoolId,
+          minimumVotingRole: minimumVotingRole,
+          minVisibilityRole: initiative.minVisibilityRole,
+        );
+      }
     } else {
       state = AsyncValue.error('Failed to move to voting', StackTrace.current);
     }
@@ -566,6 +606,40 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       state = AsyncValue.error('Failed to reject initiative', StackTrace.current);
     }
     return success;
+  }
+
+  /// Send notification when initiative moves to voting stage
+  Future<void> _sendInitiativeVotingNotification({
+    required String title,
+    required String initiativeId,
+    String? schoolId,
+    required UserRole minimumVotingRole,
+    UserRole? minVisibilityRole,
+  }) async {
+    try {
+      final notificationRepo = _ref.read(notificationRepositoryProvider);
+      final user = _ref.read(currentUserProvider);
+
+      // Truncate title for notification body
+      final notificationBody = title.length > 100
+          ? '${title.substring(0, 100)}...'
+          : title;
+
+      await notificationRepo.sendCountyWideNotification(
+        title: 'Initiative Voting: Cast Your Vote!',
+        body: notificationBody,
+        type: NotificationType.initiativeUpdate,
+        schoolId: schoolId,
+        minVisibilityRole: minVisibilityRole ?? minimumVotingRole,
+        senderId: user?.id ?? '',
+        senderName: user?.fullName ?? 'System',
+        additionalData: {'initiativeId': initiativeId},
+      );
+
+      debugPrint('Sent voting notification for initiative: $title');
+    } catch (e) {
+      debugPrint('Error sending initiative voting notification: $e');
+    }
   }
 }
 

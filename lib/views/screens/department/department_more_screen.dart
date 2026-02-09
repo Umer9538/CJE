@@ -244,6 +244,8 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -274,7 +276,7 @@ class _ProfileCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user?.fullName ?? 'Department User',
+                  user?.fullName ?? l10n.translate('role_department'),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -297,7 +299,7 @@ class _ProfileCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    user?.department?.displayName ?? 'Department',
+                    user?.department?.displayName ?? l10n.translate('role_department'),
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,

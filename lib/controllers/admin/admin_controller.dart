@@ -9,6 +9,7 @@ import '../../core/repositories/warning_repository.dart';
 import '../../core/services/csv_import_service.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
+import '../warnings/warning_controller.dart';
 
 const _uuid = Uuid();
 
@@ -589,6 +590,12 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     _ref.invalidate(pendingUsersProvider);
     _ref.invalidate(filteredUsersProvider);
     _ref.invalidate(adminUserProvider(userId));
+
+    // Also invalidate warning/absence providers for counter updates
+    _ref.invalidate(warningCountProvider(userId));
+    _ref.invalidate(userWarningsProvider(userId));
+    _ref.invalidate(absenceCountProvider(userId));
+    _ref.invalidate(userAbsencesProvider(userId));
   }
 
   // ==================== WARNING MANAGEMENT ====================
@@ -685,12 +692,54 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       // Also update the warning in the warnings collection
       final warningRepository = WarningRepository();
-      await warningRepository.updateWarning(warningId, {
+      final updateSuccess = await warningRepository.updateWarning(warningId, {
         'isActive': false,
         'resolvedAt': DateTime.now(),
         'resolvedByName': currentUser.fullName,
         'resolutionNote': resolutionNote,
       });
+
+      // If update failed (warning doesn't exist in collection), create it with resolved status
+      if (!updateSuccess) {
+        final targetUser = await _repository.getUserById(userId);
+        if (targetUser != null) {
+          // Find the warning in user's embedded warnings
+          final userWarning = targetUser.warnings.firstWhere(
+            (w) => w.id == warningId,
+            orElse: () => UserWarning(
+              id: warningId,
+              reason: 'Unknown',
+              issuedById: '',
+              issuedByName: 'Unknown',
+              issuedAt: DateTime.now(),
+            ),
+          );
+
+          // Create the warning document in the collection with resolved status
+          final warningModel = WarningModel(
+            id: warningId,
+            userId: userId,
+            userName: targetUser.fullName,
+            userSchoolId: targetUser.schoolId,
+            userSchoolName: targetUser.schoolName,
+            type: WarningType.written,
+            reason: userWarning.reason,
+            issuedById: userWarning.issuedById,
+            issuedByName: userWarning.issuedByName,
+            issuedAt: userWarning.issuedAt,
+            isActive: false, // Already resolved
+            countyId: currentUser.city ?? '',
+          );
+          await warningRepository.createWarning(warningModel);
+
+          // Now update with resolution details
+          await warningRepository.updateWarning(warningId, {
+            'resolvedAt': DateTime.now(),
+            'resolvedByName': currentUser.fullName,
+            'resolutionNote': resolutionNote,
+          });
+        }
+      }
 
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
@@ -903,6 +952,67 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
       if (existingUser != null) {
         additionalErrors.add(CSVImportError(
           rowNumber: parseResult.successfulUsers.indexOf(user) + 2, // +2 for header and 0-index
+          message: 'Email already exists: ${user.email}',
+        ));
+      } else {
+        usersToCreate.add(user);
+      }
+    }
+
+    // Create users in Firestore
+    final List<UserModel> createdUsers = [];
+    for (final user in usersToCreate) {
+      final userId = await _repository.createUserWithAutoId(user);
+      if (userId != null) {
+        createdUsers.add(user.copyWith(id: userId));
+      } else {
+        additionalErrors.add(CSVImportError(
+          rowNumber: parseResult.successfulUsers.indexOf(user) + 2,
+          message: 'Failed to create user: ${user.email}',
+        ));
+      }
+    }
+
+    state = const AsyncValue.data(null);
+    _ref.invalidate(allUsersProvider);
+    _ref.invalidate(pendingUsersProvider);
+
+    return CSVImportResult(
+      successfulUsers: createdUsers,
+      errors: [...parseResult.errors, ...additionalErrors],
+      totalRows: parseResult.totalRows,
+    );
+  }
+
+  /// Import users from file (CSV or Excel)
+  Future<CSVImportResult> importUsersFromFile(String filePath) async {
+    if (!canChangeRoles) {
+      return CSVImportResult(
+        successfulUsers: [],
+        errors: [CSVImportError(rowNumber: 0, message: 'No permission to import users')],
+        totalRows: 0,
+      );
+    }
+
+    state = const AsyncValue.loading();
+
+    final csvService = CSVImportService();
+    final parseResult = await csvService.parseFile(filePath);
+
+    if (parseResult.successfulUsers.isEmpty) {
+      state = const AsyncValue.data(null);
+      return parseResult;
+    }
+
+    // Check for duplicate emails
+    final List<UserModel> usersToCreate = [];
+    final List<CSVImportError> additionalErrors = [];
+
+    for (final user in parseResult.successfulUsers) {
+      final existingUser = await _repository.getUserByEmail(user.email);
+      if (existingUser != null) {
+        additionalErrors.add(CSVImportError(
+          rowNumber: parseResult.successfulUsers.indexOf(user) + 2,
           message: 'Email already exists: ${user.email}',
         ));
       } else {

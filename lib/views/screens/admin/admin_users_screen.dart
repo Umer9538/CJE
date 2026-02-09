@@ -273,6 +273,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
           onApprove: user.status == UserStatus.pending
               ? () => _approveUser(user)
               : null,
+          onReject: user.status == UserStatus.pending
+              ? () => _rejectUser(user)
+              : null,
         );
       },
     );
@@ -289,6 +292,53 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
               ? AppLocalizations.of(context).translate('user_approved')
               : AppLocalizations.of(context).translate('error_approving_user')),
           backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _rejectUser(UserModel user) async {
+    final l10n = AppLocalizations.of(context);
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.cardColor,
+        title: Text(
+          l10n.translate('reject_user'),
+          style: TextStyle(color: context.textPrimary),
+        ),
+        content: Text(
+          '${l10n.translate('reject_user_confirm')} ${user.fullName}?',
+          style: TextStyle(color: context.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.translate('cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(l10n.translate('reject')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final controller = ref.read(adminControllerProvider.notifier);
+    final success = await controller.suspendUser(user.id);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? l10n.translate('user_rejected')
+              : l10n.translate('error_rejecting_user')),
+          backgroundColor: success ? Colors.orange : Colors.red,
         ),
       );
     }
@@ -394,8 +444,8 @@ class _CSVImportSheet extends ConsumerStatefulWidget {
 }
 
 class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
+  String? _selectedFileName;
   String? _selectedFilePath;
-  String? _fileContent;
   bool _isLoading = false;
   CSVImportResult? _importResult;
 
@@ -403,17 +453,14 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['csv'],
+        allowedExtensions: ['csv', 'xls', 'xlsx'],
         allowMultiple: false,
       );
 
       if (result != null && result.files.isNotEmpty) {
-        final file = File(result.files.first.path!);
-        final content = await file.readAsString();
-
         setState(() {
-          _selectedFilePath = result.files.first.name;
-          _fileContent = content;
+          _selectedFileName = result.files.first.name;
+          _selectedFilePath = result.files.first.path;
           _importResult = null;
         });
       }
@@ -430,13 +477,13 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
   }
 
   Future<void> _importUsers() async {
-    if (_fileContent == null) return;
+    if (_selectedFilePath == null) return;
 
     setState(() => _isLoading = true);
 
     try {
       final controller = ref.read(adminControllerProvider.notifier);
-      final result = await controller.importUsersFromCSV(_fileContent!);
+      final result = await controller.importUsersFromFile(_selectedFilePath!);
 
       setState(() {
         _importResult = result;
@@ -597,17 +644,17 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          _selectedFilePath ?? l10n.translate('select_csv_file'),
+                          _selectedFileName ?? l10n.translate('select_file'),
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: _selectedFilePath != null
+                            color: _selectedFileName != null
                                 ? context.textPrimary
                                 : context.textSecondary,
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        if (_selectedFilePath == null)
+                        if (_selectedFileName == null)
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
@@ -756,7 +803,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: _fileContent != null && !_isLoading
+                      onPressed: _selectedFilePath != null && !_isLoading
                           ? _importUsers
                           : null,
                       style: ElevatedButton.styleFrom(
@@ -821,11 +868,13 @@ class _UserCard extends StatelessWidget {
   final UserModel user;
   final VoidCallback onTap;
   final VoidCallback? onApprove;
+  final VoidCallback? onReject;
 
   const _UserCard({
     required this.user,
     required this.onTap,
     this.onApprove,
+    this.onReject,
   });
 
   @override
@@ -935,21 +984,43 @@ class _UserCard extends StatelessWidget {
             ),
 
             // Actions
-            if (onApprove != null)
-              IconButton(
-                onPressed: onApprove,
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.green,
-                    size: 20,
-                  ),
-                ),
+            if (onApprove != null || onReject != null)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (onReject != null)
+                    IconButton(
+                      onPressed: onReject,
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.red,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  if (onApprove != null)
+                    IconButton(
+                      onPressed: onApprove,
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.green,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                ],
               )
             else
               Icon(

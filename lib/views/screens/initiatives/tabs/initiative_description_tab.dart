@@ -17,8 +17,8 @@ class InitiativeDescriptionTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context);
-    final user = ref.watch(currentUserProvider);
     final canApprove = ref.watch(canApproveInitiativesProvider(initiative));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -38,7 +38,7 @@ class InitiativeDescriptionTab extends ConsumerWidget {
           title: l10n.translate('initiative_description'),
           content: initiative.description,
           icon: Icons.description_rounded,
-          iconColor: AppColors.navy,
+          iconColor: isDark ? AppColors.gold : AppColors.navy,
         ),
 
         // Problem
@@ -62,8 +62,9 @@ class InitiativeDescriptionTab extends ConsumerWidget {
         // Tags
         if (initiative.tags.isNotEmpty) _buildTags(context),
 
-        // Voting section
-        if (_canVote(user)) ...[
+        // Voting section - show to all users when initiative is in voting status
+        // Voting buttons are restricted inside InitiativeVotingSection based on role
+        if (initiative.status == InitiativeStatus.voting) ...[
           const SizedBox(height: 16),
           InitiativeVotingSection(initiative: initiative),
         ],
@@ -101,16 +102,6 @@ class InitiativeDescriptionTab extends ConsumerWidget {
         }).toList(),
       ),
     );
-  }
-
-  bool _canVote(UserModel? user) {
-    return initiative.status == InitiativeStatus.voting &&
-        user != null &&
-        (user.role == UserRole.classRep ||
-            user.role == UserRole.schoolRep ||
-            user.role == UserRole.department ||
-            user.role == UserRole.bex ||
-            user.role == UserRole.superadmin);
   }
 
   Widget _buildRejectionReasonSection(BuildContext context, AppLocalizations l10n) {
