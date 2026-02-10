@@ -424,10 +424,13 @@ class PollController extends StateNotifier<AsyncValue<void>> {
           ? ' (ends ${endDate.day}/${endDate.month}/${endDate.year})'
           : '';
 
+      debugPrint('PollNotification: Sending with minVisibilityRole=$minVisibilityRole, schoolId=$schoolId, type=$type, countyId=${user?.city}');
+
       await notificationRepo.sendCountyWideNotification(
         title: 'New Poll: Vote Now!$endDateStr',
         body: notificationBody,
         type: NotificationType.pollReminder,
+        countyId: user?.city,
         schoolId: type == PollType.school ? schoolId : null,
         minVisibilityRole: minVisibilityRole,
         senderId: user?.id ?? '',

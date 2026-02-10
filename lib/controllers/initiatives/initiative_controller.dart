@@ -625,10 +625,13 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
           ? '${title.substring(0, 100)}...'
           : title;
 
+      debugPrint('InitiativeNotification: Sending with minVisibilityRole=${minVisibilityRole ?? minimumVotingRole}, schoolId=$schoolId, countyId=${user?.city}');
+
       await notificationRepo.sendCountyWideNotification(
         title: 'Initiative Voting: Cast Your Vote!',
         body: notificationBody,
         type: NotificationType.initiativeUpdate,
+        countyId: user?.city,
         schoolId: schoolId,
         minVisibilityRole: minVisibilityRole ?? minimumVotingRole,
         senderId: user?.id ?? '',

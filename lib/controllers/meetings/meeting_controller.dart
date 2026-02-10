@@ -688,10 +688,13 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
         effectiveMinRole = _higherRole(minVisibilityRole, UserRole.department);
       }
 
+      debugPrint('MeetingNotification: Sending with effectiveMinRole=$effectiveMinRole, schoolId=$schoolId, type=$type, countyId=${user?.city}');
+
       await notificationRepo.sendCountyWideNotification(
         title: 'New ${type.displayName} Meeting: $title',
         body: notificationBody,
         type: NotificationType.meetingReminder,
+        countyId: user?.city,
         schoolId: type == MeetingType.school ? schoolId : null,
         minVisibilityRole: effectiveMinRole,
         senderId: user?.id ?? '',

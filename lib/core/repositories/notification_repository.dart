@@ -185,17 +185,21 @@ class NotificationRepository {
     Map<String, dynamic>? additionalData,
   }) async {
     try {
+      debugPrint('sendCountyWideNotification: countyId=$countyId, schoolId=$schoolId, minVisibilityRole=$minVisibilityRole, targetRoles=$targetRoles');
+
       // Get all users in the county (or all users if countyId is null)
       Query<Map<String, dynamic>> usersQuery = _firestore.collection('users');
 
       if (countyId != null && countyId.isNotEmpty) {
-        usersQuery = usersQuery.where('countyId', isEqualTo: countyId);
+        // User documents store county in the 'city' field
+        usersQuery = usersQuery.where('city', isEqualTo: countyId);
       }
 
       // Filter by status (only active users)
       usersQuery = usersQuery.where('status', isEqualTo: 'active');
 
       final usersSnapshot = await usersQuery.get();
+      debugPrint('sendCountyWideNotification: Found ${usersSnapshot.docs.length} active users');
 
       if (usersSnapshot.docs.isEmpty) {
         debugPrint('No users found for county-wide notification');
@@ -206,6 +210,9 @@ class NotificationRepository {
       List<String> targetUserIds = [];
       for (final doc in usersSnapshot.docs) {
         final userData = doc.data();
+
+        // Skip the sender (don't notify yourself)
+        if (doc.id == senderId) continue;
 
         // Filter by school if specified
         if (schoolId != null && schoolId.isNotEmpty) {

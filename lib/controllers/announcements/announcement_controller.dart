@@ -441,10 +441,13 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
           ? '${summary.substring(0, 100)}...'
           : summary;
 
+      debugPrint('AnnouncementNotification: Sending with minVisibilityRole=$minVisibilityRole, schoolId=$schoolId, type=$type, countyId=${user?.city}');
+
       await notificationRepo.sendCountyWideNotification(
         title: 'New Announcement: $title',
         body: notificationBody,
         type: NotificationType.newAnnouncement,
+        countyId: user?.city,
         schoolId: type == AnnouncementType.school ? schoolId : null,
         minVisibilityRole: minVisibilityRole,
         senderId: user?.id ?? '',
