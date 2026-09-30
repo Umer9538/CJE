@@ -32,8 +32,16 @@ void main() async {
 
   // Create default admin user (only in debug mode, runs once before app starts)
   // This runs BEFORE auth listeners are set up, so signOut won't affect the user
+  // Pass credentials via: flutter run --dart-define=ADMIN_EMAIL=... --dart-define=ADMIN_PASSWORD=...
   if (kDebugMode) {
-    await CreateAdminScript.createDefaultAdmin();
+    const adminEmail = String.fromEnvironment('ADMIN_EMAIL');
+    const adminPassword = String.fromEnvironment('ADMIN_PASSWORD');
+    if (adminEmail.isNotEmpty && adminPassword.isNotEmpty) {
+      await CreateAdminScript.createDefaultAdmin(
+        email: adminEmail,
+        password: adminPassword,
+      );
+    }
   }
 
   // Initialize SharedPreferences
