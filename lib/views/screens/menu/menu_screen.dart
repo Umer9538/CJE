@@ -10,6 +10,7 @@ import '../admin/admin_schools_screen.dart';
 import '../admin/admin_gds_screen.dart' show AdminGDSScreen;
 import '../admin/bex_analytics_screen.dart';
 import '../admin/county_settings_screen.dart';
+import '../bex/activity_report_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../documents/documents_screen.dart';
 import '../polls/polls_screen.dart';
@@ -332,6 +333,17 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                     MaterialPageRoute(builder: (_) => const MyWarningsScreen()),
                   ),
                 ),
+                _buildDivider(),
+                _MenuTile(
+                  icon: Icons.groups_3_rounded,
+                  iconColor: secondaryIconColor,
+                  title: 'GDS',
+                  subtitle: l10n.translate('gds_subtitle'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminGDSScreen()),
+                  ),
+                ),
               ],
             ),
           ),
@@ -395,17 +407,6 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                 ),
                 _buildDivider(),
                 _MenuTile(
-                  icon: Icons.groups_3_rounded,
-                  iconColor: secondaryIconColor,
-                  title: 'GDS',
-                  subtitle: l10n.translate('gds_subtitle'),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AdminGDSScreen()),
-                  ),
-                ),
-                _buildDivider(),
-                _MenuTile(
                   icon: Icons.analytics_rounded,
                   iconColor: AppColors.gold,
                   title: l10n.translate('analytics'),
@@ -424,6 +425,17 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const CountySettingsScreen()),
+                  ),
+                ),
+                _buildDivider(),
+                _MenuTile(
+                  icon: Icons.assessment_rounded,
+                  iconColor: AppColors.gold,
+                  title: l10n.translate('activity_report'),
+                  subtitle: l10n.translate('download_quarterly_data'),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ActivityReportScreen()),
                   ),
                 ),
               ],

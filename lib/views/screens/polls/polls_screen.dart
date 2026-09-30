@@ -307,7 +307,7 @@ class _PollsScreenState extends ConsumerState<PollsScreen>
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => ref.invalidate(pollsProvider),
+              onPressed: () => ref.invalidate(pollsStreamProvider),
               child: Text(l10n.translate('retry')),
             ),
           ],

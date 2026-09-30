@@ -301,7 +301,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen>
         if (isDrafts) {
           ref.invalidate(myDraftAnnouncementsProvider);
         } else {
-          ref.invalidate(announcementsProvider);
+          ref.invalidate(announcementsStreamProvider);
         }
       },
       color: AppColors.gold,

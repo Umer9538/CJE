@@ -36,14 +36,15 @@ class _AdminGDSScreenState extends ConsumerState<AdminGDSScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
-        title: Text(l10n.translate('manage_gds')),
+        title: Text(canManage ? l10n.translate('manage_gds') : 'GDS'),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: Icon(_showInactive ? Icons.visibility : Icons.visibility_off),
-            tooltip: _showInactive ? 'Hide inactive' : 'Show inactive',
-            onPressed: () => setState(() => _showInactive = !_showInactive),
-          ),
+          if (canManage)
+            IconButton(
+              icon: Icon(_showInactive ? Icons.visibility : Icons.visibility_off),
+              tooltip: _showInactive ? 'Hide inactive' : 'Show inactive',
+              onPressed: () => setState(() => _showInactive = !_showInactive),
+            ),
         ],
       ),
       body: Column(
@@ -142,6 +143,7 @@ class _AdminGDSScreenState extends ConsumerState<AdminGDSScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
+    final canManage = ref.watch(canManageGDSProvider);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -172,7 +174,9 @@ class _AdminGDSScreenState extends ConsumerState<AdminGDSScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              l10n.translate('no_gds_message'),
+              canManage
+                  ? l10n.translate('no_gds_message')
+                  : l10n.translate('no_gds_available'),
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[500],

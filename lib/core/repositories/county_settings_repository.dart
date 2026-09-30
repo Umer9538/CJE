@@ -16,7 +16,7 @@ class CountySettingsRepository {
 
   /// Document reference for settings
   DocumentReference<Map<String, dynamic>> get _settingsDoc =>
-      _firestore.collection('settings').doc(_settingsDocId);
+      _firestore.collection('county_settings').doc(_settingsDocId);
 
   /// Get county settings
   Future<CountySettingsModel> getSettings() async {

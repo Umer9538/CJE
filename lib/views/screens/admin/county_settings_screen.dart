@@ -156,6 +156,10 @@ class _CountySettingsScreenState extends ConsumerState<CountySettingsScreen> {
     final repository = ref.read(countySettingsRepositoryProvider);
     final success = await repository.updateSettings(updatedSettings);
 
+    if (success) {
+      ref.invalidate(countySettingsProvider);
+    }
+
     setState(() => _isLoading = false);
 
     if (mounted) {
