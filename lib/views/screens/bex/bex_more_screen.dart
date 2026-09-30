@@ -8,6 +8,7 @@ import '../admin/admin_schools_screen.dart';
 import '../admin/send_notification_screen.dart';
 import '../documents/documents_screen.dart';
 import '../profile/profile_screen.dart';
+import 'activity_report_screen.dart';
 
 /// BEX More Screen - Additional features and settings
 class BexMoreScreen extends ConsumerWidget {
@@ -82,6 +83,25 @@ class BexMoreScreen extends ConsumerWidget {
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const SendNotificationScreen()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Data & Reports section
+          _SectionTitle(title: l10n.translate('data_reports')),
+          const SizedBox(height: 12),
+          _MenuCard(
+            children: [
+              _MenuItem(
+                icon: Icons.assessment_rounded,
+                label: l10n.translate('activity_report'),
+                subtitle: l10n.translate('download_quarterly_data'),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const ActivityReportScreen()),
                 ),
               ),
             ],
