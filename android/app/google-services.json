@@ -22,6 +22,74 @@
           }
         },
         {
+          "client_id": "317912008960-tnbojiuirrtoo5kbpp6mh7cgdsimt1vh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.chawla.cje",
+            "certificate_hash": "73e8de9485b3d1f178a41c39be3c1d7b3b084074"
+          }
+        },
+        {
+          "client_id": "317912008960-3gp92dvqr869gmgo0tr9rdhlifdseta2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBhoA98z-PJdJ6ULVn2t02OfbIFadI6Cww"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "317912008960-3gp92dvqr869gmgo0tr9rdhlifdseta2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "317912008960-cjb36u6jg36pivd3psh4flas7tigbunp.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.chawla.cje"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:317912008960:android:0ecb3f4ff49d208d220be5",
+        "android_client_info": {
+          "package_name": "com.cje.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "317912008960-1bmmijrs6qq5iqgbuop91aiqepuq2i2k.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cje.android",
+            "certificate_hash": "49ca23d51dd96bcad6d52db6143295cd4913bc01"
+          }
+        },
+        {
+          "client_id": "317912008960-f4d2mvpkfo0shhl2knnonlp58pfih4tv.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cje.android",
+            "certificate_hash": "ecefa4359dbcd39515e5c06f28e6dfd7902266dc"
+          }
+        },
+        {
+          "client_id": "317912008960-t1s1v56l5t57ngfma56c5vv2ane047vg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cje.android",
+            "certificate_hash": "73e8de9485b3d1f178a41c39be3c1d7b3b084074"
+          }
+        },
+        {
           "client_id": "317912008960-3gp92dvqr869gmgo0tr9rdhlifdseta2.apps.googleusercontent.com",
           "client_type": 3
         }

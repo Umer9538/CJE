@@ -1,4 +1,4 @@
-package com.chawla.cje
+package com.cje.android
 
 import io.flutter.embedding.android.FlutterActivity
 
