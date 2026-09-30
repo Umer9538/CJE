@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/repositories/poll_repository.dart';
 import '../../core/constants/enums.dart';
 import '../../core/services/translation_service.dart';
@@ -420,14 +421,14 @@ class PollController extends StateNotifier<AsyncValue<void>> {
           ? '${question.substring(0, 100)}...'
           : question;
 
-      final endDateStr = endDate != null
-          ? ' (ends ${endDate.day}/${endDate.month}/${endDate.year})'
-          : '';
+      final endDateFormatted = endDate != null
+          ? '${endDate.day}/${endDate.month}/${endDate.year}'
+          : null;
 
       debugPrint('PollNotification: Sending with minVisibilityRole=$minVisibilityRole, schoolId=$schoolId, type=$type, countyId=${user?.city}');
 
       await notificationRepo.sendCountyWideNotification(
-        title: 'New Poll: Vote Now!$endDateStr',
+        title: 'New Poll: Vote Now!',
         body: notificationBody,
         type: NotificationType.pollReminder,
         countyId: user?.city,
@@ -436,6 +437,13 @@ class PollController extends StateNotifier<AsyncValue<void>> {
         senderId: user?.id ?? '',
         senderName: user?.fullName ?? 'System',
         additionalData: {'pollId': pollId},
+        titleBuilder: (lang) {
+          final base = AppLocalizations.translateForLocale(lang, 'notif_new_poll');
+          if (endDateFormatted == null) return base;
+          final suffix = AppLocalizations.translateForLocaleWithParams(
+              lang, 'notif_poll_ends', {'date': endDateFormatted});
+          return '$base$suffix';
+        },
       );
 
       debugPrint('Sent notification for poll: $question');

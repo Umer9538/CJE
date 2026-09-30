@@ -172,6 +172,7 @@ class NotificationRepository {
 
   /// Send county-wide notification to all users in the county
   /// - minVisibilityRole: Only send to users with this role or higher (based on hierarchy level)
+  /// - titleBuilder/bodyBuilder: optional callbacks to resolve per-user localized text
   Future<bool> sendCountyWideNotification({
     required String title,
     required String body,
@@ -183,11 +184,14 @@ class NotificationRepository {
     required String senderId,
     required String senderName,
     Map<String, dynamic>? additionalData,
+    String Function(String languageCode)? titleBuilder,
+    String Function(String languageCode)? bodyBuilder,
   }) async {
     try {
       debugPrint('sendCountyWideNotification: countyId=$countyId, schoolId=$schoolId, minVisibilityRole=$minVisibilityRole, targetRoles=$targetRoles');
 
       // Get all users in the county (or all users if countyId is null)
+      // Use single-field query only to avoid needing a composite Firestore index
       Query<Map<String, dynamic>> usersQuery = _firestore.collection('users');
 
       if (countyId != null && countyId.isNotEmpty) {
@@ -195,21 +199,25 @@ class NotificationRepository {
         usersQuery = usersQuery.where('city', isEqualTo: countyId);
       }
 
-      // Filter by status (only active users)
-      usersQuery = usersQuery.where('status', isEqualTo: 'active');
-
+      // NOTE: Status filtering moved to client-side loop below to avoid
+      // compound query that requires a Firestore composite index
       final usersSnapshot = await usersQuery.get();
-      debugPrint('sendCountyWideNotification: Found ${usersSnapshot.docs.length} active users');
+      debugPrint('sendCountyWideNotification: Found ${usersSnapshot.docs.length} users in county');
 
       if (usersSnapshot.docs.isEmpty) {
         debugPrint('No users found for county-wide notification');
         return false;
       }
 
-      // Filter by roles and school if specified
+      // Filter by status, roles and school client-side
       List<String> targetUserIds = [];
+      List<String> userLanguages = [];
       for (final doc in usersSnapshot.docs) {
         final userData = doc.data();
+
+        // Skip inactive users (filter client-side instead of in query)
+        final userStatus = userData['status'] as String?;
+        if (userStatus != 'active') continue;
 
         // Skip the sender (don't notify yourself)
         if (doc.id == senderId) continue;
@@ -231,10 +239,8 @@ class NotificationRepository {
             final userLevel = userRole.hierarchyLevel;
             final requiredLevel = minVisibilityRole.hierarchyLevel;
             if (userLevel < requiredLevel) {
-              debugPrint('Notification: Skipping user ${doc.id} with role $userRole (level $userLevel < required $requiredLevel)');
               continue;
             }
-            debugPrint('Notification: Including user ${doc.id} with role $userRole (level $userLevel >= required $requiredLevel)');
           } else {
             continue; // Skip users with no role
           }
@@ -245,9 +251,11 @@ class NotificationRepository {
           final userRole = userData['role'] as String?;
           if (userRole != null && targetRoles.any((r) => r.name == userRole)) {
             targetUserIds.add(doc.id);
+            userLanguages.add(userData['preferredLanguage'] as String? ?? 'en');
           }
         } else {
           targetUserIds.add(doc.id);
+          userLanguages.add(userData['preferredLanguage'] as String? ?? 'en');
         }
       }
 
@@ -264,6 +272,19 @@ class NotificationRepository {
 
         for (var j = i; j < end; j++) {
           final docRef = _notificationsCollection.doc();
+          // Resolve per-user localized title/body (with fallback on error)
+          String resolvedTitle = title;
+          String resolvedBody = body;
+          try {
+            if (titleBuilder != null) {
+              resolvedTitle = titleBuilder(userLanguages[j]);
+            }
+            if (bodyBuilder != null) {
+              resolvedBody = bodyBuilder(userLanguages[j]);
+            }
+          } catch (e) {
+            debugPrint('Error resolving localized notification: $e');
+          }
           // Merge additional data with base data
           final notificationData = <String, dynamic>{
             'senderId': senderId,
@@ -275,8 +296,8 @@ class NotificationRepository {
           batch.set(docRef, {
             'userId': targetUserIds[j],
             'type': type.name,
-            'title': title,
-            'body': body,
+            'title': resolvedTitle,
+            'body': resolvedBody,
             'isRead': false,
             'data': notificationData,
             'createdAt': Timestamp.now(),
@@ -286,10 +307,11 @@ class NotificationRepository {
         await batch.commit();
       }
 
-      debugPrint('Sent notification to ${targetUserIds.length} users');
+      debugPrint('sendCountyWideNotification: Successfully sent to ${targetUserIds.length} users');
       return true;
-    } catch (e) {
-      debugPrint('Error sending notification: $e');
+    } catch (e, stackTrace) {
+      debugPrint('sendCountyWideNotification ERROR: $e');
+      debugPrint('sendCountyWideNotification stack: $stackTrace');
       return false;
     }
   }

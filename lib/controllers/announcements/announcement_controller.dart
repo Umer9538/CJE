@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/repositories/repositories.dart';
 import '../../core/constants/enums.dart';
 import '../../core/services/translation_service.dart';
@@ -453,6 +454,8 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
         senderId: user?.id ?? '',
         senderName: user?.fullName ?? 'System',
         additionalData: {'announcementId': announcementId},
+        titleBuilder: (lang) => AppLocalizations.translateForLocaleWithParams(
+            lang, 'notif_new_announcement', {'title': title}),
       );
 
       debugPrint('Sent notification for announcement: $title');

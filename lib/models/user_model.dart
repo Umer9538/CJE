@@ -21,6 +21,7 @@ class UserModel extends Equatable {
   final DateTime updatedAt;
   final DateTime? lastLoginAt;
   final String? fcmToken; // For push notifications
+  final String? preferredLanguage; // For localized notifications ('ro' or 'en')
   final List<UserWarning> warnings; // Warning history
   final List<UserAbsence> absences; // Absence tracking
 
@@ -41,6 +42,7 @@ class UserModel extends Equatable {
     required this.updatedAt,
     this.lastLoginAt,
     this.fcmToken,
+    this.preferredLanguage,
     this.warnings = const [],
     this.absences = const [],
   });
@@ -113,6 +115,7 @@ class UserModel extends Equatable {
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastLoginAt: (data['lastLoginAt'] as Timestamp?)?.toDate(),
       fcmToken: data['fcmToken'] as String?,
+      preferredLanguage: data['preferredLanguage'] as String?,
       warnings: (data['warnings'] as List<dynamic>?)
               ?.map((w) => UserWarning.fromMap(w as Map<String, dynamic>))
               .toList() ??
@@ -142,6 +145,7 @@ class UserModel extends Equatable {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'lastLoginAt': lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
       'fcmToken': fcmToken,
+      'preferredLanguage': preferredLanguage,
       'warnings': warnings.map((w) => w.toMap()).toList(),
       'absences': absences.map((a) => a.toMap()).toList(),
     };
@@ -165,6 +169,7 @@ class UserModel extends Equatable {
     DateTime? updatedAt,
     DateTime? lastLoginAt,
     String? fcmToken,
+    String? preferredLanguage,
     List<UserWarning>? warnings,
     List<UserAbsence>? absences,
   }) {
@@ -185,6 +190,7 @@ class UserModel extends Equatable {
       updatedAt: updatedAt ?? this.updatedAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       fcmToken: fcmToken ?? this.fcmToken,
+      preferredLanguage: preferredLanguage ?? this.preferredLanguage,
       warnings: warnings ?? this.warnings,
       absences: absences ?? this.absences,
     );
@@ -208,6 +214,7 @@ class UserModel extends Equatable {
         updatedAt,
         lastLoginAt,
         fcmToken,
+        preferredLanguage,
         warnings,
         absences,
       ];

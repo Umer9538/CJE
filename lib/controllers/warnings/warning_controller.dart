@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/enums.dart';
+import '../../core/l10n/app_localizations.dart';
 import '../../core/repositories/notification_repository.dart';
 import '../../core/repositories/warning_repository.dart';
 import '../../models/models.dart';
@@ -364,12 +367,27 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     required String reason,
     required String issuedByName,
   }) async {
+    // Fetch user's preferred language
+    String lang = 'ro';
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      lang = userDoc.data()?['preferredLanguage'] as String? ?? 'en';
+    } catch (e) {
+      debugPrint('Error fetching user language for warning notification: $e');
+    }
+
+    final warningTypeKey = 'warning_type_${warningType.name}';
+    final translatedType = AppLocalizations.translateForLocale(lang, warningTypeKey);
+    final title = AppLocalizations.translateForLocale(lang, 'notif_warning_issued');
+    final body = AppLocalizations.translateForLocaleWithParams(
+        lang, 'notif_warning_body', {'type': translatedType, 'reason': reason});
+
     final notification = NotificationModel(
       id: '',
       userId: userId,
       type: NotificationType.warningIssued,
-      title: 'Ai primit o mustrare',
-      body: '${warningType.displayNameRo}: $reason',
+      title: title,
+      body: body,
       data: {
         'warningType': warningType.name,
         'issuedBy': issuedByName,
@@ -387,12 +405,27 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     required AbsenceType absenceType,
     required String recordedByName,
   }) async {
+    // Fetch user's preferred language
+    String lang = 'ro';
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      lang = userDoc.data()?['preferredLanguage'] as String? ?? 'en';
+    } catch (e) {
+      debugPrint('Error fetching user language for absence notification: $e');
+    }
+
+    final absenceTypeKey = 'absence_type_${absenceType.name}';
+    final translatedType = AppLocalizations.translateForLocale(lang, absenceTypeKey);
+    final title = AppLocalizations.translateForLocale(lang, 'notif_absence_recorded');
+    final body = AppLocalizations.translateForLocaleWithParams(
+        lang, 'notif_absence_body', {'type': translatedType, 'meeting': meetingTitle});
+
     final notification = NotificationModel(
       id: '',
       userId: userId,
       type: NotificationType.absenceRecorded,
-      title: 'Absență înregistrată',
-      body: '${absenceType.displayNameRo} la: $meetingTitle',
+      title: title,
+      body: body,
       data: {
         'meetingTitle': meetingTitle,
         'absenceType': absenceType.name,

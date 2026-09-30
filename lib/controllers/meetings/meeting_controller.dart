@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/repositories/repositories.dart';
 import '../../core/constants/enums.dart';
 import '../../core/services/translation_service.dart';
@@ -432,6 +433,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     if (id != null) {
       state = const AsyncValue.data(null);
       _ref.invalidate(meetingsProvider);
+      _ref.invalidate(meetingsStreamProvider);
       _ref.invalidate(upcomingMeetingsProvider);
       _ref.invalidate(nextMeetingProvider);
       // Invalidate department meetings if it's a department meeting
@@ -503,12 +505,24 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(meetingsProvider);
+      _ref.invalidate(meetingsStreamProvider);
       _ref.invalidate(meetingProvider(meeting.id));
       _ref.invalidate(upcomingMeetingsProvider);
       // Invalidate department meetings if it's a department meeting
       if (meeting.type == MeetingType.department) {
         _ref.invalidate(departmentMeetingsProvider);
       }
+
+      // Send notification about the updated meeting
+      await _sendMeetingUpdatedNotification(
+        title: meeting.title,
+        dateTime: meeting.dateTime,
+        type: meeting.type,
+        schoolId: meeting.schoolId,
+        location: meeting.isOnline ? 'Online' : meeting.location,
+        meetingId: meeting.id,
+        minVisibilityRole: meeting.minVisibilityRole,
+      );
     } else {
       state = AsyncValue.error('Failed to update meeting', StackTrace.current);
     }
@@ -525,6 +539,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(meetingsProvider);
+      _ref.invalidate(meetingsStreamProvider);
       _ref.invalidate(upcomingMeetingsProvider);
       _ref.invalidate(nextMeetingProvider);
       _ref.invalidate(departmentMeetingsProvider);
@@ -540,6 +555,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.completeMeeting(id);
     if (success) {
       _ref.invalidate(meetingsProvider);
+      _ref.invalidate(meetingsStreamProvider);
       _ref.invalidate(meetingProvider(id));
     }
     return success;
@@ -670,13 +686,10 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       final notificationRepo = _ref.read(notificationRepositoryProvider);
       final user = _ref.read(currentUserProvider);
 
-      // Format date and time for notification
-      final dateFormat = DateFormat('MMM d, yyyy');
-      final timeFormat = DateFormat('h:mm a');
-      final dateStr = dateFormat.format(dateTime);
-      final timeStr = timeFormat.format(dateTime);
-
-      final notificationBody = 'Scheduled for $dateStr at $timeStr${location != null ? ' - $location' : ''}';
+      final meetingTypeKey = 'meeting_type_${type.name}';
+      final meetingTitle = title;
+      final meetingDateTime = dateTime;
+      final meetingLocation = location;
 
       // Determine effective minVisibilityRole based on meeting type
       // BEx/CountyAG meetings should only notify BEx/Superadmin
@@ -692,7 +705,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
 
       await notificationRepo.sendCountyWideNotification(
         title: 'New ${type.displayName} Meeting: $title',
-        body: notificationBody,
+        body: 'Scheduled for ${DateFormat('MMM d, yyyy').format(dateTime)} at ${DateFormat('h:mm a').format(dateTime)}',
         type: NotificationType.meetingReminder,
         countyId: user?.city,
         schoolId: type == MeetingType.school ? schoolId : null,
@@ -700,11 +713,83 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
         senderId: user?.id ?? '',
         senderName: user?.fullName ?? 'System',
         additionalData: {'meetingId': meetingId},
+        titleBuilder: (lang) {
+          final typeName = AppLocalizations.translateForLocale(lang, meetingTypeKey);
+          return AppLocalizations.translateForLocaleWithParams(
+              lang, 'notif_new_meeting', {'type': typeName, 'title': meetingTitle});
+        },
+        bodyBuilder: (lang) {
+          final locale = lang == 'ro' ? 'ro_RO' : 'en_US';
+          final dateStr = DateFormat('MMM d, yyyy', locale).format(meetingDateTime);
+          final timeStr = DateFormat('h:mm a', locale).format(meetingDateTime);
+          var body = AppLocalizations.translateForLocaleWithParams(
+              lang, 'notif_meeting_scheduled', {'date': dateStr, 'time': timeStr});
+          if (meetingLocation != null) body += ' - $meetingLocation';
+          return body;
+        },
       );
 
       debugPrint('Sent notification for meeting: $title');
     } catch (e) {
       debugPrint('Error sending meeting notification: $e');
+    }
+  }
+
+  /// Send notification when a meeting is updated (rescheduled)
+  Future<void> _sendMeetingUpdatedNotification({
+    required String title,
+    required DateTime dateTime,
+    required MeetingType type,
+    String? schoolId,
+    String? location,
+    required String meetingId,
+    UserRole? minVisibilityRole,
+  }) async {
+    try {
+      final notificationRepo = _ref.read(notificationRepositoryProvider);
+      final user = _ref.read(currentUserProvider);
+
+      final meetingTypeKey = 'meeting_type_${type.name}';
+      final meetingTitle = title;
+      final meetingDateTime = dateTime;
+      final meetingLocation = location;
+
+      UserRole? effectiveMinRole = minVisibilityRole;
+      if (type == MeetingType.bex || type == MeetingType.countyAG) {
+        effectiveMinRole = _higherRole(minVisibilityRole, UserRole.bex);
+      } else if (type == MeetingType.department) {
+        effectiveMinRole = _higherRole(minVisibilityRole, UserRole.department);
+      }
+
+      await notificationRepo.sendCountyWideNotification(
+        title: 'Meeting Updated: $title',
+        body: 'Rescheduled',
+        type: NotificationType.meetingReminder,
+        countyId: user?.city,
+        schoolId: type == MeetingType.school ? schoolId : null,
+        minVisibilityRole: effectiveMinRole,
+        senderId: user?.id ?? '',
+        senderName: user?.fullName ?? 'System',
+        additionalData: {'meetingId': meetingId},
+        titleBuilder: (lang) {
+          final typeName = AppLocalizations.translateForLocale(lang, meetingTypeKey);
+          return AppLocalizations.translateForLocaleWithParams(
+              lang, 'notif_meeting_updated', {'type': typeName, 'title': meetingTitle});
+        },
+        bodyBuilder: (lang) {
+          final locale = lang == 'ro' ? 'ro_RO' : 'en_US';
+          final dateStr = DateFormat('MMM d, yyyy', locale).format(meetingDateTime);
+          final timeStr = DateFormat('h:mm a', locale).format(meetingDateTime);
+          var body = AppLocalizations.translateForLocaleWithParams(
+              lang, 'notif_meeting_updated_body', {'date': dateStr, 'time': timeStr});
+          if (meetingLocation != null) body += ' - $meetingLocation';
+          return body;
+        },
+      );
+
+      debugPrint('Sent update notification for meeting: $title');
+    } catch (e) {
+      debugPrint('Error sending meeting update notification: $e');
     }
   }
 

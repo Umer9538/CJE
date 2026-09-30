@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/l10n/app_localizations.dart';
 import '../../core/repositories/repositories.dart';
 import '../../core/constants/enums.dart';
 import '../../models/models.dart';
@@ -291,6 +292,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (id != null) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(recentInitiativesProvider);
     } else {
       state = AsyncValue.error('Failed to create initiative', StackTrace.current);
@@ -308,6 +310,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(initiative.id));
     } else {
       state = AsyncValue.error('Failed to update initiative', StackTrace.current);
@@ -325,6 +328,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(recentInitiativesProvider);
     } else {
       state = AsyncValue.error('Failed to delete initiative', StackTrace.current);
@@ -338,6 +342,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.updateStatus(id, InitiativeStatus.submitted);
     if (success) {
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(id));
     }
     return success;
@@ -348,6 +353,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     final success = await _repository.updateStatus(id, status);
     if (success) {
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(id));
       _ref.invalidate(recentInitiativesProvider);
     }
@@ -364,6 +370,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(initiativeProvider(initiativeId));
       _ref.invalidate(isSupportingProvider(initiativeId));
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(recentInitiativesProvider);
     }
     return success;
@@ -466,6 +473,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(id));
       _ref.invalidate(recentInitiativesProvider);
     } else {
@@ -494,6 +502,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(id));
     } else {
       state = AsyncValue.error('Failed to move to debate', StackTrace.current);
@@ -531,6 +540,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(id));
 
       // Send notification to eligible voters
@@ -569,6 +579,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(id));
       _ref.invalidate(recentInitiativesProvider);
     } else {
@@ -600,6 +611,7 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
+      _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(id));
       _ref.invalidate(recentInitiativesProvider);
     } else {
@@ -620,28 +632,38 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       final notificationRepo = _ref.read(notificationRepositoryProvider);
       final user = _ref.read(currentUserProvider);
 
+      if (user == null) {
+        debugPrint('InitiativeNotification: ERROR - user is null, cannot send notification');
+        return;
+      }
+
       // Truncate title for notification body
       final notificationBody = title.length > 100
           ? '${title.substring(0, 100)}...'
           : title;
 
-      debugPrint('InitiativeNotification: Sending with minVisibilityRole=${minVisibilityRole ?? minimumVotingRole}, schoolId=$schoolId, countyId=${user?.city}');
+      // Use minimumVotingRole for filtering - this is who should receive the notification
+      // Don't use minVisibilityRole here as it controls UI visibility, not notification targeting
+      debugPrint('InitiativeNotification: Sending with minimumVotingRole=$minimumVotingRole, schoolId=$schoolId, countyId=${user.city}, senderId=${user.id}');
 
-      await notificationRepo.sendCountyWideNotification(
+      final result = await notificationRepo.sendCountyWideNotification(
         title: 'Initiative Voting: Cast Your Vote!',
         body: notificationBody,
         type: NotificationType.initiativeUpdate,
-        countyId: user?.city,
+        countyId: user.city,
         schoolId: schoolId,
-        minVisibilityRole: minVisibilityRole ?? minimumVotingRole,
-        senderId: user?.id ?? '',
-        senderName: user?.fullName ?? 'System',
+        minVisibilityRole: minimumVotingRole,
+        senderId: user.id,
+        senderName: user.fullName,
         additionalData: {'initiativeId': initiativeId},
+        titleBuilder: (lang) =>
+            AppLocalizations.translateForLocale(lang, 'notif_initiative_voting'),
       );
 
-      debugPrint('Sent voting notification for initiative: $title');
-    } catch (e) {
+      debugPrint('InitiativeNotification: sendCountyWideNotification returned $result for initiative: $title');
+    } catch (e, stackTrace) {
       debugPrint('Error sending initiative voting notification: $e');
+      debugPrint('Stack trace: $stackTrace');
     }
   }
 }

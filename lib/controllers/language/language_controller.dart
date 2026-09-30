@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/l10n/app_localizations.dart';
+import '../auth/auth_controller.dart';
 import '../theme/theme_controller.dart';
 
 /// Language storage key
@@ -11,8 +13,9 @@ const String _languageCodeKey = 'language_code';
 /// Language state notifier
 class LanguageNotifier extends StateNotifier<Locale> {
   final SharedPreferences _prefs;
+  final Ref _ref;
 
-  LanguageNotifier(this._prefs) : super(_loadLocale(_prefs));
+  LanguageNotifier(this._prefs, this._ref) : super(_loadLocale(_prefs));
 
   /// Load locale from SharedPreferences
   static Locale _loadLocale(SharedPreferences prefs) {
@@ -30,6 +33,19 @@ class LanguageNotifier extends StateNotifier<Locale> {
     }
     state = locale;
     await _prefs.setString(_languageCodeKey, locale.languageCode);
+
+    // Sync preferred language to Firestore for notification localization
+    try {
+      final user = _ref.read(currentUserProvider);
+      if (user != null && user.id.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.id)
+            .update({'preferredLanguage': locale.languageCode});
+      }
+    } catch (e) {
+      debugPrint('Error syncing preferred language to Firestore: $e');
+    }
   }
 
   /// Set language by code
@@ -73,7 +89,7 @@ class LanguageNotifier extends StateNotifier<Locale> {
 /// Language provider
 final languageProvider = StateNotifierProvider<LanguageNotifier, Locale>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  return LanguageNotifier(prefs);
+  return LanguageNotifier(prefs, ref);
 });
 
 /// Helper provider for current locale
