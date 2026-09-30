@@ -40,6 +40,7 @@ import '../views/screens/announcements/announcement_detail_screen.dart';
 import '../views/screens/meetings/meeting_detail_screen.dart';
 import '../views/screens/initiatives/initiative_detail_screen.dart';
 import '../views/screens/polls/poll_detail_screen.dart';
+import '../views/screens/documents/document_detail_screen.dart';
 import '../views/screens/warnings/my_warnings_screen.dart';
 import 'route_names.dart';
 
@@ -349,6 +350,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               return _PollDetailWrapper(pollId: id);
             },
           ),
+          GoRoute(
+            path: RouteNames.documentDetail,
+            name: 'documentDetailShell',
+            builder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _DocumentDetailWrapper(documentId: id);
+            },
+          ),
         ],
       ),
 
@@ -385,6 +394,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return _PollDetailWrapper(pollId: id);
+        },
+      ),
+      GoRoute(
+        path: RouteNames.documentDetail,
+        name: 'documentDetail',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return _DocumentDetailWrapper(documentId: id);
         },
       ),
 
@@ -623,6 +640,28 @@ class _PollDetailWrapper extends ConsumerWidget {
           return _buildNotFound(context, l10n.translate('poll_not_found'), l10n.translate('back'));
         }
         return PollDetailScreen(poll: poll);
+      },
+      loading: () => _buildLoading(),
+      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
+    );
+  }
+}
+
+/// Wrapper widget to load document by ID
+class _DocumentDetailWrapper extends ConsumerWidget {
+  final String documentId;
+  const _DocumentDetailWrapper({required this.documentId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final documentAsync = ref.watch(documentProvider(documentId));
+    return documentAsync.when(
+      data: (document) {
+        if (document == null) {
+          return _buildNotFound(context, l10n.translate('document_not_found'), l10n.translate('back'));
+        }
+        return DocumentDetailScreen(document: document);
       },
       loading: () => _buildLoading(),
       error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),

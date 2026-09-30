@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../documents/document_detail_screen.dart';
 import '../documents/upload_document_screen.dart';
 
 /// Department Documents Screen - Shows all department documents
@@ -169,21 +169,11 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openDocument(BuildContext context, DocumentModel document, WidgetRef ref) async {
-    // Track download
-    ref.read(documentControllerProvider.notifier).trackDownload(document.id);
-
-    // Open document URL
-    final uri = Uri.parse(document.fileUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_document'))),
-        );
-      }
-    }
+  void _openDocument(BuildContext context, DocumentModel document, WidgetRef ref) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DocumentDetailScreen(document: document)),
+    );
   }
 }
 

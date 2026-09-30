@@ -195,12 +195,13 @@ class DocumentModel extends Equatable {
     // If no user role provided, deny access
     if (userRole == null) return false;
 
-    // If no minimum role set, only superadmin/bex can view
-    if (minimumRole == null) {
-      return userRole == UserRole.superadmin || userRole == UserRole.bex;
-    }
+    // BEX and Superadmin can view all documents
+    if (userRole == UserRole.bex || userRole == UserRole.superadmin) return true;
 
-    // Check role hierarchy
-    return userRole.index >= minimumRole!.index;
+    // If no minimum role set, only superadmin/bex can view (handled above)
+    if (minimumRole == null) return false;
+
+    // Check role hierarchy - includes the selected role itself
+    return userRole.hierarchyLevel >= minimumRole!.hierarchyLevel;
   }
 }

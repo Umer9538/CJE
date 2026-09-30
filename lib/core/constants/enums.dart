@@ -422,7 +422,8 @@ enum DocumentCategory {
   regulamente,
   ghiduri,
   utile,
-  rapoarte;
+  rapoarte,
+  altele;
 
   /// Get display name in Romanian
   String get displayName {
@@ -435,6 +436,8 @@ enum DocumentCategory {
         return AppStrings.docCategoryUtile;
       case DocumentCategory.rapoarte:
         return AppStrings.docCategoryRapoarte;
+      case DocumentCategory.altele:
+        return AppStrings.docCategoryAltele;
     }
   }
 
@@ -449,6 +452,8 @@ enum DocumentCategory {
         return AppColors.docUtile;
       case DocumentCategory.rapoarte:
         return AppColors.docRapoarte;
+      case DocumentCategory.altele:
+        return AppColors.docAltele;
     }
   }
 

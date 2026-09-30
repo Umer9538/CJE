@@ -241,6 +241,7 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(documentsProvider);
+      _ref.invalidate(documentsStreamProvider);
       _ref.invalidate(documentProvider(document.id));
     } else {
       state = AsyncValue.error('Failed to update document', StackTrace.current);
@@ -258,6 +259,7 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(documentsProvider);
+      _ref.invalidate(documentsStreamProvider);
     } else {
       state = AsyncValue.error('Failed to delete document', StackTrace.current);
     }

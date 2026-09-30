@@ -3,11 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
 import '../../../routes/route_names.dart';
+import 'document_detail_screen.dart';
 import '../main/main_shell.dart';
 import '../bex/bex_shell.dart';
 import '../department/department_shell.dart';
@@ -31,7 +31,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       setState(() {
         switch (_tabController.index) {
@@ -49,6 +49,9 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
             break;
           case 4:
             _selectedCategory = DocumentCategory.rapoarte;
+            break;
+          case 5:
+            _selectedCategory = DocumentCategory.altele;
             break;
         }
       });
@@ -100,7 +103,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     // - School-specific documents are only visible to users of that school
     // - Admins/SchoolRep can see all documents (public and non-public)
     final documentsAsync = ref.watch(
-      documentsProvider(DocumentFilter(
+      documentsStreamProvider(DocumentFilter(
         category: _selectedCategory,
         schoolId: currentUser?.schoolId,
         includeCountyDocs: true, // Always show county-level documents
@@ -134,7 +137,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
               child: documentsAsync.when(
                 data: (documents) => RefreshIndicator(
                   onRefresh: () async {
-                    ref.invalidate(documentsProvider);
+                    ref.invalidate(documentsStreamProvider);
                   },
                   color: AppColors.gold,
                   child: documents.isEmpty
@@ -302,6 +305,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
           Tab(text: l10n.translate('ghiduri')),
           Tab(text: l10n.translate('utile')),
           Tab(text: l10n.translate('rapoarte')),
+          Tab(text: l10n.translate('altele')),
         ],
       ),
     );
@@ -448,22 +452,6 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     );
   }
 
-  Widget _buildDocumentsList(List<DocumentModel> documents) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      itemCount: documents.length,
-      itemBuilder: (context, index) {
-        final document = documents[index];
-        return _DocumentCard(
-          document: document,
-          onTap: () => _openDocument(document),
-          onDownload: () => _downloadDocument(document),
-          onDelete: () => _deleteDocument(document),
-        );
-      },
-    );
-  }
-
   Future<void> _deleteDocument(DocumentModel document) async {
     final l10n = AppLocalizations.of(context);
     final confirmed = await showDialog<bool>(
@@ -503,57 +491,31 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     }
   }
 
-  Future<void> _openDocument(DocumentModel document) async {
-    final uri = Uri.parse(document.fileUrl);
-    try {
-      // Try to launch the URL directly - Firebase Storage URLs work in browser
-      final launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (launched) {
-        // Track download
-        ref.read(documentControllerProvider.notifier).trackDownload(document.id);
-      } else {
-        // Fallback: try with inAppWebView mode
-        final launchedInApp = await launchUrl(
-          uri,
-          mode: LaunchMode.inAppWebView,
-        );
-        if (launchedInApp) {
-          ref.read(documentControllerProvider.notifier).trackDownload(document.id);
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
-          );
-        }
-      }
-    } catch (e) {
-      // If launching fails, try opening in app web view as fallback
-      try {
-        final launchedInApp = await launchUrl(
-          uri,
-          mode: LaunchMode.inAppWebView,
-        );
-        if (launchedInApp) {
-          ref.read(documentControllerProvider.notifier).trackDownload(document.id);
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
-          );
-        }
-      } catch (e2) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
-          );
-        }
-      }
-    }
+  void _openDocument(DocumentModel document) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DocumentDetailScreen(document: document)),
+    );
   }
 
   Future<void> _downloadDocument(DocumentModel document) async {
-    await _openDocument(document);
+    final uri = Uri.parse(document.fileUrl);
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (launched) {
+        ref.read(documentControllerProvider.notifier).trackDownload(document.id);
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AppLocalizations.of(context).translate('cannot_open_file'))),
+        );
+      }
+    }
   }
 
   void _showUploadInfo(BuildContext context) async {
@@ -563,7 +525,7 @@ class _DocumentsScreenState extends ConsumerState<DocumentsScreen>
     );
     // Refresh documents after returning from upload screen
     if (mounted) {
-      ref.invalidate(documentsProvider);
+      ref.invalidate(documentsStreamProvider);
     }
   }
 }

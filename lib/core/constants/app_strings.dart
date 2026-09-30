@@ -172,6 +172,7 @@ class AppStrings {
   static const String docCategoryGhiduri = 'Ghiduri';
   static const String docCategoryUtile = 'Utile';
   static const String docCategoryRapoarte = 'Rapoarte';
+  static const String docCategoryAltele = 'Altele';
   static const String uploadDocument = 'Încarcă document';
   static const String uploadDocumentDesc = 'Încarcă documente noi în platformă';
   static const String downloadDocument = 'Descarcă';

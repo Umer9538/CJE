@@ -198,6 +198,7 @@ class AppColors {
   static const Color docGhiduri = Color(0xFF10B981);      // Green
   static const Color docUtile = Color(0xFFF59E0B);        // Amber
   static const Color docRapoarte = Color(0xFF8B5CF6);     // Purple
+  static const Color docAltele = Color(0xFF6B7280);       // Grey
 
   // ============================================
   // COMMON COLORS
