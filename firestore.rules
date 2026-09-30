@@ -3,23 +3,40 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if user is authenticated
+    // Helper: check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper function to check if user is the owner
+    // Helper: check if user is the document owner
     function isOwner(userId) {
       return request.auth != null && request.auth.uid == userId;
     }
 
-    // Helper function to check if current user is a superadmin
-    function isSuperadmin() {
-      return isAuthenticated() &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    // Helper: get the current user's role from their user document
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    // Helper function to check if target user is a superadmin
+    // Helper: check if current user is superadmin
+    function isSuperadmin() {
+      return isAuthenticated() &&
+             getUserRole() == 'superadmin';
+    }
+
+    // Helper: check if current user is BEX or superadmin
+    function isAdmin() {
+      let role = getUserRole();
+      return role == 'bex' || role == 'superadmin';
+    }
+
+    // Helper: check if current user can manage content (schoolRep+)
+    function canManageContent() {
+      let role = getUserRole();
+      return role == 'schoolRep' || role == 'department' || role == 'bex' || role == 'superadmin';
+    }
+
+    // Helper: check if target user is a superadmin
     function isTargetSuperadmin(userId) {
       return get(/databases/$(database)/documents/users/$(userId)).data.role == 'superadmin';
     }
@@ -28,123 +45,155 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      // Allow delete only for Superadmin deleting non-Superadmin users (not themselves)
+      allow update: if isOwner(userId) || (isAuthenticated() && canManageContent());
+      // Delete: superadmin only, cannot delete self or other superadmins
       allow delete: if isSuperadmin() &&
                        request.auth.uid != userId &&
                        !isTargetSuperadmin(userId);
     }
 
-    // Schools collection - PUBLIC READ for registration
-    // Schools need to be readable during registration (before user is authenticated)
+    // Schools collection - public read for registration flow
     match /schools/{schoolId} {
-      allow read: if true; // Allow public read for school selection during registration
-      allow write: if isAuthenticated();
+      allow read: if true;
+      allow write: if isAuthenticated() && isAdmin();
     }
 
     // Announcements collection
     match /announcements/{announcementId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && canManageContent();
+      allow update: if isAuthenticated() &&
+                       (resource.data.authorId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
     // Meetings collection
     match /meetings/{meetingId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && canManageContent();
+      allow update: if isAuthenticated() &&
+                       (resource.data.createdById == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.createdById == request.auth.uid || isAdmin());
     }
 
     // Attendance collection (legacy)
     match /attendance/{attendanceId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // Meeting Attendance collection
     match /meeting_attendance/{attendanceId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
-    // Initiatives collection
+    // Initiatives collection - any user can propose
     match /initiatives/{initiativeId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+                       (resource.data.authorId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
     // Initiative comments collection
     match /initiative_comments/{commentId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      allow delete: if isAuthenticated() &&
+                       (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
-    // Initiative votes collection (NEW)
+    // Initiative votes collection
     match /initiative_votes/{voteId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if false;
+      allow update: if isAuthenticated() && resource.data.voterId == request.auth.uid;
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
     // Polls collection
     match /polls/{pollId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated() && canManageContent();
+      allow update: if isAuthenticated() &&
+                       (resource.data.createdById == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() &&
+                       (resource.data.createdById == request.auth.uid || isAdmin());
     }
 
-    // Poll votes collection (NEW)
+    // Poll votes collection
     match /poll_votes/{voteId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated();
-      allow delete: if false;
+      allow update: if isAuthenticated() && resource.data.voterId == request.auth.uid;
+      allow delete: if isAuthenticated() && isAdmin();
     }
 
-    // Documents collection
+    // Documents collection - managed by content managers
     match /documents/{documentId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && canManageContent();
     }
 
     // Notifications collection
     match /notifications/{notificationId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow create: if isAuthenticated();
+      // Only the recipient can update (mark as read) or delete their own notifications
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
-    // Warnings collection
+    // Warnings collection - managed by schoolRep+
     match /warnings/{warningId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && canManageContent();
     }
 
-    // Absences collection
+    // Absences collection - managed by schoolRep+
     match /absences/{absenceId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && canManageContent();
     }
 
-    // Activities collection
+    // Activities collection - app-level logging
     match /activities/{activityId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
-    // County settings collection
+    // County settings collection - admin only
     match /county_settings/{settingId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
     }
 
-    // GDS collection
+    // GDS collection - admin only
     match /gds/{gdsId} {
       allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
     }
 
-    // Diagnostics collection (for app troubleshooting)
+    // Diagnostics collection (app troubleshooting)
     match /_diagnostics/{docId} {
       allow read, write: if isAuthenticated();
+    }
+
+    // Reports collection - any authenticated user can submit, only admins can read
+    match /reports/{reportId} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && isAdmin();
+      allow update, delete: if isAuthenticated() && isAdmin();
     }
   }
 }

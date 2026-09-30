@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -72,24 +73,28 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
-              if (canEdit)
-                PopupMenuButton<String>(
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+              PopupMenuButton<String>(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
                   ),
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      _handleEdit(context);
-                    } else if (value == 'delete') {
-                      _handleDelete(context);
-                    }
-                  },
-                  itemBuilder: (context) => [
+                  child: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+                ),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _handleEdit(context);
+                  } else if (value == 'delete') {
+                    _handleDelete(context);
+                  } else if (value == 'report') {
+                    _handleReport(context, user);
+                  } else if (value == 'block') {
+                    _handleBlock(context, user);
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (canEdit) ...[
                     PopupMenuItem(
                       value: 'edit',
                       child: Row(
@@ -114,7 +119,29 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
                       ),
                     ),
                   ],
-                ),
+                  PopupMenuItem(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.flag_outlined, size: 20, color: Colors.orange),
+                        const SizedBox(width: 12),
+                        Text(l10n.translate('report_content')),
+                      ],
+                    ),
+                  ),
+                  if (user != null && user.id != widget.announcement.authorId)
+                    PopupMenuItem(
+                      value: 'block',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.block, size: 20, color: Colors.red),
+                          const SizedBox(width: 12),
+                          Text(l10n.translate('block_user')),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: widget.announcement.imageUrl != null
@@ -535,6 +562,138 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
               l10n.translate('delete'),
               style: const TextStyle(color: Colors.red),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleReport(BuildContext context, UserModel? user) {
+    final l10n = AppLocalizations.of(context);
+    String? selectedReason;
+
+    final reasons = [
+      l10n.translate('report_inappropriate'),
+      l10n.translate('report_harassment'),
+      l10n.translate('report_spam'),
+      l10n.translate('report_other'),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l10n.translate('report_title')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.translate('report_reason_label')),
+              const SizedBox(height: 12),
+              ...reasons.map((reason) => RadioListTile<String>(
+                    title: Text(reason, style: const TextStyle(fontSize: 14)),
+                    value: reason,
+                    groupValue: selectedReason,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    onChanged: (v) => setDialogState(() => selectedReason = v),
+                  )),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.translate('cancel')),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: selectedReason == null
+                  ? null
+                  : () async {
+                      Navigator.pop(ctx);
+                      await FirebaseFirestore.instance.collection('reports').add({
+                        'type': 'announcement',
+                        'contentId': widget.announcement.id,
+                        'contentTitle': widget.announcement.title,
+                        'authorId': widget.announcement.authorId,
+                        'authorName': widget.announcement.authorName,
+                        'reportedBy': user?.id ?? 'anonymous',
+                        'reportedByName': user?.fullName ?? 'Anonymous',
+                        'reason': selectedReason,
+                        'timestamp': FieldValue.serverTimestamp(),
+                        'status': 'pending',
+                      });
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(l10n.translate('report_submitted')),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    },
+              child: Text(l10n.translate('report_title')),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleBlock(BuildContext context, UserModel? user) {
+    if (user == null) return;
+    final l10n = AppLocalizations.of(context);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.translate('block_user')),
+        content: Text(
+          '${l10n.translate('block_user_confirm')}\n\n${widget.announcement.authorName}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.translate('cancel')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              // Add to blocked users list + save report so admin is notified
+              await Future.wait([
+                FirebaseFirestore.instance.collection('users').doc(user.id).update({
+                  'blockedUsers': FieldValue.arrayUnion([widget.announcement.authorId]),
+                }),
+                FirebaseFirestore.instance.collection('reports').add({
+                  'type': 'block',
+                  'contentId': widget.announcement.id,
+                  'blockedUserId': widget.announcement.authorId,
+                  'blockedUserName': widget.announcement.authorName,
+                  'reportedBy': user.id,
+                  'reportedByName': user.fullName,
+                  'reason': 'User blocked',
+                  'timestamp': FieldValue.serverTimestamp(),
+                  'status': 'pending',
+                }),
+              ]);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l10n.translate('user_blocked')),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: Text(l10n.translate('block_user')),
           ),
         ],
       ),

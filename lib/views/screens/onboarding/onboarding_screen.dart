@@ -1,18 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/core.dart';
 import '../../../routes/route_names.dart';
+import '../profile/legal_screen.dart';
 
 /// Onboarding/Welcome Screen
 /// Shows CJE branding with Continue button
-class OnboardingScreen extends StatelessWidget {
+class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  static const String _keyTermsAccepted = 'terms_accepted';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkTermsAccepted());
+  }
+
+  Future<void> _checkTermsAccepted() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accepted = prefs.getBool(_keyTermsAccepted) ?? false;
+    if (!accepted && mounted) {
+      _showTermsDialog();
+    }
+  }
+
+  void _showTermsDialog() {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.translate('terms_agreement_title')),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.translate('terms_agreement_body'),
+                style: const TextStyle(fontSize: 14, height: 1.6),
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()),
+                  ).then((_) => _showTermsDialog());
+                },
+                child: Text(
+                  l10n.translate('view_full_terms'),
+                  style: TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              l10n.translate('decline'),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.gold,
+              foregroundColor: AppColors.navy,
+            ),
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool(_keyTermsAccepted, true);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: Text(l10n.translate('accept_terms')),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-
     return Scaffold(
       backgroundColor: AppColors.navy,
       body: Stack(

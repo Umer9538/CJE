@@ -98,6 +98,22 @@ class AppLocalizations {
     return _localizedStrings[key] ?? key;
   }
 
+  /// Translate a key for a specific locale (used for push notifications)
+  static String translateForLocale(String languageCode, String key) {
+    final strings = languageCode == 'en' ? _enStrings : _roStrings;
+    return strings[key] ?? key;
+  }
+
+  /// Translate a key for a specific locale with parameter substitution
+  static String translateForLocaleWithParams(
+      String languageCode, String key, Map<String, String> params) {
+    var result = translateForLocale(languageCode, key);
+    params.forEach((paramKey, value) {
+      result = result.replaceAll('{$paramKey}', value);
+    });
+    return result;
+  }
+
   // ============================================
   // APP GENERAL
   // ============================================
@@ -803,6 +819,11 @@ const Map<String, String> _roStrings = {
   'document_title': 'Titlu document',
   'document_description': 'Descriere document',
   'document_category': 'Categorie document',
+  'document_details': 'Detalii Document',
+  'document_not_found': 'Documentul nu a fost găsit',
+  'open_file': 'Deschide Fișier',
+  'document_info': 'Informații Document',
+  'restricted': 'Restricționat',
   'file_type': 'Tip fișier',
   'file_size': 'Dimensiune fișier',
   'uploaded_by': 'Încărcat de',
@@ -818,6 +839,7 @@ const Map<String, String> _roStrings = {
   'ghiduri': 'Ghiduri',
   'utile': 'Utile',
   'rapoarte': 'Rapoarte',
+  'altele': 'Altele',
 
   // Polls
   'poll': 'Sondaj',
@@ -924,6 +946,9 @@ const Map<String, String> _roStrings = {
   // Status & States
   'active': 'Activ',
   'ended': 'Încheiat',
+  'left': 'rămase',
+  'day_left': 'zi rămasă',
+  'days_left': 'zile rămase',
   'upcoming': 'Viitor',
   'inactive': 'Inactiv',
   'enabled': 'Activat',
@@ -1061,6 +1086,23 @@ const Map<String, String> _roStrings = {
   'complete_your_profile': 'Completează-ți profilul',
   'complete_profile_description': 'Pentru a finaliza înregistrarea, te rugăm să completezi informațiile de mai jos.',
   'signed_in_with_google': 'Conectat cu Google',
+  'signed_in_with_apple': 'Conectat cu Apple',
+  'terms_agreement_title': 'Termeni și Condiții',
+  'terms_agreement_body': 'Prin utilizarea aplicației CJE, ești de acord cu Termenii noștri de Utilizare. Aplicația nu tolerează conținut inadecvat sau comportament abuziv. Utilizatorii care încalcă regulile vor fi eliminați. Trebuie să ai cel puțin 13 ani pentru a utiliza această aplicație.',
+  'accept_terms': 'Accept',
+  'decline': 'Refuz',
+  'view_full_terms': 'Vezi termenii completi',
+  'report_content': 'Raportează conținut',
+  'block_user': 'Blochează utilizatorul',
+  'report_submitted': 'Raportul a fost trimis. Îl vom analiza în 24 de ore.',
+  'user_blocked': 'Utilizatorul a fost blocat.',
+  'report_reason_label': 'Selectează motivul',
+  'report_inappropriate': 'Conținut inadecvat',
+  'report_harassment': 'Hărțuire sau abuz',
+  'report_spam': 'Spam',
+  'report_other': 'Alt motiv',
+  'report_title': 'Raportează',
+  'block_user_confirm': 'Ești sigur că vrei să blochezi acest utilizator? Nu vei mai vedea conținutul său.',
   'registration_approval_info': 'După înregistrare, contul tău va fi în așteptare până când un SuperAdmin sau BEX îl va aproba.',
   'complete_registration': 'Finalizează înregistrarea',
   'account_pending': 'Cont în așteptare',
@@ -1454,6 +1496,7 @@ const Map<String, String> _roStrings = {
   'search_gds': 'Caută grupuri...',
   'no_gds': 'Nu s-au găsit grupuri',
   'no_gds_message': 'Nu există grupuri de suport încă. Creează primul grup!',
+  'no_gds_available': 'Nu există grupuri de suport active momentan.',
   'add_gds': 'Adaugă Grup',
   'edit_gds': 'Editează Grup',
   'create_gds': 'Creează Grup',
@@ -1763,6 +1806,38 @@ const Map<String, String> _roStrings = {
   'all_users_already_added': 'Toți utilizatorii din județ au fost deja adăugați',
   'available_participants': 'Participanți disponibili',
   'error_loading_users': 'Eroare la încărcarea utilizatorilor',
+
+  // Data & Reports
+  'data_reports': 'Date și Rapoarte',
+  'activity_report': 'Raport Activitate',
+  'download_quarterly_data': 'Descarcă datele trimestriale de activitate',
+  'quarterly_summary': 'Sumar trimestrial',
+  'download_excel_report': 'Descarcă Raport Excel',
+  'generating_report': 'Se generează raportul...',
+  'report_downloaded': 'Raportul a fost generat cu succes',
+  'no_data_for_period': 'Nu există date pentru această perioadă',
+  'no_county_selected': 'Niciun județ selectat',
+
+  // Push Notification Strings
+  'notif_new_announcement': 'Anunț Nou: {title}',
+  'notif_new_poll': 'Sondaj Nou: Votează Acum!',
+  'notif_poll_ends': ' (se încheie {date})',
+  'notif_initiative_voting': 'Votare Inițiativă: Votează Acum!',
+  'notif_new_meeting': 'Ședință {type} Nouă: {title}',
+  'notif_meeting_scheduled': 'Programată pe {date} la {time}',
+  'notif_meeting_updated': 'Ședință {type} Actualizată: {title}',
+  'notif_meeting_updated_body': 'Reprogramată pe {date} la {time}',
+  'notif_warning_issued': 'Ai primit o mustrare',
+  'notif_warning_body': '{type}: {reason}',
+  'notif_absence_recorded': 'Absență înregistrată',
+  'notif_absence_body': '{type} la: {meeting}',
+  'meeting_type_countyAG': 'Adunare Generală',
+  'warning_type_verbal': 'Mustrare Verbală',
+  'warning_type_written': 'Mustrare Scrisă',
+  'warning_type_suspension': 'Suspendare',
+  'warning_type_removal': 'Excludere',
+  'absence_type_excused': 'Motivată',
+  'absence_type_unexcused': 'Nemotivată',
 };
 
 // ============================================
@@ -2035,6 +2110,11 @@ const Map<String, String> _enStrings = {
   'document_title': 'Document title',
   'document_description': 'Document description',
   'document_category': 'Document category',
+  'document_details': 'Document Details',
+  'document_not_found': 'Document not found',
+  'open_file': 'Open File',
+  'document_info': 'Document Info',
+  'restricted': 'Restricted',
   'file_type': 'File type',
   'file_size': 'File size',
   'uploaded_by': 'Uploaded by',
@@ -2050,6 +2130,7 @@ const Map<String, String> _enStrings = {
   'ghiduri': 'Guides',
   'utile': 'Useful',
   'rapoarte': 'Reports',
+  'altele': 'Other',
 
   // Polls
   'poll': 'Poll',
@@ -2156,6 +2237,9 @@ const Map<String, String> _enStrings = {
   // Status & States
   'active': 'Active',
   'ended': 'Ended',
+  'left': 'left',
+  'day_left': 'day left',
+  'days_left': 'days left',
   'upcoming': 'Upcoming',
   'inactive': 'Inactive',
   'enabled': 'Enabled',
@@ -2293,6 +2377,23 @@ const Map<String, String> _enStrings = {
   'complete_your_profile': 'Complete your profile',
   'complete_profile_description': 'To finish registration, please fill in the information below.',
   'signed_in_with_google': 'Signed in with Google',
+  'signed_in_with_apple': 'Signed in with Apple',
+  'terms_agreement_title': 'Terms & Conditions',
+  'terms_agreement_body': 'By using the CJE app, you agree to our Terms of Use. Our app has zero tolerance for objectionable content or abusive behavior. Users who violate these rules will be removed. You must be at least 13 years old to use this app.',
+  'accept_terms': 'I Agree',
+  'decline': 'Decline',
+  'view_full_terms': 'View full terms',
+  'report_content': 'Report Content',
+  'block_user': 'Block User',
+  'report_submitted': 'Report submitted. We will review it within 24 hours.',
+  'user_blocked': 'User has been blocked.',
+  'report_reason_label': 'Select a reason',
+  'report_inappropriate': 'Inappropriate content',
+  'report_harassment': 'Harassment or abuse',
+  'report_spam': 'Spam',
+  'report_other': 'Other reason',
+  'report_title': 'Report',
+  'block_user_confirm': 'Are you sure you want to block this user? You will no longer see their content.',
   'registration_approval_info': 'After registration, your account will be pending until a SuperAdmin or BEX approves it.',
   'complete_registration': 'Complete registration',
   'account_pending': 'Account pending',
@@ -2686,6 +2787,7 @@ const Map<String, String> _enStrings = {
   'search_gds': 'Search groups...',
   'no_gds': 'No groups found',
   'no_gds_message': 'No support groups yet. Create the first group!',
+  'no_gds_available': 'No active support groups at the moment.',
   'add_gds': 'Add Group',
   'edit_gds': 'Edit Group',
   'create_gds': 'Create Group',
@@ -2995,4 +3097,36 @@ const Map<String, String> _enStrings = {
   'all_users_already_added': 'All users from your county have already been added',
   'available_participants': 'Available participants',
   'error_loading_users': 'Error loading users',
+
+  // Data & Reports
+  'data_reports': 'Data & Reports',
+  'activity_report': 'Activity Report',
+  'download_quarterly_data': 'Download quarterly activity data',
+  'quarterly_summary': 'Quarterly Summary',
+  'download_excel_report': 'Download Excel Report',
+  'generating_report': 'Generating report...',
+  'report_downloaded': 'Report generated successfully',
+  'no_data_for_period': 'No data for this period',
+  'no_county_selected': 'No county selected',
+
+  // Push Notification Strings
+  'notif_new_announcement': 'New Announcement: {title}',
+  'notif_new_poll': 'New Poll: Vote Now!',
+  'notif_poll_ends': ' (ends {date})',
+  'notif_initiative_voting': 'Initiative Voting: Cast Your Vote!',
+  'notif_new_meeting': 'New {type} Meeting: {title}',
+  'notif_meeting_scheduled': 'Scheduled for {date} at {time}',
+  'notif_meeting_updated': '{type} Meeting Updated: {title}',
+  'notif_meeting_updated_body': 'Rescheduled for {date} at {time}',
+  'notif_warning_issued': 'Warning Issued',
+  'notif_warning_body': '{type}: {reason}',
+  'notif_absence_recorded': 'Absence Recorded',
+  'notif_absence_body': '{type} for: {meeting}',
+  'meeting_type_countyAG': 'General Assembly',
+  'warning_type_verbal': 'Verbal Reprimand',
+  'warning_type_written': 'Written Reprimand',
+  'warning_type_suspension': 'Suspension',
+  'warning_type_removal': 'Removal',
+  'absence_type_excused': 'Excused',
+  'absence_type_unexcused': 'Unexcused',
 };
