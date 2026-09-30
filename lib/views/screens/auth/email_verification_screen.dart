@@ -53,8 +53,9 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
       if (isVerified) {
         _checkTimer?.cancel();
-        // Reload user to update auth state
-        await ref.read(authControllerProvider.notifier).reloadUser();
+        // State is already set to authenticated by checkEmailVerification()
+        // Do NOT call reloadUser() here — it resets state to loading which
+        // interrupts the router redirect and leaves user stuck on this screen
       }
     }
   }

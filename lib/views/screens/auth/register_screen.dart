@@ -116,6 +116,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _selectedSchoolId;
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _obscureCityPassword = true;
@@ -300,6 +301,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     if (mounted) {
       setState(() => _isGoogleLoading = false);
+
+      if (!result.success) {
+        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+      }
+    }
+  }
+
+  Future<void> _handleAppleSignUp() async {
+    setState(() {
+      _isAppleLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await ref.read(authControllerProvider.notifier).signInWithApple();
+
+    if (mounted) {
+      setState(() => _isAppleLoading = false);
 
       if (!result.success) {
         setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
@@ -817,7 +835,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     iconColor: Colors.red,
                     label: 'Continue with Google',
                     isLoading: _isGoogleLoading,
-                    onPressed: _isLoading ? null : _handleGoogleSignUp,
+                    onPressed: _isLoading || _isAppleLoading ? null : _handleGoogleSignUp,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Apple Sign Up Button
+                  _SocialButton(
+                    icon: '',
+                    iconColor: Colors.white,
+                    label: 'Continue with Apple',
+                    isLoading: _isAppleLoading,
+                    onPressed: _isLoading || _isGoogleLoading ? null : _handleAppleSignUp,
+                    isApple: true,
                   ),
                   const SizedBox(height: 32),
                 ],
@@ -962,6 +991,7 @@ class _SocialButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
   final bool isOutlined;
+  final bool isApple;
 
   const _SocialButton({
     required this.icon,
@@ -970,6 +1000,7 @@ class _SocialButton extends StatelessWidget {
     this.onPressed,
     this.isLoading = false,
     this.isOutlined = false,
+    this.isApple = false,
   });
 
   @override
@@ -990,7 +1021,7 @@ class _SocialButton extends StatelessWidget {
           : ElevatedButton(
               onPressed: isLoading ? null : onPressed,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.navy,
+                backgroundColor: isApple ? Colors.black : AppColors.navy,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1016,24 +1047,27 @@ class _SocialButton extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: BoxDecoration(
-            color: isLight ? AppColors.white : Colors.grey[100],
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Center(
-            child: Text(
-              icon,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: iconColor,
+        if (isApple)
+          const Icon(Icons.apple, color: Colors.white, size: 24)
+        else
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              color: isLight ? AppColors.white : Colors.grey[100],
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Center(
+              child: Text(
+                icon,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: iconColor,
+                ),
               ),
             ),
           ),
-        ),
         const SizedBox(width: 8),
         Text(
           label,

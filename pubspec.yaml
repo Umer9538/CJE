@@ -1,7 +1,7 @@
 name: cje
 description: "CJE Platform - Student Council Management App"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+13
 
 environment:
   sdk: ^3.9.0
@@ -37,6 +37,9 @@ dependencies:
 
   # Google Sign In
   google_sign_in: ^6.1.6
+
+  # Apple Sign In
+  sign_in_with_apple: ^8.0.0
 
   # ML Kit Translation
   google_mlkit_translation: ^0.12.0

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../routes/route_names.dart';
+import '../profile/legal_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -23,20 +24,99 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   bool _isLoading = false;
   bool _isGoogleLoading = false;
+  bool _isAppleLoading = false;
   bool _rememberMe = false;
   bool _obscurePassword = true;
   String? _errorMessage;
   int _titleTapCount = 0;
 
-  // SharedPreferences keys for remember me
+  // SharedPreferences keys for remember me (email only — never store passwords)
   static const String _keyRememberMe = 'remember_me';
   static const String _keySavedEmail = 'saved_email';
-  static const String _keySavedPassword = 'saved_password';
+
+  static const String _keyTermsAccepted = 'terms_accepted';
 
   @override
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkTermsAccepted());
+  }
+
+  Future<void> _checkTermsAccepted() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accepted = prefs.getBool(_keyTermsAccepted) ?? false;
+    if (!accepted && mounted) {
+      _showTermsDialog();
+    }
+  }
+
+  void _showTermsDialog() {
+    final l10n = AppLocalizations.of(context);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.translate('terms_agreement_title')),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.translate('terms_agreement_body'),
+                style: const TextStyle(fontSize: 14, height: 1.6),
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TermsOfServiceScreen(),
+                    ),
+                  ).then((_) => _showTermsDialog());
+                },
+                child: Text(
+                  l10n.translate('view_full_terms'),
+                  style: TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Exit the app if user declines
+              Navigator.of(context).popUntil((r) => r.isFirst);
+            },
+            child: Text(
+              l10n.translate('decline'),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.gold,
+              foregroundColor: AppColors.navy,
+            ),
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool(_keyTermsAccepted, true);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: Text(l10n.translate('accept_terms')),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -48,20 +128,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  /// Load saved credentials if remember me was checked
+  /// Load saved email if remember me was checked
   Future<void> _loadSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final rememberMe = prefs.getBool(_keyRememberMe) ?? false;
 
+      // Clean up any previously stored password (security fix)
+      await prefs.remove('saved_password');
+
       if (rememberMe) {
         final savedEmail = prefs.getString(_keySavedEmail) ?? '';
-        final savedPassword = prefs.getString(_keySavedPassword) ?? '';
 
         setState(() {
           _rememberMe = true;
           _emailController.text = savedEmail;
-          _passwordController.text = savedPassword;
         });
       }
     } catch (e) {
@@ -69,7 +150,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  /// Save credentials to SharedPreferences
+  /// Save email to SharedPreferences (never store passwords)
   Future<void> _saveCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -77,7 +158,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (_rememberMe) {
         await prefs.setBool(_keyRememberMe, true);
         await prefs.setString(_keySavedEmail, _emailController.text.trim());
-        await prefs.setString(_keySavedPassword, _passwordController.text);
       } else {
         // Clear saved credentials if remember me is unchecked
         await _clearCredentials();
@@ -93,7 +173,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_keyRememberMe);
       await prefs.remove(_keySavedEmail);
-      await prefs.remove(_keySavedPassword);
+      await prefs.remove('saved_password');
     } catch (e) {
       debugPrint('Error clearing credentials: $e');
     }
@@ -134,6 +214,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (mounted) {
       setState(() => _isGoogleLoading = false);
+
+      if (!result.success) {
+        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+      }
+    }
+  }
+
+  Future<void> _handleAppleLogin() async {
+    setState(() {
+      _isAppleLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await ref.read(authControllerProvider.notifier).signInWithApple();
+
+    if (mounted) {
+      setState(() => _isAppleLoading = false);
 
       if (!result.success) {
         setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
@@ -444,7 +541,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     iconColor: Colors.red,
                     label: l10n.translate('continue_with_google'),
                     isLoading: _isGoogleLoading,
-                    onPressed: _isLoading ? null : _handleGoogleLogin,
+                    onPressed: _isLoading || _isAppleLoading ? null : _handleGoogleLogin,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Apple Sign In Button
+                  _SocialButton(
+                    icon: '',
+                    iconColor: Colors.white,
+                    label: 'Continue with Apple',
+                    isLoading: _isAppleLoading,
+                    onPressed: _isLoading || _isGoogleLoading ? null : _handleAppleLogin,
+                    isApple: true,
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -497,6 +605,7 @@ class _SocialButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
+  final bool isApple;
 
   const _SocialButton({
     required this.icon,
@@ -504,6 +613,7 @@ class _SocialButton extends StatelessWidget {
     required this.label,
     this.onPressed,
     this.isLoading = false,
+    this.isApple = false,
   });
 
   @override
@@ -513,7 +623,7 @@ class _SocialButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
-          backgroundColor: AppColors.navy,
+          backgroundColor: isApple ? Colors.black : AppColors.navy,
           side: BorderSide.none,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -531,24 +641,27 @@ class _SocialButton extends StatelessWidget {
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Center(
-                      child: Text(
-                        icon,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: iconColor,
+                  if (isApple)
+                    const Icon(Icons.apple, color: Colors.white, size: 24)
+                  else
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          icon,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: iconColor,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   const SizedBox(width: 12),
                   Text(
                     label,

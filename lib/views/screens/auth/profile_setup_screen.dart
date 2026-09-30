@@ -68,11 +68,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill name from Google account
     final authService = ref.read(authServiceProvider);
     final firebaseUser = authService.currentUser;
-    if (firebaseUser?.displayName != null) {
-      _fullNameController.text = firebaseUser!.displayName!;
+    // Pre-fill name from provider — may be empty if user hid name during Apple sign-in
+    if (firebaseUser?.displayName != null && firebaseUser!.displayName!.trim().isNotEmpty) {
+      _fullNameController.text = firebaseUser.displayName!;
     }
   }
 
@@ -110,8 +110,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _errorMessage = null;
     });
 
+    // Use provider-supplied name; fall back to email username if Apple hid the name
+    final authService = ref.read(authServiceProvider);
+    final firebaseUser = authService.currentUser;
+    String effectiveName = _fullNameController.text.trim();
+    if (effectiveName.isEmpty) {
+      final email = firebaseUser?.email ?? '';
+      effectiveName = email.contains('@') ? email.split('@').first : email;
+    }
+
     final (success, errorMessage) = await ref.read(authControllerProvider.notifier).createGoogleUserProfile(
-          fullName: _fullNameController.text.trim(),
+          fullName: effectiveName,
           schoolId: _selectedSchoolId!,
           schoolName: _selectedSchoolName,
           phoneNumber: _phoneController.text.trim(),
@@ -162,6 +171,11 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final authService = ref.read(authServiceProvider);
     final firebaseUser = authService.currentUser;
 
+    final isAppleUser = firebaseUser?.providerData.any((p) => p.providerId == 'apple.com') ?? false;
+    final providerLabel = isAppleUser
+        ? l10n.translate('signed_in_with_apple')
+        : l10n.translate('signed_in_with_google');
+
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.translate('complete_profile')),
@@ -178,7 +192,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Google account info
+                // Provider account info card
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSizes.paddingMD),
@@ -204,12 +218,21 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                l10n.translate('signed_in_with_google'),
+                                providerLabel,
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   color: theme.colorScheme.primary,
                                 ),
                               ),
                               const SizedBox(height: AppSizes.spacing4),
+                              if (_fullNameController.text.isNotEmpty) ...[
+                                Text(
+                                  _fullNameController.text,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSizes.spacing2),
+                              ],
                               Text(
                                 firebaseUser?.email ?? '',
                                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -269,38 +292,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   const SizedBox(height: AppSizes.spacing16),
                 ],
 
-                // Full name
-                AppTextField(
-                  controller: _fullNameController,
-                  label: l10n.translate('full_name'),
-                  hint: l10n.translate('example_name'),
-                  prefixIcon: const Icon(Icons.person_outline),
-                  textCapitalization: TextCapitalization.words,
-                  enabled: !_isLoading,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return l10n.translate('field_required');
-                    }
-                    if (value.trim().length < 3) {
-                      return l10n.translate('too_short');
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSizes.spacing16),
-
-                // Phone number (required)
+                // Phone number (optional — Apple guideline 5.1.1)
                 AppTextField(
                   controller: _phoneController,
-                  label: l10n.translate('phone_number'),
+                  label: '${l10n.translate('phone_number')} (${l10n.translate('optional')})',
                   hint: '+40 7XX XXX XXX',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   keyboardType: TextInputType.phone,
                   enabled: !_isLoading,
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return l10n.translate('phone_required');
-                    }
+                    if (value == null || value.trim().isEmpty) return null;
                     final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
                     if (digitsOnly.length < 10) {
                       return l10n.translate('invalid_phone');

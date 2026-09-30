@@ -5,9 +5,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../core/core.dart';
 import '../../models/models.dart';
 import '../schools/school_controller.dart';
+import '../theme/theme_controller.dart';
 
 /// Auth service provider
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -293,6 +296,8 @@ class AuthController extends StateNotifier<AuthStateData> {
                   _userRepository.updateLastLogin(user.id);
                   // Register FCM token for push notifications
                   _registerFcmToken(user.id);
+                  // Sync preferred language to Firestore for notification localization
+                  _syncPreferredLanguage(user.id);
                 }
               }
               break;
@@ -332,6 +337,18 @@ class AuthController extends StateNotifier<AuthStateData> {
   Future<AuthResult> signInWithGoogle() async {
     state = AuthStateData.loading();
     final result = await _authService.signInWithGoogle();
+
+    if (!result.success) {
+      state = AuthStateData.error(result.errorMessage ?? 'Eroare la autentificare');
+    }
+
+    return result;
+  }
+
+  /// Sign in with Apple
+  Future<AuthResult> signInWithApple() async {
+    state = AuthStateData.loading();
+    final result = await _authService.signInWithApple();
 
     if (!result.success) {
       state = AuthStateData.error(result.errorMessage ?? 'Eroare la autentificare');
@@ -636,6 +653,21 @@ class AuthController extends StateNotifier<AuthStateData> {
       }
     } catch (e) {
       debugPrint('Error registering FCM token: $e');
+    }
+  }
+
+  /// Sync the user's preferred language from local settings to Firestore
+  /// so notifications are sent in the correct language
+  Future<void> _syncPreferredLanguage(String userId) async {
+    try {
+      final prefs = _ref.read(sharedPreferencesProvider);
+      final languageCode = prefs.getString('language_code') ?? 'en';
+      await _firestore.collection('users').doc(userId).update({
+        'preferredLanguage': languageCode,
+      });
+      debugPrint('Preferred language synced to Firestore: $languageCode');
+    } catch (e) {
+      debugPrint('Error syncing preferred language: $e');
     }
   }
 
