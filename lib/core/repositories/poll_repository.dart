@@ -180,6 +180,13 @@ class PollRepository {
   Future<bool> deletePoll(String id) async {
     try {
       await _collection.doc(id).delete();
+      // Also delete poll votes
+      final votesQuery = await _votesCollection
+          .where('pollId', isEqualTo: id)
+          .get();
+      for (var doc in votesQuery.docs) {
+        await doc.reference.delete();
+      }
       return true;
     } catch (e) {
       debugPrint('Error deleting poll: $e');

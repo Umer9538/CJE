@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupOldNotifications = exports.sendBatchPushNotifications = exports.sendPushNotification = void 0;
+exports.quarterlyContentCleanup = exports.cleanupOldNotifications = exports.sendBatchPushNotifications = exports.sendPushNotification = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 // Initialize Firebase Admin
@@ -227,5 +227,121 @@ exports.cleanupOldNotifications = functions.pubsub
     await batch.commit();
     console.log(`Deleted ${oldNotifications.size} old notifications`);
     return null;
+});
+/**
+ * Cloud Function: Quarterly content cleanup (scheduled)
+ * Runs at midnight on the 1st of Jan, Apr, Jul, Oct
+ * Deletes all announcements, meetings, polls, and initiatives older than 3 months
+ * along with their related subcollection documents
+ */
+exports.quarterlyContentCleanup = functions.pubsub
+    .schedule("0 0 1 1,4,7,10 *")
+    .timeZone("Europe/Bucharest")
+    .onRun(async () => {
+    const threeMonthsAgo = admin.firestore.Timestamp.fromDate(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
+    const BATCH_SIZE = 500;
+    const deletionCounts = {
+        announcements: 0,
+        meetings: 0,
+        meeting_attendance: 0,
+        polls: 0,
+        poll_votes: 0,
+        initiatives: 0,
+        initiative_comments: 0,
+        initiative_votes: 0,
+    };
+    /**
+     * Delete documents in batches from a collection with a date filter
+     * @param {string} collectionName - Firestore collection name
+     * @param {string} dateField - Date field to filter on
+     * @return {Promise<string[]>} IDs of deleted documents
+     */
+    async function deleteOldDocuments(collectionName, dateField) {
+        const deletedIds = [];
+        let hasMore = true;
+        while (hasMore) {
+            const snapshot = await db
+                .collection(collectionName)
+                .where(dateField, "<", threeMonthsAgo)
+                .limit(BATCH_SIZE)
+                .get();
+            if (snapshot.empty) {
+                hasMore = false;
+                break;
+            }
+            const batch = db.batch();
+            snapshot.docs.forEach((doc) => {
+                deletedIds.push(doc.id);
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            deletionCounts[collectionName] += snapshot.size;
+            if (snapshot.size < BATCH_SIZE) {
+                hasMore = false;
+            }
+        }
+        return deletedIds;
+    }
+    /**
+     * Delete related documents by a foreign key field
+     * @param {string} collectionName - Firestore collection name
+     * @param {string} foreignKeyField - Field referencing the parent document
+     * @param {string[]} parentIds - IDs of parent documents to cascade from
+     */
+    async function deleteRelatedDocuments(collectionName, foreignKeyField, parentIds) {
+        for (const parentId of parentIds) {
+            let hasMore = true;
+            while (hasMore) {
+                const snapshot = await db
+                    .collection(collectionName)
+                    .where(foreignKeyField, "==", parentId)
+                    .limit(BATCH_SIZE)
+                    .get();
+                if (snapshot.empty) {
+                    hasMore = false;
+                    break;
+                }
+                const batch = db.batch();
+                snapshot.docs.forEach((doc) => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                deletionCounts[collectionName] += snapshot.size;
+                if (snapshot.size < BATCH_SIZE) {
+                    hasMore = false;
+                }
+            }
+        }
+    }
+    try {
+        // 1. Delete old announcements (no subcollections)
+        console.log("Cleaning up old announcements...");
+        await deleteOldDocuments("announcements", "createdAt");
+        // 2. Delete old meetings + cascade meeting_attendance
+        console.log("Cleaning up old meetings...");
+        const deletedMeetingIds = await deleteOldDocuments("meetings", "createdAt");
+        if (deletedMeetingIds.length > 0) {
+            await deleteRelatedDocuments("meeting_attendance", "meetingId", deletedMeetingIds);
+        }
+        // 3. Delete old polls + cascade poll_votes
+        console.log("Cleaning up old polls...");
+        const deletedPollIds = await deleteOldDocuments("polls", "createdAt");
+        if (deletedPollIds.length > 0) {
+            await deleteRelatedDocuments("poll_votes", "pollId", deletedPollIds);
+        }
+        // 4. Delete old initiatives + cascade comments and votes
+        console.log("Cleaning up old initiatives...");
+        const deletedInitiativeIds = await deleteOldDocuments("initiatives", "createdAt");
+        if (deletedInitiativeIds.length > 0) {
+            await deleteRelatedDocuments("initiative_comments", "initiativeId", deletedInitiativeIds);
+            await deleteRelatedDocuments("initiative_votes", "initiativeId", deletedInitiativeIds);
+        }
+        console.log("Quarterly cleanup complete. Deletion counts:", deletionCounts);
+        return null;
+    }
+    catch (error) {
+        console.error("Error during quarterly cleanup:", error);
+        return null;
+    }
 });
 //# sourceMappingURL=index.js.map

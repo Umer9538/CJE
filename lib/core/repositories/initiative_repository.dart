@@ -170,6 +170,13 @@ class InitiativeRepository {
       for (var doc in commentsQuery.docs) {
         await doc.reference.delete();
       }
+      // Also delete votes
+      final votesQuery = await _votesCollection
+          .where('initiativeId', isEqualTo: id)
+          .get();
+      for (var doc in votesQuery.docs) {
+        await doc.reference.delete();
+      }
       return true;
     } catch (e) {
       debugPrint('Error deleting initiative: $e');
