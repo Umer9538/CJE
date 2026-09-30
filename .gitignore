@@ -43,3 +43,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Signing keys and credentials (never commit)
+*.p8
+*.jks
+*.keystore
+/android/key.properties
+
+# Stray copy of the Firebase config (the real one is android/app/google-services.json)
+/google-services.json
+
+# Client handoff of the 1.1.0 version (separate source tree)
+/New version (V1)/
+/New version (V1).zip
