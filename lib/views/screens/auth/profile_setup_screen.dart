@@ -5,6 +5,8 @@ import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_text_field.dart';
+import '../../widgets/common/registration_privacy_section.dart';
+import '../../widgets/common/account_privacy_action.dart';
 import 'register_screen.dart';
 
 /// Screen for completing profile after Google Sign-In
@@ -27,42 +29,108 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   String? _selectedSchoolName;
   bool _isLoading = false;
   bool _obscureCityPassword = true;
+  bool? _isUnder16;
+  bool _privacyNoticeAcknowledged = false;
+  bool _termsAccepted = false;
   String? _errorMessage;
 
   // Counties list (42 Romanian counties from Parole_judete.xlsx)
   final List<String> _cities = [
-    'Alba', 'Arad', 'Argeș', 'Bacău', 'Bihor', 'Bistrița-Năsăud',
-    'Botoșani', 'Brașov', 'Brăila', 'București', 'Buzău', 'Caraș-Severin',
-    'Călărași', 'Cluj', 'Constanța', 'Covasna', 'Dâmbovița', 'Dolj',
-    'Galați', 'Giurgiu', 'Gorj', 'Harghita', 'Hunedoara', 'Ialomița',
-    'Iași', 'Ilfov', 'Maramureș', 'Mehedinți', 'Mureș', 'Neamț',
-    'Olt', 'Prahova', 'Satu Mare', 'Sălaj', 'Sibiu', 'Suceava',
-    'Teleorman', 'Timiș', 'Tulcea', 'Vaslui', 'Vâlcea', 'Vrancea',
+    'Alba',
+    'Arad',
+    'Argeș',
+    'Bacău',
+    'Bihor',
+    'Bistrița-Năsăud',
+    'Botoșani',
+    'Brașov',
+    'Brăila',
+    'București',
+    'Buzău',
+    'Caraș-Severin',
+    'Călărași',
+    'Cluj',
+    'Constanța',
+    'Covasna',
+    'Dâmbovița',
+    'Dolj',
+    'Galați',
+    'Giurgiu',
+    'Gorj',
+    'Harghita',
+    'Hunedoara',
+    'Ialomița',
+    'Iași',
+    'Ilfov',
+    'Maramureș',
+    'Mehedinți',
+    'Mureș',
+    'Neamț',
+    'Olt',
+    'Prahova',
+    'Satu Mare',
+    'Sălaj',
+    'Sibiu',
+    'Suceava',
+    'Teleorman',
+    'Timiș',
+    'Tulcea',
+    'Vaslui',
+    'Vâlcea',
+    'Vrancea',
   ];
 
   // County passwords for access control (Registration codes from Parole_judete.xlsx)
   static const Map<String, String> _cityPasswords = {
-    'Alba': 'AB#7291', 'Arad': 'AR#3842', 'Argeș': 'AG#9103',
-    'Bacău': 'BC#5528', 'Bihor': 'BH#1937', 'Bistrița-Năsăud': 'BN#6482',
-    'Botoșani': 'BT#2749', 'Brașov': 'BV#8301', 'Brăila': 'BR#4615',
-    'București': 'B#9920', 'Buzău': 'BZ#3156', 'Caraș-Severin': 'CS#7043',
-    'Călărași': 'CL#2819', 'Cluj': 'CJ#5392', 'Constanța': 'CT#8264',
-    'Covasna': 'CV#1473', 'Dâmbovița': 'DB#6038', 'Dolj': 'DJ#9521',
-    'Galați': 'GL#3740', 'Giurgiu': 'GR#5186', 'Gorj': 'GJ#2905',
-    'Harghita': 'HR#7634', 'Hunedoara': 'HD#4027', 'Ialomița': 'IL#8392',
-    'Iași': 'IS#1504', 'Ilfov': 'IF#6273', 'Maramureș': 'MM#9418',
-    'Mehedinți': 'MH#3365', 'Mureș': 'MS#7820', 'Neamț': 'NT#2059',
-    'Olt': 'OT#5941', 'Prahova': 'PH#1683', 'Satu Mare': 'SM#8407',
-    'Sălaj': 'SJ#3256', 'Sibiu': 'SB#9172', 'Suceava': 'SV#4839',
-    'Teleorman': 'TR#6701', 'Timiș': 'TM#2548', 'Tulcea': 'TL#5092',
-    'Vaslui': 'VS#7364', 'Vâlcea': 'VL#1825', 'Vrancea': 'VN#4910',
+    'Alba': 'AB#7291',
+    'Arad': 'AR#3842',
+    'Argeș': 'AG#9103',
+    'Bacău': 'BC#5528',
+    'Bihor': 'BH#1937',
+    'Bistrița-Năsăud': 'BN#6482',
+    'Botoșani': 'BT#2749',
+    'Brașov': 'BV#8301',
+    'Brăila': 'BR#4615',
+    'București': 'B#9920',
+    'Buzău': 'BZ#3156',
+    'Caraș-Severin': 'CS#7043',
+    'Călărași': 'CL#2819',
+    'Cluj': 'CJ#5392',
+    'Constanța': 'CT#8264',
+    'Covasna': 'CV#1473',
+    'Dâmbovița': 'DB#6038',
+    'Dolj': 'DJ#9521',
+    'Galați': 'GL#3740',
+    'Giurgiu': 'GR#5186',
+    'Gorj': 'GJ#2905',
+    'Harghita': 'HR#7634',
+    'Hunedoara': 'HD#4027',
+    'Ialomița': 'IL#8392',
+    'Iași': 'IS#1504',
+    'Ilfov': 'IF#6273',
+    'Maramureș': 'MM#9418',
+    'Mehedinți': 'MH#3365',
+    'Mureș': 'MS#7820',
+    'Neamț': 'NT#2059',
+    'Olt': 'OT#5941',
+    'Prahova': 'PH#1683',
+    'Satu Mare': 'SM#8407',
+    'Sălaj': 'SJ#3256',
+    'Sibiu': 'SB#9172',
+    'Suceava': 'SV#4839',
+    'Teleorman': 'TR#6701',
+    'Timiș': 'TM#2548',
+    'Tulcea': 'TL#5092',
+    'Vaslui': 'VS#7364',
+    'Vâlcea': 'VL#1825',
+    'Vrancea': 'VN#4910',
   };
 
   bool _validateCityPassword() {
     if (_selectedCity == null) return false;
     final expectedPassword = _cityPasswords[_selectedCity];
     return expectedPassword != null &&
-           _cityPasswordController.text.trim() == expectedPassword;
+        _cityPasswordController.text.trim() == expectedPassword;
   }
 
   @override
@@ -71,7 +139,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final authService = ref.read(authServiceProvider);
     final firebaseUser = authService.currentUser;
     // Pre-fill name from provider — may be empty if user hid name during Apple sign-in
-    if (firebaseUser?.displayName != null && firebaseUser!.displayName!.trim().isNotEmpty) {
+    if (firebaseUser?.displayName != null &&
+        firebaseUser!.displayName!.trim().isNotEmpty) {
       _fullNameController.text = firebaseUser.displayName!;
     }
   }
@@ -110,21 +179,22 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _errorMessage = null;
     });
 
-    // Use provider-supplied name; fall back to email username if Apple hid the name
-    final authService = ref.read(authServiceProvider);
-    final firebaseUser = authService.currentUser;
-    String effectiveName = _fullNameController.text.trim();
-    if (effectiveName.isEmpty) {
-      final email = firebaseUser?.email ?? '';
-      effectiveName = email.contains('@') ? email.split('@').first : email;
-    }
-
-    final (success, errorMessage) = await ref.read(authControllerProvider.notifier).createGoogleUserProfile(
-          fullName: effectiveName,
+    final (success, errorMessage) = await ref
+        .read(authControllerProvider.notifier)
+        .createGoogleUserProfile(
+          // Apple may not return a name after the first authorisation.
+          fullName: _fullNameController.text.trim().isNotEmpty
+              ? _fullNameController.text.trim()
+              : 'Apple user',
           schoolId: _selectedSchoolId!,
           schoolName: _selectedSchoolName,
-          phoneNumber: _phoneController.text.trim(),
+          phoneNumber: _phoneController.text.trim().isEmpty
+              ? null
+              : _phoneController.text.trim(),
           city: _selectedCity!,
+          isUnder16: _isUnder16!,
+          privacyNoticeAcknowledged: _privacyNoticeAcknowledged,
+          termsAccepted: _termsAccepted,
           className: _classNameController.text.trim(),
         );
 
@@ -132,7 +202,10 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       setState(() => _isLoading = false);
 
       if (!success) {
-        setState(() => _errorMessage = errorMessage ?? l10n.translate('error_saving_profile'));
+        setState(
+          () => _errorMessage =
+              errorMessage ?? l10n.translate('error_saving_profile'),
+        );
       }
     }
   }
@@ -171,7 +244,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     final authService = ref.read(authServiceProvider);
     final firebaseUser = authService.currentUser;
 
-    final isAppleUser = firebaseUser?.providerData.any((p) => p.providerId == 'apple.com') ?? false;
+    final isAppleUser =
+        firebaseUser?.providerData.any((p) => p.providerId == 'apple.com') ??
+        false;
     final providerLabel = isAppleUser
         ? l10n.translate('signed_in_with_apple')
         : l10n.translate('signed_in_with_google');
@@ -179,6 +254,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.translate('complete_profile')),
+        actions: const [AccountPrivacyAction()],
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: _handleCancel,
@@ -278,12 +354,17 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, color: theme.colorScheme.onErrorContainer),
+                        Icon(
+                          Icons.error_outline,
+                          color: theme.colorScheme.onErrorContainer,
+                        ),
                         const SizedBox(width: AppSizes.spacing8),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                            style: TextStyle(
+                              color: theme.colorScheme.onErrorContainer,
+                            ),
                           ),
                         ),
                       ],
@@ -292,16 +373,41 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   const SizedBox(height: AppSizes.spacing16),
                 ],
 
-                // Phone number (optional — Apple guideline 5.1.1)
+                // Full name
+                AppTextField(
+                  controller: _fullNameController,
+                  label: l10n.translate('full_name'),
+                  hint: l10n.translate('example_name'),
+                  prefixIcon: const Icon(Icons.person_outline),
+                  textCapitalization: TextCapitalization.words,
+                  enabled: !_isLoading,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      if (isAppleUser) return null;
+                      return l10n.translate('field_required');
+                    }
+                    if (value.trim().length < 3) {
+                      return l10n.translate('too_short');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppSizes.spacing16),
+
+                // Phone number (optional)
                 AppTextField(
                   controller: _phoneController,
-                  label: '${l10n.translate('phone_number')} (${l10n.translate('optional')})',
+                  label: l10n.translate('phone_number_optional'),
                   hint: '+40 7XX XXX XXX',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   keyboardType: TextInputType.phone,
                   enabled: !_isLoading,
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) return null;
+                    // Telefonul este optional (GDPR: minimizarea datelor).
+                    // Daca e completat, trebuie sa fie valid.
+                    if (value == null || value.trim().isEmpty) {
+                      return null;
+                    }
                     final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
                     if (digitsOnly.length < 10) {
                       return l10n.translate('invalid_phone');
@@ -326,9 +432,13 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureCityPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        _obscureCityPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                       ),
-                      onPressed: () => setState(() => _obscureCityPassword = !_obscureCityPassword),
+                      onPressed: () => setState(
+                        () => _obscureCityPassword = !_obscureCityPassword,
+                      ),
                     ),
                   ),
                   validator: (value) {
@@ -355,7 +465,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 schoolsAsync.when(
                   data: (schools) {
                     // Check if selected school exists in the current schools list
-                    final schoolExists = _selectedSchoolId != null &&
+                    final schoolExists =
+                        _selectedSchoolId != null &&
                         schools.any((s) => s.id == _selectedSchoolId);
                     // Reset if school doesn't exist in new list
                     if (_selectedSchoolId != null && !schoolExists) {
@@ -376,7 +487,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                         return DropdownMenuItem(
                           value: school.id,
                           child: Text(
-                            school.name, // Always show full school name, not abbreviation
+                            school
+                                .name, // Always show full school name, not abbreviation
                             overflow: TextOverflow.ellipsis,
                             maxLines: 2,
                           ),
@@ -427,11 +539,27 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 ),
                 const SizedBox(height: AppSizes.spacing24),
 
+                RegistrationPrivacySection(
+                  isUnder16: _isUnder16,
+                  privacyNoticeAcknowledged: _privacyNoticeAcknowledged,
+                  termsAccepted: _termsAccepted,
+                  onTermsAcceptedChanged: (value) =>
+                      setState(() => _termsAccepted = value),
+                  enabled: !_isLoading,
+                  onAgeGroupChanged: (value) =>
+                      setState(() => _isUnder16 = value),
+                  onPrivacyNoticeAcknowledgedChanged: (value) =>
+                      setState(() => _privacyNoticeAcknowledged = value),
+                ),
+                const SizedBox(height: AppSizes.spacing24),
+
                 // Info box
                 Container(
                   padding: const EdgeInsets.all(AppSizes.paddingMD),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    color: theme.colorScheme.primaryContainer.withValues(
+                      alpha: 0.3,
+                    ),
                     borderRadius: BorderRadius.circular(AppSizes.radiusMD),
                     border: Border.all(
                       color: theme.colorScheme.primary.withValues(alpha: 0.3),
@@ -494,7 +622,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                   errorText: state.hasError ? state.errorText : null,
                 ),
                 child: Text(
-                  _selectedCity ?? '${l10n.translate('select')} ${l10n.translate('city')}...',
+                  _selectedCity ??
+                      '${l10n.translate('select')} ${l10n.translate('city')}...',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: _selectedCity != null
                         ? theme.colorScheme.onSurface

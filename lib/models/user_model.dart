@@ -22,6 +22,15 @@ class UserModel extends Equatable {
   final DateTime? lastLoginAt;
   final String? fcmToken; // For push notifications
   final String? preferredLanguage; // For localized notifications ('ro' or 'en')
+  final String? privacyNoticeVersion;
+  final DateTime? privacyNoticeAcknowledgedAt;
+  final bool? isUnder16;
+  final DateTime? parentalAuthorizationDeclaredAt;
+  final DateTime? parentalAuthorizationVerifiedAt;
+  final String? parentalAuthorizationVerifiedBy;
+  final String? termsVersion;
+  final DateTime? termsAcceptedAt;
+  final List<String> blockedUsers;
   final List<UserWarning> warnings; // Warning history
   final List<UserAbsence> absences; // Absence tracking
 
@@ -43,6 +52,15 @@ class UserModel extends Equatable {
     this.lastLoginAt,
     this.fcmToken,
     this.preferredLanguage,
+    this.privacyNoticeVersion,
+    this.privacyNoticeAcknowledgedAt,
+    this.isUnder16,
+    this.parentalAuthorizationDeclaredAt,
+    this.parentalAuthorizationVerifiedAt,
+    this.parentalAuthorizationVerifiedBy,
+    this.termsVersion,
+    this.termsAcceptedAt,
+    this.blockedUsers = const [],
     this.warnings = const [],
     this.absences = const [],
   });
@@ -67,6 +85,15 @@ class UserModel extends Equatable {
   /// Check if user is active
   bool get isActive => status == UserStatus.active;
 
+  /// Imported and legacy accounts must acknowledge the current notice and
+  /// declare only the age band needed for the under-16 safeguard before use.
+  bool get needsPrivacyOnboarding =>
+      privacyNoticeVersion != AppStrings.privacyNoticeVersion ||
+      privacyNoticeAcknowledgedAt == null ||
+      isUnder16 == null ||
+      termsVersion != AppStrings.termsVersion ||
+      termsAcceptedAt == null;
+
   /// Check if user is a council member (not just a student)
   bool get isCouncilMember => role != UserRole.student;
 
@@ -81,8 +108,7 @@ class UserModel extends Equatable {
       role == UserRole.bex || role == UserRole.superadmin;
 
   /// Check if user is BEX or higher
-  bool get isBEXOrHigher =>
-      role == UserRole.bex || role == UserRole.superadmin;
+  bool get isBEXOrHigher => role == UserRole.bex || role == UserRole.superadmin;
 
   /// Get total warning count
   int get warningCount => warnings.length;
@@ -116,11 +142,28 @@ class UserModel extends Equatable {
       lastLoginAt: (data['lastLoginAt'] as Timestamp?)?.toDate(),
       fcmToken: data['fcmToken'] as String?,
       preferredLanguage: data['preferredLanguage'] as String?,
-      warnings: (data['warnings'] as List<dynamic>?)
+      privacyNoticeVersion: data['privacyNoticeVersion'] as String?,
+      privacyNoticeAcknowledgedAt:
+          (data['privacyNoticeAcknowledgedAt'] as Timestamp?)?.toDate(),
+      isUnder16: data['isUnder16'] as bool?,
+      parentalAuthorizationDeclaredAt:
+          (data['parentalAuthorizationDeclaredAt'] as Timestamp?)?.toDate(),
+      parentalAuthorizationVerifiedAt:
+          (data['parentalAuthorizationVerifiedAt'] as Timestamp?)?.toDate(),
+      parentalAuthorizationVerifiedBy:
+          data['parentalAuthorizationVerifiedBy'] as String?,
+      termsVersion: data['termsVersion'] as String?,
+      termsAcceptedAt: (data['termsAcceptedAt'] as Timestamp?)?.toDate(),
+      blockedUsers: (data['blockedUsers'] as List<dynamic>? ?? const [])
+          .whereType<String>()
+          .toList(),
+      warnings:
+          (data['warnings'] as List<dynamic>?)
               ?.map((w) => UserWarning.fromMap(w as Map<String, dynamic>))
               .toList() ??
           [],
-      absences: (data['absences'] as List<dynamic>?)
+      absences:
+          (data['absences'] as List<dynamic>?)
               ?.map((a) => UserAbsence.fromMap(a as Map<String, dynamic>))
               .toList() ??
           [],
@@ -143,9 +186,28 @@ class UserModel extends Equatable {
       'department': department?.toFirestore(),
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'lastLoginAt': lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
+      'lastLoginAt': lastLoginAt != null
+          ? Timestamp.fromDate(lastLoginAt!)
+          : null,
       'fcmToken': fcmToken,
       'preferredLanguage': preferredLanguage,
+      'privacyNoticeVersion': privacyNoticeVersion,
+      'privacyNoticeAcknowledgedAt': privacyNoticeAcknowledgedAt != null
+          ? Timestamp.fromDate(privacyNoticeAcknowledgedAt!)
+          : null,
+      'isUnder16': isUnder16,
+      'parentalAuthorizationDeclaredAt': parentalAuthorizationDeclaredAt != null
+          ? Timestamp.fromDate(parentalAuthorizationDeclaredAt!)
+          : null,
+      'parentalAuthorizationVerifiedAt': parentalAuthorizationVerifiedAt != null
+          ? Timestamp.fromDate(parentalAuthorizationVerifiedAt!)
+          : null,
+      'parentalAuthorizationVerifiedBy': parentalAuthorizationVerifiedBy,
+      'termsVersion': termsVersion,
+      'termsAcceptedAt': termsAcceptedAt != null
+          ? Timestamp.fromDate(termsAcceptedAt!)
+          : null,
+      'blockedUsers': blockedUsers,
       'warnings': warnings.map((w) => w.toMap()).toList(),
       'absences': absences.map((a) => a.toMap()).toList(),
     };
@@ -170,6 +232,15 @@ class UserModel extends Equatable {
     DateTime? lastLoginAt,
     String? fcmToken,
     String? preferredLanguage,
+    String? privacyNoticeVersion,
+    DateTime? privacyNoticeAcknowledgedAt,
+    bool? isUnder16,
+    DateTime? parentalAuthorizationDeclaredAt,
+    DateTime? parentalAuthorizationVerifiedAt,
+    String? parentalAuthorizationVerifiedBy,
+    String? termsVersion,
+    DateTime? termsAcceptedAt,
+    List<String>? blockedUsers,
     List<UserWarning>? warnings,
     List<UserAbsence>? absences,
   }) {
@@ -191,33 +262,58 @@ class UserModel extends Equatable {
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
       fcmToken: fcmToken ?? this.fcmToken,
       preferredLanguage: preferredLanguage ?? this.preferredLanguage,
+      privacyNoticeVersion: privacyNoticeVersion ?? this.privacyNoticeVersion,
+      privacyNoticeAcknowledgedAt:
+          privacyNoticeAcknowledgedAt ?? this.privacyNoticeAcknowledgedAt,
+      isUnder16: isUnder16 ?? this.isUnder16,
+      parentalAuthorizationDeclaredAt:
+          parentalAuthorizationDeclaredAt ??
+          this.parentalAuthorizationDeclaredAt,
+      parentalAuthorizationVerifiedAt:
+          parentalAuthorizationVerifiedAt ??
+          this.parentalAuthorizationVerifiedAt,
+      parentalAuthorizationVerifiedBy:
+          parentalAuthorizationVerifiedBy ??
+          this.parentalAuthorizationVerifiedBy,
       warnings: warnings ?? this.warnings,
+      termsVersion: termsVersion ?? this.termsVersion,
+      termsAcceptedAt: termsAcceptedAt ?? this.termsAcceptedAt,
+      blockedUsers: blockedUsers ?? this.blockedUsers,
       absences: absences ?? this.absences,
     );
   }
 
   @override
   List<Object?> get props => [
-        id,
-        email,
-        fullName,
-        photoUrl,
-        phoneNumber,
-        city,
-        role,
-        status,
-        schoolId,
-        schoolName,
-        className,
-        department,
-        createdAt,
-        updatedAt,
-        lastLoginAt,
-        fcmToken,
-        preferredLanguage,
-        warnings,
-        absences,
-      ];
+    id,
+    email,
+    fullName,
+    photoUrl,
+    phoneNumber,
+    city,
+    role,
+    status,
+    schoolId,
+    schoolName,
+    className,
+    department,
+    createdAt,
+    updatedAt,
+    lastLoginAt,
+    fcmToken,
+    preferredLanguage,
+    privacyNoticeVersion,
+    privacyNoticeAcknowledgedAt,
+    isUnder16,
+    parentalAuthorizationDeclaredAt,
+    parentalAuthorizationVerifiedAt,
+    parentalAuthorizationVerifiedBy,
+    termsVersion,
+    termsAcceptedAt,
+    blockedUsers,
+    warnings,
+    absences,
+  ];
 }
 
 /// Warning model for user warnings
@@ -294,7 +390,16 @@ class UserWarning extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, reason, issuedById, issuedByName, issuedAt, resolvedAt, resolvedByName, resolutionNote];
+  List<Object?> get props => [
+    id,
+    reason,
+    issuedById,
+    issuedByName,
+    issuedAt,
+    resolvedAt,
+    resolvedByName,
+    resolutionNote,
+  ];
 }
 
 /// Absence model for tracking user absences
@@ -326,7 +431,8 @@ class UserAbsence extends Equatable {
       id: map['id'] as String? ?? '',
       meetingId: map['meetingId'] as String? ?? '',
       meetingTitle: map['meetingTitle'] as String? ?? '',
-      meetingDate: (map['meetingDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      meetingDate:
+          (map['meetingDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       reason: map['reason'] as String?,
       isExcused: map['isExcused'] as bool? ?? false,
       recordedById: map['recordedById'] as String? ?? '',
@@ -374,5 +480,15 @@ class UserAbsence extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, meetingId, meetingTitle, meetingDate, reason, isExcused, recordedById, recordedByName, recordedAt];
+  List<Object?> get props => [
+    id,
+    meetingId,
+    meetingTitle,
+    meetingDate,
+    reason,
+    isExcused,
+    recordedById,
+    recordedByName,
+    recordedAt,
+  ];
 }

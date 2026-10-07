@@ -15,7 +15,9 @@ final warningRepositoryProvider = Provider<WarningRepository>((ref) {
 });
 
 /// Notification repository provider for warnings
-final warningNotificationRepositoryProvider = Provider<NotificationRepository>((ref) {
+final warningNotificationRepositoryProvider = Provider<NotificationRepository>((
+  ref,
+) {
   return NotificationRepository();
 });
 
@@ -76,80 +78,111 @@ class AbsenceFilter {
 }
 
 /// Warnings provider
-final warningsProvider = FutureProvider.family<List<WarningModel>, WarningFilter>((ref, filter) async {
-  final repository = ref.read(warningRepositoryProvider);
-  return repository.getWarnings(
-    countyId: filter.countyId,
-    userId: filter.userId,
-    isActive: filter.isActive,
-    limit: filter.limit,
-  );
-});
+final warningsProvider =
+    FutureProvider.family<List<WarningModel>, WarningFilter>((
+      ref,
+      filter,
+    ) async {
+      final repository = ref.read(warningRepositoryProvider);
+      return repository.getWarnings(
+        countyId: filter.countyId,
+        userId: filter.userId,
+        isActive: filter.isActive,
+        limit: filter.limit,
+      );
+    });
 
 /// User warnings provider
-final userWarningsProvider = FutureProvider.family<List<WarningModel>, String>((ref, userId) async {
+final userWarningsProvider = FutureProvider.family<List<WarningModel>, String>((
+  ref,
+  userId,
+) async {
   final repository = ref.read(warningRepositoryProvider);
   return repository.getUserWarnings(userId);
 });
 
 /// Absences provider
-final absencesProvider = FutureProvider.family<List<AbsenceModel>, AbsenceFilter>((ref, filter) async {
-  final repository = ref.read(warningRepositoryProvider);
-  return repository.getAbsences(
-    countyId: filter.countyId,
-    userId: filter.userId,
-    meetingId: filter.meetingId,
-    limit: filter.limit,
-  );
-});
+final absencesProvider =
+    FutureProvider.family<List<AbsenceModel>, AbsenceFilter>((
+      ref,
+      filter,
+    ) async {
+      final repository = ref.read(warningRepositoryProvider);
+      return repository.getAbsences(
+        countyId: filter.countyId,
+        userId: filter.userId,
+        meetingId: filter.meetingId,
+        limit: filter.limit,
+      );
+    });
 
 /// User absences provider
-final userAbsencesProvider = FutureProvider.family<List<AbsenceModel>, String>((ref, userId) async {
+final userAbsencesProvider = FutureProvider.family<List<AbsenceModel>, String>((
+  ref,
+  userId,
+) async {
   final repository = ref.read(warningRepositoryProvider);
   return repository.getUserAbsences(userId);
 });
 
 /// Meeting absences provider
-final meetingAbsencesProvider = FutureProvider.family<List<AbsenceModel>, String>((ref, meetingId) async {
-  final repository = ref.read(warningRepositoryProvider);
-  return repository.getMeetingAbsences(meetingId);
-});
+final meetingAbsencesProvider =
+    FutureProvider.family<List<AbsenceModel>, String>((ref, meetingId) async {
+      final repository = ref.read(warningRepositoryProvider);
+      final currentUser = ref.watch(currentUserProvider);
+      final countyId = currentUser?.role == UserRole.superadmin
+          ? null
+          : currentUser?.city;
+      return repository.getMeetingAbsences(meetingId, countyId: countyId);
+    });
 
 /// Warning count provider (one-time fetch)
-final warningCountProvider = FutureProvider.family<int, String>((ref, userId) async {
+final warningCountProvider = FutureProvider.family<int, String>((
+  ref,
+  userId,
+) async {
   final repository = ref.read(warningRepositoryProvider);
   return repository.getWarningCount(userId);
 });
 
 /// Warning count stream provider (real-time updates)
-final warningCountStreamProvider = StreamProvider.family<int, String>((ref, userId) {
+final warningCountStreamProvider = StreamProvider.family<int, String>((
+  ref,
+  userId,
+) {
   final repository = ref.read(warningRepositoryProvider);
   return repository.getWarningCountStream(userId);
 });
 
 /// User warnings stream provider (real-time updates)
-final userWarningsStreamProvider = StreamProvider.family<List<WarningModel>, String>((ref, userId) {
-  final repository = ref.read(warningRepositoryProvider);
-  return repository.getUserWarningsStream(userId);
-});
+final userWarningsStreamProvider =
+    StreamProvider.family<List<WarningModel>, String>((ref, userId) {
+      final repository = ref.read(warningRepositoryProvider);
+      return repository.getUserWarningsStream(userId);
+    });
 
 /// Absence count provider (one-time fetch)
-final absenceCountProvider = FutureProvider.family<Map<String, int>, String>((ref, userId) async {
+final absenceCountProvider = FutureProvider.family<Map<String, int>, String>((
+  ref,
+  userId,
+) async {
   final repository = ref.read(warningRepositoryProvider);
   return repository.getAbsenceCount(userId);
 });
 
 /// Absence count stream provider (real-time updates)
-final absenceCountStreamProvider = StreamProvider.family<Map<String, int>, String>((ref, userId) {
-  final repository = ref.read(warningRepositoryProvider);
-  return repository.getAbsenceCountStream(userId);
-});
+final absenceCountStreamProvider =
+    StreamProvider.family<Map<String, int>, String>((ref, userId) {
+      final repository = ref.read(warningRepositoryProvider);
+      return repository.getAbsenceCountStream(userId);
+    });
 
 /// User absences stream provider (real-time updates)
-final userAbsencesStreamProvider = StreamProvider.family<List<AbsenceModel>, String>((ref, userId) {
-  final repository = ref.read(warningRepositoryProvider);
-  return repository.getUserAbsencesStream(userId);
-});
+final userAbsencesStreamProvider =
+    StreamProvider.family<List<AbsenceModel>, String>((ref, userId) {
+      final repository = ref.read(warningRepositoryProvider);
+      return repository.getUserAbsencesStream(userId);
+    });
 
 /// Warning controller for managing warnings and absences
 class WarningController extends StateNotifier<AsyncValue<void>> {
@@ -157,7 +190,8 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
   final NotificationRepository _notificationRepository;
   final Ref _ref;
 
-  WarningController(this._repository, this._notificationRepository, this._ref) : super(const AsyncValue.data(null));
+  WarningController(this._repository, this._notificationRepository, this._ref)
+    : super(const AsyncValue.data(null));
 
   /// Issue a warning to a user
   Future<bool> issueWarning({
@@ -226,7 +260,10 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
       _invalidateWarningProviders(userId);
       return true;
     } else {
-      state = AsyncValue.error('Failed to deactivate warning', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to deactivate warning',
+        StackTrace.current,
+      );
       return false;
     }
   }
@@ -303,10 +340,17 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Update absence type (e.g., change from unexcused to excused)
-  Future<bool> updateAbsenceType(String absenceId, AbsenceType type, String userId, String meetingId) async {
+  Future<bool> updateAbsenceType(
+    String absenceId,
+    AbsenceType type,
+    String userId,
+    String meetingId,
+  ) async {
     state = const AsyncValue.loading();
 
-    final success = await _repository.updateAbsence(absenceId, {'type': type.name});
+    final success = await _repository.updateAbsence(absenceId, {
+      'type': type.name,
+    });
 
     if (success) {
       state = const AsyncValue.data(null);
@@ -319,7 +363,11 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Delete an absence
-  Future<bool> deleteAbsence(String absenceId, String userId, String meetingId) async {
+  Future<bool> deleteAbsence(
+    String absenceId,
+    String userId,
+    String meetingId,
+  ) async {
     state = const AsyncValue.loading();
 
     final success = await _repository.deleteAbsence(absenceId);
@@ -343,7 +391,9 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     // Invalidate all warnings providers with current user's county
     final currentUser = _ref.read(currentUserProvider);
     if (currentUser != null && currentUser.city != null) {
-      _ref.invalidate(warningsProvider(WarningFilter(countyId: currentUser.city)));
+      _ref.invalidate(
+        warningsProvider(WarningFilter(countyId: currentUser.city)),
+      );
     }
   }
 
@@ -356,7 +406,9 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     // Invalidate absences providers with current user's county
     final currentUser = _ref.read(currentUserProvider);
     if (currentUser != null && currentUser.city != null) {
-      _ref.invalidate(absencesProvider(AbsenceFilter(countyId: currentUser.city)));
+      _ref.invalidate(
+        absencesProvider(AbsenceFilter(countyId: currentUser.city)),
+      );
     }
   }
 
@@ -370,17 +422,29 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     // Fetch user's preferred language
     String lang = 'ro';
     try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
       lang = userDoc.data()?['preferredLanguage'] as String? ?? 'en';
     } catch (e) {
       debugPrint('Error fetching user language for warning notification: $e');
     }
 
     final warningTypeKey = 'warning_type_${warningType.name}';
-    final translatedType = AppLocalizations.translateForLocale(lang, warningTypeKey);
-    final title = AppLocalizations.translateForLocale(lang, 'notif_warning_issued');
+    final translatedType = AppLocalizations.translateForLocale(
+      lang,
+      warningTypeKey,
+    );
+    final title = AppLocalizations.translateForLocale(
+      lang,
+      'notif_warning_issued',
+    );
     final body = AppLocalizations.translateForLocaleWithParams(
-        lang, 'notif_warning_body', {'type': translatedType, 'reason': reason});
+      lang,
+      'notif_warning_body',
+      {'type': translatedType, 'reason': reason},
+    );
 
     final notification = NotificationModel(
       id: '',
@@ -388,10 +452,7 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
       type: NotificationType.warningIssued,
       title: title,
       body: body,
-      data: {
-        'warningType': warningType.name,
-        'issuedBy': issuedByName,
-      },
+      data: {'warningType': warningType.name, 'issuedBy': issuedByName},
       createdAt: DateTime.now(),
     );
 
@@ -408,17 +469,29 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
     // Fetch user's preferred language
     String lang = 'ro';
     try {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
       lang = userDoc.data()?['preferredLanguage'] as String? ?? 'en';
     } catch (e) {
       debugPrint('Error fetching user language for absence notification: $e');
     }
 
     final absenceTypeKey = 'absence_type_${absenceType.name}';
-    final translatedType = AppLocalizations.translateForLocale(lang, absenceTypeKey);
-    final title = AppLocalizations.translateForLocale(lang, 'notif_absence_recorded');
+    final translatedType = AppLocalizations.translateForLocale(
+      lang,
+      absenceTypeKey,
+    );
+    final title = AppLocalizations.translateForLocale(
+      lang,
+      'notif_absence_recorded',
+    );
     final body = AppLocalizations.translateForLocaleWithParams(
-        lang, 'notif_absence_body', {'type': translatedType, 'meeting': meetingTitle});
+      lang,
+      'notif_absence_body',
+      {'type': translatedType, 'meeting': meetingTitle},
+    );
 
     final notification = NotificationModel(
       id: '',
@@ -441,12 +514,12 @@ class WarningController extends StateNotifier<AsyncValue<void>> {
 /// Warning controller provider
 final warningControllerProvider =
     StateNotifierProvider<WarningController, AsyncValue<void>>((ref) {
-  return WarningController(
-    ref.watch(warningRepositoryProvider),
-    ref.watch(warningNotificationRepositoryProvider),
-    ref,
-  );
-});
+      return WarningController(
+        ref.watch(warningRepositoryProvider),
+        ref.watch(warningNotificationRepositoryProvider),
+        ref,
+      );
+    });
 
 /// Check if current user can manage warnings (BEX only)
 final canManageWarningsProvider = Provider<bool>((ref) {

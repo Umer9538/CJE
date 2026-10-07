@@ -29,72 +29,102 @@ bool _canViewContent(UserRole? userRole, UserRole? minVisibilityRole) {
   return userRole.hierarchyLevel >= minVisibilityRole.hierarchyLevel;
 }
 
+bool _canViewAnnouncement(UserModel? user, AnnouncementModel announcement) =>
+    user != null && !user.blockedUsers.contains(announcement.authorId) &&
+    _canViewContent(user.role, announcement.minVisibilityRole);
+
 /// Announcements list provider
-final announcementsProvider = FutureProvider.family<List<AnnouncementModel>, AnnouncementFilter>((ref, filter) async {
-  // Use ref.watch for reactive dependencies so provider rebuilds when user changes
-  final user = ref.watch(currentUserProvider);
-  if (user == null) {
-    return <AnnouncementModel>[];
-  }
+final announcementsProvider =
+    FutureProvider.family<List<AnnouncementModel>, AnnouncementFilter>((
+      ref,
+      filter,
+    ) async {
+      // Use ref.watch for reactive dependencies so provider rebuilds when user changes
+      final user = ref.watch(currentUserProvider);
+      if (user == null) {
+        return <AnnouncementModel>[];
+      }
 
-  final repository = ref.read(announcementRepositoryProvider);
-  final effectiveCounty = ref.watch(effectiveCountyProvider);
+      final repository = ref.read(announcementRepositoryProvider);
+      final effectiveCounty = ref.watch(effectiveCountyProvider);
 
-  // For superadmin and bex, show all school announcements without schoolId filter
-  // For regular users, ALWAYS filter by their schoolId (including "All" tab)
-  // This ensures users only see their own school's announcements + county announcements
-  final shouldFilterBySchool = user.role != UserRole.superadmin &&
-      user.role != UserRole.bex;
+      // For superadmin and bex, show all school announcements without schoolId filter
+      // For regular users, ALWAYS filter by their schoolId (including "All" tab)
+      // This ensures users only see their own school's announcements + county announcements
+      final shouldFilterBySchool =
+          user.role != UserRole.superadmin && user.role != UserRole.bex;
 
-  try {
-    final announcements = await repository.getAnnouncements(
-      type: filter.type,
-      schoolId: shouldFilterBySchool ? user.schoolId : null,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      limit: filter.limit,
-    ).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => <AnnouncementModel>[],
-    );
-    // Filter by visibility role
-    return announcements.where((a) => _canViewContent(user.role, a.minVisibilityRole)).toList();
-  } catch (e) {
-    return <AnnouncementModel>[];
-  }
-});
+      try {
+        final announcements = await repository
+            .getAnnouncements(
+              type: filter.type,
+              schoolId: shouldFilterBySchool ? user.schoolId : null,
+              countyId:
+                  effectiveCounty, // Uses selected county for Superadmin, user's county for others
+              limit: filter.limit,
+            )
+            .timeout(
+              const Duration(seconds: 15),
+              onTimeout: () => <AnnouncementModel>[],
+            );
+        // Filter by visibility role
+        return announcements
+            .where((a) => _canViewAnnouncement(user, a))
+            .toList();
+      } catch (e) {
+        return <AnnouncementModel>[];
+      }
+    });
 
 /// Announcements stream provider
-final announcementsStreamProvider = StreamProvider.family<List<AnnouncementModel>, AnnouncementFilter>((ref, filter) {
-  final repository = ref.read(announcementRepositoryProvider);
-  // Use ref.watch for reactive dependencies
-  final user = ref.watch(currentUserProvider);
-  final effectiveCounty = ref.watch(effectiveCountyProvider);
+final announcementsStreamProvider =
+    StreamProvider.family<List<AnnouncementModel>, AnnouncementFilter>((
+      ref,
+      filter,
+    ) {
+      final repository = ref.read(announcementRepositoryProvider);
+      // Use ref.watch for reactive dependencies
+      final user = ref.watch(currentUserProvider);
+      final effectiveCounty = ref.watch(effectiveCountyProvider);
 
-  // For superadmin and bex, show all school announcements without schoolId filter
-  // For regular users, ALWAYS filter by their schoolId (including "All" tab)
-  // This ensures users only see their own school's announcements + county announcements
-  final shouldFilterBySchool = user?.role != UserRole.superadmin &&
-      user?.role != UserRole.bex;
+      // For superadmin and bex, show all school announcements without schoolId filter
+      // For regular users, ALWAYS filter by their schoolId (including "All" tab)
+      // This ensures users only see their own school's announcements + county announcements
+      final shouldFilterBySchool =
+          user?.role != UserRole.superadmin && user?.role != UserRole.bex;
 
-  return repository.getAnnouncementsStream(
-    type: filter.type,
-    schoolId: shouldFilterBySchool ? user?.schoolId : null,
-    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-    limit: filter.limit,
-  ).map((announcements) {
-    // Filter by visibility role
-    return announcements.where((a) => _canViewContent(user?.role, a.minVisibilityRole)).toList();
-  });
-});
+      return repository
+          .getAnnouncementsStream(
+            type: filter.type,
+            schoolId: shouldFilterBySchool ? user?.schoolId : null,
+            countyId:
+                effectiveCounty, // Uses selected county for Superadmin, user's county for others
+            limit: filter.limit,
+          )
+          .map((announcements) {
+            // Filter by visibility role
+            return announcements
+                .where((a) => _canViewAnnouncement(user, a))
+                .toList();
+          });
+    });
 
 /// Single announcement provider
-final announcementProvider = FutureProvider.family<AnnouncementModel?, String>((ref, id) async {
+final announcementProvider = FutureProvider.family<AnnouncementModel?, String>((
+  ref,
+  id,
+) async {
   final repository = ref.watch(announcementRepositoryProvider);
-  return repository.getAnnouncementById(id);
+  final user = ref.watch(currentUserProvider);
+  final announcement = await repository.getAnnouncementById(id);
+  return announcement != null && _canViewAnnouncement(user, announcement)
+      ? announcement : null;
 });
 
 /// Recent announcements for home screen
-final recentAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((ref) async {
+final recentAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((
+  ref,
+) async {
   // Use ref.watch for reactive dependencies so provider rebuilds when user changes
   final user = ref.watch(currentUserProvider);
   if (user == null) {
@@ -105,27 +135,35 @@ final recentAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((ref
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For BEX/Superadmin, don't filter by school - they see ALL recent announcements
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
   try {
-    final announcements = await repository.getRecentAnnouncements(
-      schoolId: effectiveSchoolId,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      limit: 5,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => <AnnouncementModel>[],
-    );
+    final announcements = await repository
+        .getRecentAnnouncements(
+          schoolId: effectiveSchoolId,
+          countyId:
+              effectiveCounty, // Uses selected county for Superadmin, user's county for others
+          limit: 5,
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => <AnnouncementModel>[],
+        );
     // Filter by visibility role
-    return announcements.where((a) => _canViewContent(user.role, a.minVisibilityRole)).toList();
+    return announcements
+        .where((a) => _canViewAnnouncement(user, a))
+        .toList();
   } catch (e) {
     return <AnnouncementModel>[];
   }
 });
 
 /// Recent announcements stream for home screen (real-time updates)
-final recentAnnouncementsStreamProvider = StreamProvider<List<AnnouncementModel>>((ref) {
+final recentAnnouncementsStreamProvider = StreamProvider<List<AnnouncementModel>>((
+  ref,
+) {
   final user = ref.watch(currentUserProvider);
   if (user == null) {
     return Stream.value(<AnnouncementModel>[]);
@@ -135,17 +173,22 @@ final recentAnnouncementsStreamProvider = StreamProvider<List<AnnouncementModel>
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For BEX/Superadmin, don't filter by school - they see ALL recent announcements
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
-  return repository.getRecentAnnouncementsStream(
-    schoolId: effectiveSchoolId,
-    countyId: effectiveCounty,
-    limit: 5,
-  ).map((announcements) {
-    // Filter by visibility role
-    return announcements.where((a) => _canViewContent(user.role, a.minVisibilityRole)).toList();
-  });
+  return repository
+      .getRecentAnnouncementsStream(
+        schoolId: effectiveSchoolId,
+        countyId: effectiveCounty,
+        limit: 5,
+      )
+      .map((announcements) {
+        // Filter by visibility role
+        return announcements
+            .where((a) => _canViewAnnouncement(user, a))
+            .toList();
+      });
 });
 
 /// Filter model for announcements
@@ -153,10 +196,7 @@ class AnnouncementFilter {
   final AnnouncementType? type;
   final int limit;
 
-  const AnnouncementFilter({
-    this.type,
-    this.limit = 20,
-  });
+  const AnnouncementFilter({this.type, this.limit = 20});
 
   @override
   bool operator ==(Object other) =>
@@ -175,7 +215,8 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
   final AnnouncementRepository _repository;
   final Ref _ref;
 
-  AnnouncementController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  AnnouncementController(this._repository, this._ref)
+    : super(const AsyncValue.data(null));
 
   /// Create new announcement
   /// - BEX and Superadmin can create county and school announcements
@@ -203,12 +244,24 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
+    final effectiveCounty = _ref.read(effectiveCountyProvider);
+    if (effectiveCounty == null || effectiveCounty.isEmpty) {
+      state = AsyncValue.error(
+        'Selecteaza judetul inainte de a crea anuntul',
+        StackTrace.current,
+      );
+      return null;
+    }
+
     // Permission check
     // - BEX and Superadmin can create any announcement
     // - SchoolRep can only create school announcements
     if (type == AnnouncementType.county) {
       if (user.role != UserRole.bex && user.role != UserRole.superadmin) {
-        state = AsyncValue.error('Permission denied: Only BEX can create county announcements', StackTrace.current);
+        state = AsyncValue.error(
+          'Permission denied: Only BEX can create county announcements',
+          StackTrace.current,
+        );
         return null;
       }
     } else {
@@ -242,19 +295,30 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       // Add 10 second timeout to entire translation process
       await Future<void>(() async {
         final translatedTitle = await TranslatableContent.fromText(title);
-        titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+        titleTranslations = {
+          'en': translatedTitle.en,
+          'ro': translatedTitle.ro,
+        };
 
         final translatedContent = await TranslatableContent.fromText(content);
-        contentTranslations = {'en': translatedContent.en, 'ro': translatedContent.ro};
+        contentTranslations = {
+          'en': translatedContent.en,
+          'ro': translatedContent.ro,
+        };
 
         if (summary != null && summary.isNotEmpty) {
           final translatedSummary = await TranslatableContent.fromText(summary);
-          summaryTranslations = {'en': translatedSummary.en, 'ro': translatedSummary.ro};
+          summaryTranslations = {
+            'en': translatedSummary.en,
+            'ro': translatedSummary.ro,
+          };
         }
       }).timeout(const Duration(seconds: 10));
       debugPrint('AnnouncementController: Content translated successfully');
     } catch (e) {
-      debugPrint('AnnouncementController: Translation failed/timeout - $e, continuing without translations');
+      debugPrint(
+        'AnnouncementController: Translation failed/timeout - $e, continuing without translations',
+      );
       // Continue without translations if translation fails or times out
     }
 
@@ -270,7 +334,7 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       authorId: user.id,
       authorName: user.fullName,
       authorPhotoUrl: user.photoUrl,
-      countyId: user.city, // Save the county for data partitioning (city is the county name)
+      countyId: effectiveCounty,
       schoolId: effectiveSchoolId,
       schoolName: effectiveSchoolName,
       imageUrl: imageUrl,
@@ -313,7 +377,10 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
         );
       }
     } else {
-      state = AsyncValue.error('Failed to create announcement', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to create announcement',
+        StackTrace.current,
+      );
     }
 
     return id;
@@ -330,25 +397,50 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
 
     try {
       await Future<void>(() async {
-        final translatedTitle = await TranslatableContent.fromText(announcement.title);
-        titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+        final translatedTitle = await TranslatableContent.fromText(
+          announcement.title,
+        );
+        titleTranslations = {
+          'en': translatedTitle.en,
+          'ro': translatedTitle.ro,
+        };
 
-        final translatedContent = await TranslatableContent.fromText(announcement.content);
-        contentTranslations = {'en': translatedContent.en, 'ro': translatedContent.ro};
+        final translatedContent = await TranslatableContent.fromText(
+          announcement.content,
+        );
+        contentTranslations = {
+          'en': translatedContent.en,
+          'ro': translatedContent.ro,
+        };
 
         if (announcement.summary != null && announcement.summary!.isNotEmpty) {
-          final translatedSummary = await TranslatableContent.fromText(announcement.summary!);
-          summaryTranslations = {'en': translatedSummary.en, 'ro': translatedSummary.ro};
+          final translatedSummary = await TranslatableContent.fromText(
+            announcement.summary!,
+          );
+          summaryTranslations = {
+            'en': translatedSummary.en,
+            'ro': translatedSummary.ro,
+          };
         }
       }).timeout(const Duration(seconds: 10));
     } catch (e) {
-      debugPrint('AnnouncementController: Translation failed/timeout during update - $e, continuing without translations');
+      debugPrint(
+        'AnnouncementController: Translation failed/timeout during update - $e, continuing without translations',
+      );
     }
 
     final updatedAnnouncement = announcement.copyWith(
-      titleTranslations: titleTranslations ?? {'en': announcement.title, 'ro': announcement.title},
-      contentTranslations: contentTranslations ?? {'en': announcement.content, 'ro': announcement.content},
-      summaryTranslations: summaryTranslations ?? (announcement.summary != null ? {'en': announcement.summary!, 'ro': announcement.summary!} : null),
+      titleTranslations:
+          titleTranslations ??
+          {'en': announcement.title, 'ro': announcement.title},
+      contentTranslations:
+          contentTranslations ??
+          {'en': announcement.content, 'ro': announcement.content},
+      summaryTranslations:
+          summaryTranslations ??
+          (announcement.summary != null
+              ? {'en': announcement.summary!, 'ro': announcement.summary!}
+              : null),
     );
 
     final success = await _repository.updateAnnouncement(updatedAnnouncement);
@@ -358,7 +450,10 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(announcementsProvider);
       _ref.invalidate(announcementProvider(announcement.id));
     } else {
-      state = AsyncValue.error('Failed to update announcement', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to update announcement',
+        StackTrace.current,
+      );
     }
 
     return success;
@@ -375,7 +470,10 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(announcementsProvider);
       _ref.invalidate(recentAnnouncementsProvider);
     } else {
-      state = AsyncValue.error('Failed to delete announcement', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to delete announcement',
+        StackTrace.current,
+      );
     }
 
     return success;
@@ -388,7 +486,9 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
 
     // Check if already published to avoid duplicate notifications
     if (announcement?.isPublished == true) {
-      debugPrint('Announcement $id is already published, skipping notification');
+      debugPrint(
+        'Announcement $id is already published, skipping notification',
+      );
       return true; // Already published, no action needed
     }
 
@@ -442,7 +542,9 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
           ? '${summary.substring(0, 100)}...'
           : summary;
 
-      debugPrint('AnnouncementNotification: Sending with minVisibilityRole=$minVisibilityRole, schoolId=$schoolId, type=$type, countyId=${user?.city}');
+      debugPrint(
+        'AnnouncementNotification: Sending with minVisibilityRole=$minVisibilityRole, schoolId=$schoolId, type=$type, countyId=${user?.city}',
+      );
 
       await notificationRepo.sendCountyWideNotification(
         title: 'New Announcement: $title',
@@ -455,10 +557,13 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
         senderName: user?.fullName ?? 'System',
         additionalData: {'announcementId': announcementId},
         titleBuilder: (lang) => AppLocalizations.translateForLocaleWithParams(
-            lang, 'notif_new_announcement', {'title': title}),
+          lang,
+          'notif_new_announcement',
+          {'title': title},
+        ),
       );
 
-      debugPrint('Sent notification for announcement: $title');
+      debugPrint('Sent notification for announcement');
     } catch (e) {
       debugPrint('Error sending announcement notification: $e');
     }
@@ -483,11 +588,11 @@ class AnnouncementController extends StateNotifier<AsyncValue<void>> {
 /// Announcement controller provider
 final announcementControllerProvider =
     StateNotifierProvider<AnnouncementController, AsyncValue<void>>((ref) {
-  return AnnouncementController(
-    ref.watch(announcementRepositoryProvider),
-    ref,
-  );
-});
+      return AnnouncementController(
+        ref.watch(announcementRepositoryProvider),
+        ref,
+      );
+    });
 
 /// Check if current user can create/publish announcements
 /// - BEX and Superadmin can create county and school announcements
@@ -497,9 +602,9 @@ final canCreateAnnouncementsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.schoolRep ||
-         user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.department ||
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can create county-level announcements
@@ -514,8 +619,8 @@ final canCreateDepartmentAnnouncementsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can create school-level announcements
@@ -523,26 +628,31 @@ final canCreateSchoolAnnouncementsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.schoolRep ||
-         user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.department ||
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// User's draft announcements provider
 /// Fetches unpublished announcements created by the current user
-final myDraftAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((ref) async {
+final myDraftAnnouncementsProvider = FutureProvider<List<AnnouncementModel>>((
+  ref,
+) async {
   final user = ref.watch(currentUserProvider);
   if (user == null) {
     return <AnnouncementModel>[];
   }
 
   final repository = ref.read(announcementRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   try {
-    return await repository.getUserDrafts(user.id).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => <AnnouncementModel>[],
-    );
+    return await repository
+        .getUserDrafts(user.id, countyId: effectiveCounty)
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => <AnnouncementModel>[],
+        );
   } catch (e) {
     debugPrint('Error fetching draft announcements: $e');
     return <AnnouncementModel>[];

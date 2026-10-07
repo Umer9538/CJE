@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/account_privacy_action.dart';
 
 class PendingApprovalScreen extends ConsumerWidget {
   const PendingApprovalScreen({super.key});
@@ -16,6 +17,7 @@ class PendingApprovalScreen extends ConsumerWidget {
     final user = authState.user;
 
     return Scaffold(
+      appBar: AppBar(actions: const [AccountPrivacyAction()]),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppSizes.paddingLG),
@@ -138,7 +140,9 @@ class PendingApprovalScreen extends ConsumerWidget {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.orange.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                          borderRadius: BorderRadius.circular(
+                            AppSizes.radiusFull,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,

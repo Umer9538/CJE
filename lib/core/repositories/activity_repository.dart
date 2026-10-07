@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../models/models.dart';
 
@@ -8,7 +9,7 @@ class ActivityRepository {
   final FirebaseFirestore _firestore;
 
   ActivityRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Collection reference
   CollectionReference<Map<String, dynamic>> get _collection =>
@@ -48,7 +49,13 @@ class ActivityRepository {
   /// Log activity (create new activity record)
   Future<String?> logActivity(ActivityModel activity) async {
     try {
-      final docRef = await _collection.add(activity.toFirestore());
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return null;
+      final me = (await _firestore.collection('users').doc(uid).get()).data();
+      final data = activity.toFirestore();
+      data['actorId'] = uid;
+      data['actorName'] = me?['fullName'];
+      final docRef = await _collection.add(data);
       return docRef.id;
     } catch (e) {
       debugPrint('Error logging activity: $e');
@@ -62,15 +69,17 @@ class ActivityRepository {
     required String userName,
     required String userRole,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.userRegistered,
-      title: 'New user registered',
-      subtitle: '$userName joined as $userRole',
-      targetId: userId,
-      targetType: 'user',
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.userRegistered,
+        title: 'New user registered',
+        subtitle: '$userName joined as $userRole',
+        targetId: userId,
+        targetType: 'user',
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Log user approved activity
@@ -79,16 +88,18 @@ class ActivityRepository {
     required String userName,
     String? approvedBy,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.userApproved,
-      title: 'User approved',
-      subtitle: '$userName account activated',
-      targetId: userId,
-      targetType: 'user',
-      actorName: approvedBy,
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.userApproved,
+        title: 'User approved',
+        subtitle: '$userName account activated',
+        targetId: userId,
+        targetType: 'user',
+        actorName: approvedBy,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Log announcement published activity
@@ -97,16 +108,18 @@ class ActivityRepository {
     required String announcementTitle,
     String? publishedBy,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.announcementPublished,
-      title: 'Announcement published',
-      subtitle: announcementTitle,
-      targetId: announcementId,
-      targetType: 'announcement',
-      actorName: publishedBy,
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.announcementPublished,
+        title: 'Announcement published',
+        subtitle: announcementTitle,
+        targetId: announcementId,
+        targetType: 'announcement',
+        actorName: publishedBy,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Log poll created activity
@@ -115,16 +128,18 @@ class ActivityRepository {
     required String pollQuestion,
     String? createdBy,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.pollCreated,
-      title: 'Poll created',
-      subtitle: pollQuestion,
-      targetId: pollId,
-      targetType: 'poll',
-      actorName: createdBy,
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.pollCreated,
+        title: 'Poll created',
+        subtitle: pollQuestion,
+        targetId: pollId,
+        targetType: 'poll',
+        actorName: createdBy,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Log poll ended activity
@@ -132,15 +147,17 @@ class ActivityRepository {
     required String pollId,
     required String pollQuestion,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.pollEnded,
-      title: 'Poll ended',
-      subtitle: pollQuestion,
-      targetId: pollId,
-      targetType: 'poll',
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.pollEnded,
+        title: 'Poll ended',
+        subtitle: pollQuestion,
+        targetId: pollId,
+        targetType: 'poll',
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Log meeting created activity
@@ -149,16 +166,18 @@ class ActivityRepository {
     required String meetingTitle,
     String? createdBy,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.meetingCreated,
-      title: 'Meeting scheduled',
-      subtitle: meetingTitle,
-      targetId: meetingId,
-      targetType: 'meeting',
-      actorName: createdBy,
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.meetingCreated,
+        title: 'Meeting scheduled',
+        subtitle: meetingTitle,
+        targetId: meetingId,
+        targetType: 'meeting',
+        actorName: createdBy,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Log initiative submitted activity
@@ -167,16 +186,18 @@ class ActivityRepository {
     required String initiativeTitle,
     String? submittedBy,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.initiativeSubmitted,
-      title: 'Initiative submitted',
-      subtitle: initiativeTitle,
-      targetId: initiativeId,
-      targetType: 'initiative',
-      actorName: submittedBy,
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.initiativeSubmitted,
+        title: 'Initiative submitted',
+        subtitle: initiativeTitle,
+        targetId: initiativeId,
+        targetType: 'initiative',
+        actorName: submittedBy,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Log document uploaded activity
@@ -185,16 +206,18 @@ class ActivityRepository {
     required String documentTitle,
     String? uploadedBy,
   }) async {
-    await logActivity(ActivityModel(
-      id: '',
-      type: ActivityType.documentUploaded,
-      title: 'Document uploaded',
-      subtitle: documentTitle,
-      targetId: documentId,
-      targetType: 'document',
-      actorName: uploadedBy,
-      createdAt: DateTime.now(),
-    ));
+    await logActivity(
+      ActivityModel(
+        id: '',
+        type: ActivityType.documentUploaded,
+        title: 'Document uploaded',
+        subtitle: documentTitle,
+        targetId: documentId,
+        targetType: 'document',
+        actorName: uploadedBy,
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Delete old activities (cleanup - keep last 100)
@@ -205,10 +228,13 @@ class ActivityRepository {
       if (snapshot.docs.length > 100) {
         List<QueryDocumentSnapshot> docs = snapshot.docs.toList();
         docs.sort((a, b) {
-          final aTime = (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
-          final bTime = (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
-          return (bTime?.toDate() ?? DateTime.now())
-              .compareTo(aTime?.toDate() ?? DateTime.now());
+          final aTime =
+              (a.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          final bTime =
+              (b.data() as Map<String, dynamic>)['createdAt'] as Timestamp?;
+          return (bTime?.toDate() ?? DateTime.now()).compareTo(
+            aTime?.toDate() ?? DateTime.now(),
+          );
         });
 
         // Delete all except the most recent 100

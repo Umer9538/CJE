@@ -9,6 +9,7 @@ import '../admin/send_notification_screen.dart';
 import '../documents/documents_screen.dart';
 import '../profile/profile_screen.dart';
 import 'activity_report_screen.dart';
+import '../admin/moderation_reports_screen.dart';
 
 /// BEX More Screen - Additional features and settings
 class BexMoreScreen extends ConsumerWidget {
@@ -91,6 +92,11 @@ class BexMoreScreen extends ConsumerWidget {
 
           // Data & Reports section
           _SectionTitle(title: l10n.translate('data_reports')),
+          ListTile(
+            leading: const Icon(Icons.flag_outlined),
+            title: Text(l10n.translate('moderation_reports')),
+            onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const ModerationReportsScreen())),
+          ),
           const SizedBox(height: 12),
           _MenuCard(
             children: [

@@ -14,11 +14,21 @@ class GDSRepository {
   CollectionReference<Map<String, dynamic>> get _gdsCollection =>
       _firestore.collection('gds');
 
+  Query<Map<String, dynamic>> _queryForCounty(String? countyId) {
+    if (countyId == null || countyId.isEmpty) {
+      return _gdsCollection;
+    }
+    return _gdsCollection.where('countyId', isEqualTo: countyId);
+  }
+
   /// Get all GDS groups
-  Future<List<GDSModel>> getAllGDS() async {
+  Future<List<GDSModel>> getAllGDS({String? countyId}) async {
     try {
-      final snapshot = await _gdsCollection.orderBy('name').get();
-      return snapshot.docs.map((doc) => GDSModel.fromFirestore(doc)).toList();
+      final snapshot = await _queryForCounty(countyId).get();
+      final groups =
+          snapshot.docs.map((doc) => GDSModel.fromFirestore(doc)).toList();
+      groups.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return groups;
     } catch (e) {
       debugPrint('Error getting all GDS: $e');
       return [];
@@ -26,10 +36,10 @@ class GDSRepository {
   }
 
   /// Get active GDS groups
-  Future<List<GDSModel>> getActiveGDS() async {
+  Future<List<GDSModel>> getActiveGDS({String? countyId}) async {
     try {
       // Get all GDS and filter in memory to avoid composite index requirement
-      final snapshot = await _gdsCollection.get();
+      final snapshot = await _queryForCounty(countyId).get();
       final gdsList = snapshot.docs
           .map((doc) => GDSModel.fromFirestore(doc))
           .where((gds) => gds.isActive)
@@ -44,12 +54,15 @@ class GDSRepository {
   }
 
   /// Get GDS stream for real-time updates
-  Stream<List<GDSModel>> getGDSStream() {
-    return _gdsCollection
-        .orderBy('name')
+  Stream<List<GDSModel>> getGDSStream({String? countyId}) {
+    return _queryForCounty(countyId)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => GDSModel.fromFirestore(doc)).toList());
+        .map((snapshot) {
+      final groups =
+          snapshot.docs.map((doc) => GDSModel.fromFirestore(doc)).toList();
+      groups.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      return groups;
+    });
   }
 
   /// Get GDS by ID
@@ -200,10 +213,13 @@ class GDSRepository {
   }
 
   /// Get GDS groups for a specific user
-  Future<List<GDSModel>> getGDSForUser(String userId) async {
+  Future<List<GDSModel>> getGDSForUser(
+    String userId, {
+    String? countyId,
+  }) async {
     try {
       // Get all GDS and filter in memory to avoid composite index requirement
-      final snapshot = await _gdsCollection.get();
+      final snapshot = await _queryForCounty(countyId).get();
       final gdsList = snapshot.docs
           .map((doc) => GDSModel.fromFirestore(doc))
           .where((gds) => gds.isActive && gds.memberIds.contains(userId))
@@ -217,10 +233,13 @@ class GDSRepository {
   }
 
   /// Get GDS groups led by a specific user
-  Future<List<GDSModel>> getGDSLedByUser(String userId) async {
+  Future<List<GDSModel>> getGDSLedByUser(
+    String userId, {
+    String? countyId,
+  }) async {
     try {
       // Get all GDS and filter in memory to avoid composite index requirement
-      final snapshot = await _gdsCollection.get();
+      final snapshot = await _queryForCounty(countyId).get();
       final gdsList = snapshot.docs
           .map((doc) => GDSModel.fromFirestore(doc))
           .where((gds) => gds.isActive && gds.leaderId == userId)

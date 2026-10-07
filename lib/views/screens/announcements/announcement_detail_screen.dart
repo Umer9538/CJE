@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../../core/services/content_moderation_service.dart';
 import 'edit_announcement_screen.dart';
 
 /// Detail screen for viewing a single announcement
@@ -569,6 +569,7 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
   }
 
   void _handleReport(BuildContext context, UserModel? user) {
+    if (user == null) return;
     final l10n = AppLocalizations.of(context);
     String? selectedReason;
 
@@ -614,18 +615,7 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
                   ? null
                   : () async {
                       Navigator.pop(ctx);
-                      await FirebaseFirestore.instance.collection('reports').add({
-                        'type': 'announcement',
-                        'contentId': widget.announcement.id,
-                        'contentTitle': widget.announcement.title,
-                        'authorId': widget.announcement.authorId,
-                        'authorName': widget.announcement.authorName,
-                        'reportedBy': user?.id ?? 'anonymous',
-                        'reportedByName': user?.fullName ?? 'Anonymous',
-                        'reason': selectedReason,
-                        'timestamp': FieldValue.serverTimestamp(),
-                        'status': 'pending',
-                      });
+                      if (!await _submitReport(user, selectedReason!)) return;
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -641,6 +631,20 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
         ),
       ),
     );
+  }
+
+  Future<bool> _submitReport(UserModel user, String reason, {bool block = false}) async {
+    try {
+      await ContentModerationService().reportAnnouncement(
+        user, widget.announcement, reason, blockAuthor: block);
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppLocalizations.of(context).translate('report_failed'))));
+      }
+      return false;
+    }
   }
 
   void _handleBlock(BuildContext context, UserModel? user) {
@@ -666,23 +670,7 @@ class _AnnouncementDetailScreenState extends ConsumerState<AnnouncementDetailScr
             ),
             onPressed: () async {
               Navigator.pop(ctx);
-              // Add to blocked users list + save report so admin is notified
-              await Future.wait([
-                FirebaseFirestore.instance.collection('users').doc(user.id).update({
-                  'blockedUsers': FieldValue.arrayUnion([widget.announcement.authorId]),
-                }),
-                FirebaseFirestore.instance.collection('reports').add({
-                  'type': 'block',
-                  'contentId': widget.announcement.id,
-                  'blockedUserId': widget.announcement.authorId,
-                  'blockedUserName': widget.announcement.authorName,
-                  'reportedBy': user.id,
-                  'reportedByName': user.fullName,
-                  'reason': 'User blocked',
-                  'timestamp': FieldValue.serverTimestamp(),
-                  'status': 'pending',
-                }),
-              ]);
+              if (!await _submitReport(user, 'User blocked', block: true)) return;
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

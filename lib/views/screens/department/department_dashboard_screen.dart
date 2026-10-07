@@ -506,7 +506,10 @@ final departmentMembersProvider = FutureProvider<List<UserModel>>((ref) async {
 
   final repository = ref.read(userRepositoryProvider);
   try {
-    return await repository.getDepartmentMembers(user.department!).timeout(
+    // Regula de citire pe users cere interogare limitata la judet.
+    return await repository
+        .getDepartmentMembers(user.department!, countyId: user.city)
+        .timeout(
       const Duration(seconds: 10),
       onTimeout: () => <UserModel>[],
     );

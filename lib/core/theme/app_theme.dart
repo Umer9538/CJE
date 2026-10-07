@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 
@@ -134,97 +133,97 @@ class AppTheme {
   // ============================================
 
   static TextTheme _textTheme(Color textColor) {
-    return GoogleFonts.interTextTheme().copyWith(
+    return const TextTheme().copyWith(
       // Display styles
-      displayLarge: GoogleFonts.inter(
+      displayLarge: TextStyle(
         fontSize: AppSizes.fontDisplayLG,
         fontWeight: FontWeight.bold,
         color: textColor,
         height: AppSizes.lineHeightTight,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: TextStyle(
         fontSize: AppSizes.fontDisplay,
         fontWeight: FontWeight.bold,
         color: textColor,
         height: AppSizes.lineHeightTight,
       ),
-      displaySmall: GoogleFonts.inter(
+      displaySmall: TextStyle(
         fontSize: AppSizes.fontHuge,
         fontWeight: FontWeight.bold,
         color: textColor,
         height: AppSizes.lineHeightTight,
       ),
       // Headline styles
-      headlineLarge: GoogleFonts.inter(
+      headlineLarge: TextStyle(
         fontSize: AppSizes.fontXXL,
         fontWeight: FontWeight.w600,
         color: textColor,
         height: AppSizes.lineHeightTight,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: TextStyle(
         fontSize: AppSizes.fontXL,
         fontWeight: FontWeight.w600,
         color: textColor,
         height: AppSizes.lineHeightTight,
       ),
-      headlineSmall: GoogleFonts.inter(
+      headlineSmall: TextStyle(
         fontSize: AppSizes.fontLG,
         fontWeight: FontWeight.w600,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
       // Title styles
-      titleLarge: GoogleFonts.inter(
+      titleLarge: TextStyle(
         fontSize: AppSizes.fontXL,
         fontWeight: FontWeight.w600,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
-      titleMedium: GoogleFonts.inter(
+      titleMedium: TextStyle(
         fontSize: AppSizes.fontMD,
         fontWeight: FontWeight.w600,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
-      titleSmall: GoogleFonts.inter(
+      titleSmall: TextStyle(
         fontSize: AppSizes.fontSM,
         fontWeight: FontWeight.w600,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
       // Body styles
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: TextStyle(
         fontSize: AppSizes.fontMD,
         fontWeight: FontWeight.normal,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: TextStyle(
         fontSize: AppSizes.fontSM,
         fontWeight: FontWeight.normal,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
-      bodySmall: GoogleFonts.inter(
+      bodySmall: TextStyle(
         fontSize: AppSizes.fontXS,
         fontWeight: FontWeight.normal,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
       // Label styles
-      labelLarge: GoogleFonts.inter(
+      labelLarge: TextStyle(
         fontSize: AppSizes.fontSM,
         fontWeight: FontWeight.w500,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
-      labelMedium: GoogleFonts.inter(
+      labelMedium: TextStyle(
         fontSize: AppSizes.fontXS,
         fontWeight: FontWeight.w500,
         color: textColor,
         height: AppSizes.lineHeightNormal,
       ),
-      labelSmall: GoogleFonts.inter(
+      labelSmall: TextStyle(
         fontSize: AppSizes.fontXXS,
         fontWeight: FontWeight.w500,
         color: textColor,
@@ -243,19 +242,27 @@ class AppTheme {
       scrolledUnderElevation: 1,
       centerTitle: true,
       backgroundColor: isLight ? AppColors.primaryLight : AppColors.cardDark,
-      foregroundColor: isLight ? AppColors.textOnPrimaryLight : AppColors.textPrimaryDark,
+      foregroundColor: isLight
+          ? AppColors.textOnPrimaryLight
+          : AppColors.textPrimaryDark,
       iconTheme: IconThemeData(
-        color: isLight ? AppColors.textOnPrimaryLight : AppColors.textPrimaryDark,
+        color: isLight
+            ? AppColors.textOnPrimaryLight
+            : AppColors.textPrimaryDark,
         size: AppSizes.iconAppBar,
       ),
       actionsIconTheme: IconThemeData(
-        color: isLight ? AppColors.textOnPrimaryLight : AppColors.textPrimaryDark,
+        color: isLight
+            ? AppColors.textOnPrimaryLight
+            : AppColors.textPrimaryDark,
         size: AppSizes.iconAppBar,
       ),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: TextStyle(
         fontSize: AppSizes.fontLG,
         fontWeight: FontWeight.w600,
-        color: isLight ? AppColors.textOnPrimaryLight : AppColors.textPrimaryDark,
+        color: isLight
+            ? AppColors.textOnPrimaryLight
+            : AppColors.textPrimaryDark,
       ),
       systemOverlayStyle: isLight
           ? SystemUiOverlayStyle.light.copyWith(
@@ -297,10 +304,18 @@ class AppTheme {
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         elevation: 0,
-        backgroundColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
-        foregroundColor: isLight ? AppColors.textOnPrimaryLight : AppColors.textOnPrimaryDark,
-        disabledBackgroundColor: isLight ? AppColors.borderLight : AppColors.borderDark,
-        disabledForegroundColor: isLight ? AppColors.tertiaryLight : AppColors.tertiaryDark,
+        backgroundColor: isLight
+            ? AppColors.primaryLight
+            : AppColors.primaryDark,
+        foregroundColor: isLight
+            ? AppColors.textOnPrimaryLight
+            : AppColors.textOnPrimaryDark,
+        disabledBackgroundColor: isLight
+            ? AppColors.borderLight
+            : AppColors.borderDark,
+        disabledForegroundColor: isLight
+            ? AppColors.tertiaryLight
+            : AppColors.tertiaryDark,
         minimumSize: const Size(double.infinity, AppSizes.buttonHeight),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSizes.paddingLG,
@@ -309,7 +324,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusButton),
         ),
-        textStyle: GoogleFonts.inter(
+        textStyle: TextStyle(
           fontSize: AppSizes.fontMD,
           fontWeight: FontWeight.w600,
         ),
@@ -324,8 +339,12 @@ class AppTheme {
   static OutlinedButtonThemeData _outlinedButtonTheme({required bool isLight}) {
     return OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
-        disabledForegroundColor: isLight ? AppColors.tertiaryLight : AppColors.tertiaryDark,
+        foregroundColor: isLight
+            ? AppColors.primaryLight
+            : AppColors.primaryDark,
+        disabledForegroundColor: isLight
+            ? AppColors.tertiaryLight
+            : AppColors.tertiaryDark,
         minimumSize: const Size(double.infinity, AppSizes.buttonHeight),
         padding: const EdgeInsets.symmetric(
           horizontal: AppSizes.paddingLG,
@@ -338,7 +357,7 @@ class AppTheme {
           color: isLight ? AppColors.primaryLight : AppColors.primaryDark,
           width: AppSizes.borderWidthMD,
         ),
-        textStyle: GoogleFonts.inter(
+        textStyle: TextStyle(
           fontSize: AppSizes.fontMD,
           fontWeight: FontWeight.w600,
         ),
@@ -353,8 +372,12 @@ class AppTheme {
   static TextButtonThemeData _textButtonTheme({required bool isLight}) {
     return TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
-        disabledForegroundColor: isLight ? AppColors.tertiaryLight : AppColors.tertiaryDark,
+        foregroundColor: isLight
+            ? AppColors.primaryLight
+            : AppColors.primaryDark,
+        disabledForegroundColor: isLight
+            ? AppColors.tertiaryLight
+            : AppColors.tertiaryDark,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSizes.paddingMD,
           vertical: AppSizes.paddingSM,
@@ -362,7 +385,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppSizes.radiusButton),
         ),
-        textStyle: GoogleFonts.inter(
+        textStyle: TextStyle(
           fontSize: AppSizes.fontMD,
           fontWeight: FontWeight.w600,
         ),
@@ -376,10 +399,14 @@ class AppTheme {
 
   static InputDecorationTheme _inputDecorationTheme({required bool isLight}) {
     final borderColor = isLight ? AppColors.borderLight : AppColors.borderDark;
-    final focusedColor = isLight ? AppColors.primaryLight : AppColors.primaryDark;
+    final focusedColor = isLight
+        ? AppColors.primaryLight
+        : AppColors.primaryDark;
     final errorColor = isLight ? AppColors.errorLight : AppColors.errorDark;
     final fillColor = isLight ? AppColors.cardLight : AppColors.cardDark;
-    final hintColor = isLight ? AppColors.tertiaryLight : AppColors.tertiaryDark;
+    final hintColor = isLight
+        ? AppColors.tertiaryLight
+        : AppColors.tertiaryDark;
 
     return InputDecorationTheme(
       filled: true,
@@ -388,23 +415,14 @@ class AppTheme {
         horizontal: AppSizes.paddingMD,
         vertical: AppSizes.paddingMD,
       ),
-      hintStyle: GoogleFonts.inter(
-        fontSize: AppSizes.fontMD,
-        color: hintColor,
-      ),
-      labelStyle: GoogleFonts.inter(
-        fontSize: AppSizes.fontMD,
-        color: hintColor,
-      ),
-      floatingLabelStyle: GoogleFonts.inter(
+      hintStyle: TextStyle(fontSize: AppSizes.fontMD, color: hintColor),
+      labelStyle: TextStyle(fontSize: AppSizes.fontMD, color: hintColor),
+      floatingLabelStyle: TextStyle(
         fontSize: AppSizes.fontSM,
         fontWeight: FontWeight.w500,
         color: focusedColor,
       ),
-      errorStyle: GoogleFonts.inter(
-        fontSize: AppSizes.fontXS,
-        color: errorColor,
-      ),
+      errorStyle: TextStyle(fontSize: AppSizes.fontXS, color: errorColor),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusInput),
         borderSide: BorderSide(color: borderColor),
@@ -415,7 +433,10 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusInput),
-        borderSide: BorderSide(color: focusedColor, width: AppSizes.borderWidthMD),
+        borderSide: BorderSide(
+          color: focusedColor,
+          width: AppSizes.borderWidthMD,
+        ),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusInput),
@@ -423,7 +444,10 @@ class AppTheme {
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusInput),
-        borderSide: BorderSide(color: errorColor, width: AppSizes.borderWidthMD),
+        borderSide: BorderSide(
+          color: errorColor,
+          width: AppSizes.borderWidthMD,
+        ),
       ),
       disabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusInput),
@@ -438,8 +462,12 @@ class AppTheme {
 
   static FloatingActionButtonThemeData _fabTheme({required bool isLight}) {
     return FloatingActionButtonThemeData(
-      backgroundColor: isLight ? AppColors.secondaryLight : AppColors.secondaryDark,
-      foregroundColor: isLight ? AppColors.primaryLight : AppColors.textOnPrimaryDark,
+      backgroundColor: isLight
+          ? AppColors.secondaryLight
+          : AppColors.secondaryDark,
+      foregroundColor: isLight
+          ? AppColors.primaryLight
+          : AppColors.textOnPrimaryDark,
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusLG),
@@ -454,15 +482,19 @@ class AppTheme {
   static BottomNavigationBarThemeData _bottomNavTheme({required bool isLight}) {
     return BottomNavigationBarThemeData(
       backgroundColor: isLight ? AppColors.cardLight : AppColors.cardDark,
-      selectedItemColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
-      unselectedItemColor: isLight ? AppColors.tertiaryLight : AppColors.tertiaryDark,
+      selectedItemColor: isLight
+          ? AppColors.primaryLight
+          : AppColors.primaryDark,
+      unselectedItemColor: isLight
+          ? AppColors.tertiaryLight
+          : AppColors.tertiaryDark,
       type: BottomNavigationBarType.fixed,
       elevation: 8,
-      selectedLabelStyle: GoogleFonts.inter(
+      selectedLabelStyle: TextStyle(
         fontSize: AppSizes.fontXS,
         fontWeight: FontWeight.w600,
       ),
-      unselectedLabelStyle: GoogleFonts.inter(
+      unselectedLabelStyle: TextStyle(
         fontSize: AppSizes.fontXS,
         fontWeight: FontWeight.normal,
       ),
@@ -496,13 +528,13 @@ class AppTheme {
       }),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return GoogleFonts.inter(
+          return TextStyle(
             fontSize: AppSizes.fontXS,
             fontWeight: FontWeight.w600,
             color: isLight ? AppColors.primaryLight : AppColors.primaryDark,
           );
         }
-        return GoogleFonts.inter(
+        return TextStyle(
           fontSize: AppSizes.fontXS,
           fontWeight: FontWeight.normal,
           color: isLight ? AppColors.tertiaryLight : AppColors.tertiaryDark,
@@ -534,11 +566,11 @@ class AppTheme {
           ? AppColors.secondaryLight.withValues(alpha: 0.2)
           : AppColors.secondaryDark.withValues(alpha: 0.2),
       disabledColor: isLight ? AppColors.borderLight : AppColors.borderDark,
-      labelStyle: GoogleFonts.inter(
+      labelStyle: TextStyle(
         fontSize: AppSizes.fontSM,
         color: isLight ? AppColors.textPrimaryLight : AppColors.textPrimaryDark,
       ),
-      secondaryLabelStyle: GoogleFonts.inter(
+      secondaryLabelStyle: TextStyle(
         fontSize: AppSizes.fontSM,
         color: isLight ? AppColors.primaryLight : AppColors.primaryDark,
       ),
@@ -566,12 +598,12 @@ class AppTheme {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusDialog),
       ),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: TextStyle(
         fontSize: AppSizes.fontLG,
         fontWeight: FontWeight.w600,
         color: isLight ? AppColors.textPrimaryLight : AppColors.textPrimaryDark,
       ),
-      contentTextStyle: GoogleFonts.inter(
+      contentTextStyle: TextStyle(
         fontSize: AppSizes.fontMD,
         color: isLight ? AppColors.textPrimaryLight : AppColors.textPrimaryDark,
       ),
@@ -606,12 +638,16 @@ class AppTheme {
 
   static SnackBarThemeData _snackBarTheme({required bool isLight}) {
     return SnackBarThemeData(
-      backgroundColor: isLight ? AppColors.textPrimaryLight : AppColors.cardDark,
-      contentTextStyle: GoogleFonts.inter(
+      backgroundColor: isLight
+          ? AppColors.textPrimaryLight
+          : AppColors.cardDark,
+      contentTextStyle: TextStyle(
         fontSize: AppSizes.fontSM,
         color: isLight ? AppColors.white : AppColors.textPrimaryDark,
       ),
-      actionTextColor: isLight ? AppColors.secondaryLight : AppColors.secondaryDark,
+      actionTextColor: isLight
+          ? AppColors.secondaryLight
+          : AppColors.secondaryDark,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppSizes.radiusSM),
@@ -626,14 +662,16 @@ class AppTheme {
   static TabBarThemeData _tabBarTheme({required bool isLight}) {
     return TabBarThemeData(
       labelColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
-      unselectedLabelColor: isLight ? AppColors.tertiaryLight : AppColors.tertiaryDark,
+      unselectedLabelColor: isLight
+          ? AppColors.tertiaryLight
+          : AppColors.tertiaryDark,
       indicatorColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
       indicatorSize: TabBarIndicatorSize.label,
-      labelStyle: GoogleFonts.inter(
+      labelStyle: TextStyle(
         fontSize: AppSizes.fontSM,
         fontWeight: FontWeight.w600,
       ),
-      unselectedLabelStyle: GoogleFonts.inter(
+      unselectedLabelStyle: TextStyle(
         fontSize: AppSizes.fontSM,
         fontWeight: FontWeight.normal,
       ),
@@ -707,11 +745,15 @@ class AppTheme {
   // PROGRESS INDICATOR THEME
   // ============================================
 
-  static ProgressIndicatorThemeData _progressIndicatorTheme({required bool isLight}) {
+  static ProgressIndicatorThemeData _progressIndicatorTheme({
+    required bool isLight,
+  }) {
     return ProgressIndicatorThemeData(
       color: isLight ? AppColors.primaryLight : AppColors.primaryDark,
       linearTrackColor: isLight ? AppColors.borderLight : AppColors.borderDark,
-      circularTrackColor: isLight ? AppColors.borderLight : AppColors.borderDark,
+      circularTrackColor: isLight
+          ? AppColors.borderLight
+          : AppColors.borderDark,
     );
   }
 }

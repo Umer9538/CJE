@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/repositories/document_repository.dart';
 import '../../core/constants/enums.dart';
 import '../../models/models.dart';
+import '../admin/admin_controller.dart';
 import '../auth/auth_controller.dart';
 
 /// Document repository provider
@@ -11,90 +12,113 @@ final documentRepositoryProvider = Provider<DocumentRepository>((ref) {
 });
 
 /// Documents list provider
-final documentsProvider = FutureProvider.family<List<DocumentModel>, DocumentFilter>((ref, filter) async {
-  final repository = ref.watch(documentRepositoryProvider);
-  final user = ref.read(currentUserProvider);
-  final userId = user?.id;
-  final userRole = user?.role;
-  final userSchoolId = user?.schoolId;
+final documentsProvider =
+    FutureProvider.family<List<DocumentModel>, DocumentFilter>((
+      ref,
+      filter,
+    ) async {
+      final repository = ref.watch(documentRepositoryProvider);
+      final user = ref.read(currentUserProvider);
+      final userId = user?.id;
+      final userRole = user?.role;
+      final userSchoolId = user?.schoolId;
+      final effectiveCounty = ref.watch(effectiveCountyProvider);
 
-  try {
-    // For BEX/Superadmin, don't filter by school - they see everything
-    final effectiveSchoolId = (userRole == UserRole.bex || userRole == UserRole.superadmin)
-        ? null
-        : filter.schoolId;
+      try {
+        // For BEX/Superadmin, don't filter by school - they see everything
+        final effectiveSchoolId =
+            (userRole == UserRole.bex || userRole == UserRole.superadmin)
+            ? null
+            : filter.schoolId;
 
-    final documents = await repository.getDocuments(
-      category: filter.category,
-      schoolId: effectiveSchoolId,
-      includeCountyDocs: filter.includeCountyDocs,
-      publicOnly: filter.publicOnly,
-      limit: filter.limit,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => <DocumentModel>[],
-    );
+        final documents = await repository
+            .getDocuments(
+              category: filter.category,
+              schoolId: effectiveSchoolId,
+              countyId: effectiveCounty,
+              includeCountyDocs: filter.includeCountyDocs,
+              publicOnly: filter.publicOnly,
+              limit: filter.limit,
+            )
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () => <DocumentModel>[],
+            );
 
-    // Filter documents based on visibility rules
-    return documents.where((doc) {
-      // Always show documents created by the current user
-      if (userId != null && doc.uploadedById == userId) {
-        return doc.canBeViewedBy(userRole);
+        // Filter documents based on visibility rules
+        return documents.where((doc) {
+          // Always show documents created by the current user
+          if (userId != null && doc.uploadedById == userId) {
+            return doc.canBeViewedBy(userRole);
+          }
+
+          // BEX and Superadmin see ALL documents
+          if (userRole == UserRole.bex || userRole == UserRole.superadmin) {
+            return doc.canBeViewedBy(userRole);
+          }
+
+          // School filtering for other users
+          if (userSchoolId != null &&
+              doc.schoolId != null &&
+              doc.schoolId != userSchoolId) {
+            return false;
+          }
+
+          return doc.canBeViewedBy(userRole);
+        }).toList();
+      } catch (e) {
+        return <DocumentModel>[];
       }
-
-      // BEX and Superadmin see ALL documents
-      if (userRole == UserRole.bex || userRole == UserRole.superadmin) {
-        return doc.canBeViewedBy(userRole);
-      }
-
-      // School filtering for other users
-      if (userSchoolId != null && doc.schoolId != null && doc.schoolId != userSchoolId) {
-        return false;
-      }
-
-      return doc.canBeViewedBy(userRole);
-    }).toList();
-  } catch (e) {
-    return <DocumentModel>[];
-  }
-});
+    });
 
 /// Documents stream provider
-final documentsStreamProvider = StreamProvider.family<List<DocumentModel>, DocumentFilter>((ref, filter) {
-  final repository = ref.watch(documentRepositoryProvider);
-  final user = ref.read(currentUserProvider);
-  final userSchoolId = user?.schoolId;
-  final userId = user?.id;
-  final userRole = user?.role;
+final documentsStreamProvider =
+    StreamProvider.family<List<DocumentModel>, DocumentFilter>((ref, filter) {
+      final repository = ref.watch(documentRepositoryProvider);
+      final user = ref.read(currentUserProvider);
+      final userSchoolId = user?.schoolId;
+      final userId = user?.id;
+      final userRole = user?.role;
+      final effectiveCounty = ref.watch(effectiveCountyProvider);
 
-  return repository.getDocumentsStream(
-    category: filter.category,
-    limit: filter.limit,
-  ).map((documents) => documents.where((doc) {
-    // Always show documents created by the current user
-    if (userId != null && doc.uploadedById == userId) {
-      return doc.canBeViewedBy(userRole);
-    }
+      return repository
+          .getDocumentsStream(
+            category: filter.category,
+            countyId: effectiveCounty,
+            limit: filter.limit,
+          )
+          .map(
+            (documents) => documents.where((doc) {
+              // Always show documents created by the current user
+              if (userId != null && doc.uploadedById == userId) {
+                return doc.canBeViewedBy(userRole);
+              }
 
-    // BEX and Superadmin see ALL documents (county-level and school-specific)
-    if (userRole == UserRole.bex || userRole == UserRole.superadmin) {
-      return doc.canBeViewedBy(userRole);
-    }
+              // BEX and Superadmin see ALL documents (county-level and school-specific)
+              if (userRole == UserRole.bex || userRole == UserRole.superadmin) {
+                return doc.canBeViewedBy(userRole);
+              }
 
-    // School filtering for other users:
-    // - County-level documents (doc.schoolId == null) are visible to all
-    // - School-specific documents are only visible to users from that school
-    if (userSchoolId != null && doc.schoolId != null && doc.schoolId != userSchoolId) {
-      return false;
-    }
+              // School filtering for other users:
+              // - County-level documents (doc.schoolId == null) are visible to all
+              // - School-specific documents are only visible to users from that school
+              if (userSchoolId != null &&
+                  doc.schoolId != null &&
+                  doc.schoolId != userSchoolId) {
+                return false;
+              }
 
-    // Role filtering for non-public documents
-    return doc.canBeViewedBy(userRole);
-  }).toList());
-});
+              // Role filtering for non-public documents
+              return doc.canBeViewedBy(userRole);
+            }).toList(),
+          );
+    });
 
 /// Single document provider
-final documentProvider = FutureProvider.family<DocumentModel?, String>((ref, id) async {
+final documentProvider = FutureProvider.family<DocumentModel?, String>((
+  ref,
+  id,
+) async {
   final repository = ref.watch(documentRepositoryProvider);
   return repository.getDocumentById(id);
 });
@@ -140,7 +164,8 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
   final DocumentRepository _repository;
   final Ref _ref;
 
-  DocumentController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  DocumentController(this._repository, this._ref)
+    : super(const AsyncValue.data(null));
 
   /// Create new document
   /// - BEX and Superadmin can upload any document (county-level)
@@ -170,18 +195,33 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
+    final effectiveCounty = _ref.read(effectiveCountyProvider);
+    if (effectiveCounty == null || effectiveCounty.isEmpty) {
+      state = AsyncValue.error(
+        'Selecteaza judetul inainte de a incarca documentul',
+        StackTrace.current,
+      );
+      return null;
+    }
+
     // Permission check
     // - BEX and Superadmin can upload any document
     // - SchoolRep can only upload school-level documents
     // - Department can only upload department-level documents
     if (user.role == UserRole.schoolRep) {
       if (!isSchoolDocument) {
-        state = AsyncValue.error('School representatives can only upload school documents', StackTrace.current);
+        state = AsyncValue.error(
+          'School representatives can only upload school documents',
+          StackTrace.current,
+        );
         return null;
       }
     } else if (user.role == UserRole.department) {
       if (!isDepartmentDocument) {
-        state = AsyncValue.error('Department members can only upload department documents', StackTrace.current);
+        state = AsyncValue.error(
+          'Department members can only upload department documents',
+          StackTrace.current,
+        );
         return null;
       }
     } else if (user.role != UserRole.bex && user.role != UserRole.superadmin) {
@@ -209,11 +249,17 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
       fileSizeBytes: fileSizeBytes,
       uploadedById: user.id,
       uploadedByName: user.fullName,
+      countyId: effectiveCounty,
       schoolId: effectiveSchoolId,
       schoolName: effectiveSchoolName,
       isPublic: isPublic,
       minimumRole: isPublic ? null : minimumRole,
-      tags: isDepartmentDocument ? [...(tags ?? []), 'department:${user.department?.name ?? 'unknown'}'] : tags ?? [],
+      tags: isDepartmentDocument
+          ? [
+              ...(tags ?? []),
+              'department:${user.department?.name ?? 'unknown'}',
+            ]
+          : tags ?? [],
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
@@ -276,11 +322,8 @@ class DocumentController extends StateNotifier<AsyncValue<void>> {
 /// Document controller provider
 final documentControllerProvider =
     StateNotifierProvider<DocumentController, AsyncValue<void>>((ref) {
-  return DocumentController(
-    ref.watch(documentRepositoryProvider),
-    ref,
-  );
-});
+      return DocumentController(ref.watch(documentRepositoryProvider), ref);
+    });
 
 /// Check if current user can upload documents
 /// SchoolRep can upload school documents, Department can upload department documents
@@ -289,9 +332,9 @@ final canUploadDocumentsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.schoolRep ||
-         user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.department ||
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can upload county-level documents (not school-specific)
@@ -306,6 +349,6 @@ final canUploadDepartmentDocumentsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });

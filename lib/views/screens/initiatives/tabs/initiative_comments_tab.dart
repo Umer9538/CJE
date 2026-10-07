@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../controllers/controllers.dart';
 import '../../../../core/core.dart';
 import '../../../../models/models.dart';
+import '../../../widgets/common/content_report_button.dart';
 import '../widgets/widgets.dart';
 
 /// Comments & Support tab for initiative detail screen
@@ -30,7 +31,9 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final commentsAsync = ref.watch(initiativeCommentsStreamProvider(widget.initiative.id));
+    final commentsAsync = ref.watch(
+      initiativeCommentsStreamProvider(widget.initiative.id),
+    );
     final canComment = ref.watch(canCommentOnInitiativesProvider);
     final canSupport = ref.watch(canSupportInitiativesProvider);
 
@@ -60,10 +63,25 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
             }
             return Column(
               mainAxisSize: MainAxisSize.min,
-              children: comments.map((c) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: InitiativeCommentCard(comment: c),
-              )).toList(),
+              children: comments
+                  .map(
+                    (c) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: InitiativeCommentCard(comment: c)),
+                          ContentReportButton(
+                            type: 'initiative_comment',
+                            contentId: c.id,
+                            authorId: c.authorId,
+                            countyId: widget.initiative.countyId,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
             );
           },
           loading: () => Container(
@@ -89,7 +107,9 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
 
   Widget _buildSupportSection(BuildContext context, AppLocalizations l10n) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isSupportingAsync = ref.watch(isSupportingProvider(widget.initiative.id));
+    final isSupportingAsync = ref.watch(
+      isSupportingProvider(widget.initiative.id),
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -118,7 +138,11 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
-                child: const Icon(Icons.favorite_rounded, size: 24, color: AppColors.gold),
+                child: const Icon(
+                  Icons.favorite_rounded,
+                  size: 24,
+                  color: AppColors.gold,
+                ),
               ),
               const SizedBox(width: 16),
               // Count and label
@@ -136,7 +160,10 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
                     ),
                     Text(
                       l10n.translate('supporters'),
-                      style: TextStyle(fontSize: 14, color: context.textSecondary),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: context.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -163,13 +190,17 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          isSupporting ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
+                          isSupporting
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_outline_rounded,
                           size: 22,
                           color: Colors.white,
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          isSupporting ? l10n.translate('supported') : l10n.translate('support'),
+                          isSupporting
+                              ? l10n.translate('supported')
+                              : l10n.translate('support'),
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -211,7 +242,11 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.favorite_outline_rounded, size: 22, color: Colors.white),
+                        const Icon(
+                          Icons.favorite_outline_rounded,
+                          size: 22,
+                          color: Colors.white,
+                        ),
                         const SizedBox(width: 10),
                         Text(
                           l10n.translate('support'),
@@ -319,7 +354,9 @@ class _InitiativeCommentsTabState extends ConsumerState<InitiativeCommentsTab> {
   }
 
   void _toggleSupport() {
-    ref.read(initiativeControllerProvider.notifier).toggleSupport(widget.initiative.id);
+    ref
+        .read(initiativeControllerProvider.notifier)
+        .toggleSupport(widget.initiative.id);
   }
 
   Future<void> _addComment() async {

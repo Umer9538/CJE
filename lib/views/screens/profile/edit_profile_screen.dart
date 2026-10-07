@@ -481,14 +481,21 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Implement account deletion
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(l10n.translate('contact_support_delete_account')),
-                ),
-              );
+              final result =
+                  await ref.read(authControllerProvider.notifier).deleteAccount();
+              if (!result.success && mounted) {
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      result.errorMessage ??
+                          l10n.translate('contact_support_delete_account'),
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

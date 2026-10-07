@@ -40,7 +40,9 @@ class WarningRepository {
       query = query.orderBy('issuedAt', descending: true).limit(limit);
 
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => WarningModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       debugPrint('Error getting warnings: $e');
       return [];
@@ -63,7 +65,9 @@ class WarningRepository {
             },
           );
 
-      final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+      final warnings = snapshot.docs
+          .map((doc) => WarningModel.fromFirestore(doc))
+          .toList();
       // Sort by issuedAt descending (most recent first)
       warnings.sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
       return warnings;
@@ -125,15 +129,20 @@ class WarningRepository {
         .where('userId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) {
-      debugPrint('getUserWarningsStream: Got ${snapshot.docs.length} warnings');
-      final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
-      warnings.sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
-      return warnings;
-    }).handleError((error, stackTrace) {
-      debugPrint('getUserWarningsStream ERROR: $error');
-      // Return empty list on error instead of propagating
-      return <WarningModel>[];
-    });
+          debugPrint(
+            'getUserWarningsStream: Got ${snapshot.docs.length} warnings',
+          );
+          final warnings = snapshot.docs
+              .map((doc) => WarningModel.fromFirestore(doc))
+              .toList();
+          warnings.sort((a, b) => b.issuedAt.compareTo(a.issuedAt));
+          return warnings;
+        })
+        .handleError((error, stackTrace) {
+          debugPrint('getUserWarningsStream ERROR: $error');
+          // Return empty list on error instead of propagating
+          return <WarningModel>[];
+        });
   }
 
   /// Stream of warning count (real-time updates)
@@ -143,17 +152,20 @@ class WarningRepository {
         .where('userId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) {
-      debugPrint('getWarningCountStream: Got ${snapshot.docs.length} docs');
-      if (activeOnly) {
-        final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
-        return warnings.where((w) => w.isActive).length;
-      }
-      return snapshot.docs.length;
-    }).handleError((error, stackTrace) {
-      debugPrint('getWarningCountStream ERROR: $error');
-      // Return 0 on error instead of propagating to avoid UI error state
-      return 0;
-    });
+          debugPrint('getWarningCountStream: Got ${snapshot.docs.length} docs');
+          if (activeOnly) {
+            final warnings = snapshot.docs
+                .map((doc) => WarningModel.fromFirestore(doc))
+                .toList();
+            return warnings.where((w) => w.isActive).length;
+          }
+          return snapshot.docs.length;
+        })
+        .handleError((error, stackTrace) {
+          debugPrint('getWarningCountStream ERROR: $error');
+          // Return 0 on error instead of propagating to avoid UI error state
+          return 0;
+        });
   }
 
   /// Get warning count for user
@@ -172,7 +184,9 @@ class WarningRepository {
           );
 
       if (activeOnly) {
-        final warnings = snapshot.docs.map((doc) => WarningModel.fromFirestore(doc)).toList();
+        final warnings = snapshot.docs
+            .map((doc) => WarningModel.fromFirestore(doc))
+            .toList();
         return warnings.where((w) => w.isActive).length;
       }
 
@@ -210,7 +224,9 @@ class WarningRepository {
       query = query.orderBy('recordedAt', descending: true).limit(limit);
 
       final snapshot = await query.get();
-      return snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => AbsenceModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       debugPrint('Error getting absences: $e');
       return [];
@@ -233,7 +249,9 @@ class WarningRepository {
             },
           );
 
-      final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      final absences = snapshot.docs
+          .map((doc) => AbsenceModel.fromFirestore(doc))
+          .toList();
       // Sort by recordedAt descending (most recent first)
       absences.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
       return absences;
@@ -244,13 +262,23 @@ class WarningRepository {
   }
 
   /// Get absences for a meeting
-  Future<List<AbsenceModel>> getMeetingAbsences(String meetingId) async {
+  Future<List<AbsenceModel>> getMeetingAbsences(
+    String meetingId, {
+    String? countyId,
+  }) async {
     try {
-      final snapshot = await _absencesCollection
-          .where('meetingId', isEqualTo: meetingId)
-          .get();
+      Query<Map<String, dynamic>> query = _absencesCollection.where(
+        'meetingId',
+        isEqualTo: meetingId,
+      );
+      if (countyId != null && countyId.isNotEmpty) {
+        query = query.where('countyId', isEqualTo: countyId);
+      }
+      final snapshot = await query.get();
 
-      return snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      return snapshot.docs
+          .map((doc) => AbsenceModel.fromFirestore(doc))
+          .toList();
     } catch (e) {
       debugPrint('Error getting meeting absences: $e');
       return [];
@@ -304,15 +332,20 @@ class WarningRepository {
         .where('userId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) {
-      debugPrint('getUserAbsencesStream: Got ${snapshot.docs.length} absences');
-      final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
-      absences.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
-      return absences;
-    }).handleError((error, stackTrace) {
-      debugPrint('getUserAbsencesStream ERROR: $error');
-      // Return empty list on error instead of propagating
-      return <AbsenceModel>[];
-    });
+          debugPrint(
+            'getUserAbsencesStream: Got ${snapshot.docs.length} absences',
+          );
+          final absences = snapshot.docs
+              .map((doc) => AbsenceModel.fromFirestore(doc))
+              .toList();
+          absences.sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+          return absences;
+        })
+        .handleError((error, stackTrace) {
+          debugPrint('getUserAbsencesStream ERROR: $error');
+          // Return empty list on error instead of propagating
+          return <AbsenceModel>[];
+        });
   }
 
   /// Stream of absence count (real-time updates)
@@ -322,18 +355,25 @@ class WarningRepository {
         .where('userId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) {
-      debugPrint('getAbsenceCountStream: Got ${snapshot.docs.length} docs');
-      final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
-      return {
-        'total': absences.length,
-        'excused': absences.where((a) => a.type == AbsenceType.excused).length,
-        'unexcused': absences.where((a) => a.type == AbsenceType.unexcused).length,
-      };
-    }).handleError((error, stackTrace) {
-      debugPrint('getAbsenceCountStream ERROR: $error');
-      // Return empty counts on error instead of propagating to avoid UI error state
-      return {'total': 0, 'excused': 0, 'unexcused': 0};
-    });
+          debugPrint('getAbsenceCountStream: Got ${snapshot.docs.length} docs');
+          final absences = snapshot.docs
+              .map((doc) => AbsenceModel.fromFirestore(doc))
+              .toList();
+          return {
+            'total': absences.length,
+            'excused': absences
+                .where((a) => a.type == AbsenceType.excused)
+                .length,
+            'unexcused': absences
+                .where((a) => a.type == AbsenceType.unexcused)
+                .length,
+          };
+        })
+        .handleError((error, stackTrace) {
+          debugPrint('getAbsenceCountStream ERROR: $error');
+          // Return empty counts on error instead of propagating to avoid UI error state
+          return {'total': 0, 'excused': 0, 'unexcused': 0};
+        });
   }
 
   /// Get absence count for user
@@ -350,12 +390,16 @@ class WarningRepository {
             },
           );
 
-      final absences = snapshot.docs.map((doc) => AbsenceModel.fromFirestore(doc)).toList();
+      final absences = snapshot.docs
+          .map((doc) => AbsenceModel.fromFirestore(doc))
+          .toList();
 
       return {
         'total': absences.length,
         'excused': absences.where((a) => a.type == AbsenceType.excused).length,
-        'unexcused': absences.where((a) => a.type == AbsenceType.unexcused).length,
+        'unexcused': absences
+            .where((a) => a.type == AbsenceType.unexcused)
+            .length,
       };
     } catch (e) {
       debugPrint('Error getting absence count: $e');

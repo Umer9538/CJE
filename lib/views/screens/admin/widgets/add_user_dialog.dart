@@ -123,7 +123,8 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
       _errorMessage = null;
     });
 
-    final fullName = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
+    final fullName =
+        '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
 
     // Get school name for the user record
     final schools = ref.read(allSchoolsProvider).valueOrNull ?? [];
@@ -131,12 +132,16 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
 
     // Create user directly in Firestore (without Firebase Auth)
     // This prevents the admin from being logged out
-    final userId = await ref.read(adminControllerProvider.notifier).createUserDirectly(
+    final userId = await ref
+        .read(adminControllerProvider.notifier)
+        .createUserDirectly(
           email: _emailController.text.trim(),
           fullName: fullName,
           schoolId: _selectedSchoolId!,
           schoolName: school?.name,
-          phoneNumber: _phoneController.text.trim(),
+          phoneNumber: _phoneController.text.trim().isEmpty
+              ? null
+              : _phoneController.text.trim(),
           city: _selectedCity!,
           role: _selectedRole,
           className: _classNameController.text.trim(),
@@ -178,11 +183,17 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppColors.navy,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.person_add_rounded, color: Colors.white, size: 28),
+                  const Icon(
+                    Icons.person_add_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -222,12 +233,19 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                              Icon(
+                                Icons.error_outline,
+                                color: Colors.red[700],
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
-                                  style: TextStyle(color: Colors.red[700], fontSize: 13),
+                                  style: TextStyle(
+                                    color: Colors.red[700],
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ],
@@ -247,7 +265,9 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                               decoration: InputDecoration(
                                 labelText: l10n.translate('first_name'),
                                 prefixIcon: const Icon(Icons.person_outline),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
@@ -266,7 +286,9 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                               decoration: InputDecoration(
                                 labelText: l10n.translate('last_name'),
                                 prefixIcon: const Icon(Icons.person_outline),
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
@@ -288,7 +310,9 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                         decoration: InputDecoration(
                           labelText: l10n.translate('email'),
                           prefixIcon: const Icon(Icons.email_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -302,21 +326,26 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Phone Number
+                      // Phone number (optional)
                       TextFormField(
                         controller: _phoneController,
                         enabled: !_isLoading,
                         keyboardType: TextInputType.phone,
                         decoration: InputDecoration(
-                          labelText: l10n.translate('phone_number'),
+                          labelText: l10n.translate('phone_number_optional'),
                           prefixIcon: const Icon(Icons.phone_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return l10n.translate('phone_required');
+                            return null;
                           }
-                          final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+                          final digitsOnly = value.replaceAll(
+                            RegExp(r'[^0-9]'),
+                            '',
+                          );
                           if (digitsOnly.length < 10) {
                             return l10n.translate('invalid_phone');
                           }
@@ -333,11 +362,17 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                           enabled: false,
                           decoration: InputDecoration(
                             labelText: l10n.translate('city'),
-                            prefixIcon: const Icon(Icons.location_city_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(
+                              Icons.location_city_outlined,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                             filled: true,
                             fillColor: context.cardColor,
-                            helperText: l10n.translate('bex_county_restriction'),
+                            helperText: l10n.translate(
+                              'bex_county_restriction',
+                            ),
                             helperStyle: TextStyle(
                               color: context.textSecondary,
                               fontSize: 11,
@@ -349,8 +384,12 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                         DropdownButtonFormField<String>(
                           decoration: InputDecoration(
                             labelText: l10n.translate('city'),
-                            prefixIcon: const Icon(Icons.location_city_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(
+                              Icons.location_city_outlined,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           items: _cities.map((city) {
                             return DropdownMenuItem(
@@ -358,7 +397,10 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                               child: Text(city),
                             );
                           }).toList(),
-                          onChanged: _isLoading ? null : (value) => setState(() => _selectedCity = value),
+                          onChanged: _isLoading
+                              ? null
+                              : (value) =>
+                                    setState(() => _selectedCity = value),
                           validator: (value) {
                             if (value == null) {
                               return l10n.translate('city_required');
@@ -374,18 +416,25 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                           decoration: InputDecoration(
                             labelText: l10n.translate('school'),
                             prefixIcon: const Icon(Icons.school_outlined),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           items: schools.map((school) {
                             return DropdownMenuItem(
                               value: school.id,
                               child: Text(
-                                school.shortName.isNotEmpty ? school.shortName : school.name,
+                                school.shortName.isNotEmpty
+                                    ? school.shortName
+                                    : school.name,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             );
                           }).toList(),
-                          onChanged: _isLoading ? null : (value) => setState(() => _selectedSchoolId = value),
+                          onChanged: _isLoading
+                              ? null
+                              : (value) =>
+                                    setState(() => _selectedSchoolId = value),
                           validator: (value) {
                             if (value == null) {
                               return l10n.translate('field_required');
@@ -410,7 +459,9 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                           labelText: l10n.translate('class_name'),
                           prefixIcon: const Icon(Icons.class_outlined),
                           hintText: '12A',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
@@ -427,21 +478,30 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                         decoration: InputDecoration(
                           labelText: l10n.translate('role'),
                           prefixIcon: const Icon(Icons.badge_outlined),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         items: UserRole.values
-                            .where((role) => role != UserRole.superadmin) // Don't allow creating superadmins
+                            .where(
+                              (role) => role != UserRole.superadmin,
+                            ) // Don't allow creating superadmins
                             .map((role) {
-                          return DropdownMenuItem(
-                            value: role,
-                            child: Text(l10n.translate(role.translationKey)),
-                          );
-                        }).toList(),
-                        onChanged: _isLoading ? null : (value) {
-                          if (value != null) {
-                            setState(() => _selectedRole = value);
-                          }
-                        },
+                              return DropdownMenuItem(
+                                value: role,
+                                child: Text(
+                                  l10n.translate(role.translationKey),
+                                ),
+                              );
+                            })
+                            .toList(),
+                        onChanged: _isLoading
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  setState(() => _selectedRole = value);
+                                }
+                              },
                       ),
                       const SizedBox(height: 16),
 
@@ -455,12 +515,19 @@ class _AddUserDialogState extends ConsumerState<AddUserDialog> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.info_outline, color: Colors.blue[700], size: 20),
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.blue[700],
+                              size: 20,
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 l10n.translate('user_password_info'),
-                                style: TextStyle(color: Colors.blue[700], fontSize: 12),
+                                style: TextStyle(
+                                  color: Colors.blue[700],
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ],

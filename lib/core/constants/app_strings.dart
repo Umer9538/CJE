@@ -9,7 +9,13 @@ class AppStrings {
 
   static const String appName = 'CJE Platform';
   static const String appNameFull = 'Consiliul Județean al Elevilor';
-  static const String appTagline = 'Platforma digitală pentru consiliile elevilor';
+  static const String appTagline =
+      'Platforma digitală pentru consiliile elevilor';
+  // The 2026-10-01 wording clarification changes no processing purposes,
+  // data categories or controller identity. Keep this acknowledgement ID in
+  // sync with the deployed Firestore/Storage/Functions eligibility checks.
+  static const String privacyNoticeVersion = '2026-09-30';
+  static const String termsVersion = '2026-09-30';
 
   // ============================================
   // AUTHENTICATION
@@ -45,7 +51,8 @@ class AppStrings {
   static const String emailRequired = 'Email-ul este obligatoriu';
   static const String emailInvalid = 'Email-ul nu este valid';
   static const String passwordRequired = 'Parola este obligatorie';
-  static const String passwordTooShort = 'Parola trebuie să aibă cel puțin 8 caractere';
+  static const String passwordTooShort =
+      'Parola trebuie să aibă cel puțin 8 caractere';
   static const String passwordsDoNotMatch = 'Parolele nu coincid';
   static const String nameRequired = 'Numele este obligatoriu';
   static const String phoneRequired = 'Numărul de telefon este obligatoriu';
@@ -253,12 +260,17 @@ class AppStrings {
   // ERROR MESSAGES
   // ============================================
 
-  static const String errorGeneric = 'A apărut o eroare. Te rugăm să încerci din nou.';
-  static const String errorNetwork = 'Eroare de conexiune. Verifică conexiunea la internet.';
-  static const String errorUnauthorized = 'Nu ai permisiunea să efectuezi această acțiune.';
+  static const String errorGeneric =
+      'A apărut o eroare. Te rugăm să încerci din nou.';
+  static const String errorNetwork =
+      'Eroare de conexiune. Verifică conexiunea la internet.';
+  static const String errorUnauthorized =
+      'Nu ai permisiunea să efectuezi această acțiune.';
   static const String errorNotFound = 'Resursa nu a fost găsită.';
-  static const String errorServer = 'Eroare de server. Te rugăm să încerci mai târziu.';
-  static const String errorTimeout = 'Timpul de așteptare a expirat. Te rugăm să încerci din nou.';
+  static const String errorServer =
+      'Eroare de server. Te rugăm să încerci mai târziu.';
+  static const String errorTimeout =
+      'Timpul de așteptare a expirat. Te rugăm să încerci din nou.';
 
   // ============================================
   // SUCCESS MESSAGES
@@ -276,7 +288,8 @@ class AppStrings {
 
   static const String confirmDelete = 'Ești sigur că vrei să ștergi?';
   static const String confirmLogout = 'Ești sigur că vrei să te deconectezi?';
-  static const String confirmCancel = 'Ești sigur că vrei să anulezi? Modificările nu vor fi salvate.';
+  static const String confirmCancel =
+      'Ești sigur că vrei să anulezi? Modificările nu vor fi salvate.';
 
   // ============================================
   // EMPTY STATES
@@ -285,7 +298,8 @@ class AppStrings {
   static const String emptyAnnouncements = 'Nu există comunicat momentan.';
   static const String emptyMeetings = 'Nu există ședințe programate.';
   static const String emptyInitiatives = 'Nu există inițiative momentan.';
-  static const String emptyDocuments = 'Nu există documente în această categorie.';
+  static const String emptyDocuments =
+      'Nu există documente în această categorie.';
   static const String emptyPolls = 'Nu există sondaje active.';
   static const String emptyNotifications = 'Nu ai notificări noi.';
   static const String emptySearch = 'Nu s-au găsit rezultate.';

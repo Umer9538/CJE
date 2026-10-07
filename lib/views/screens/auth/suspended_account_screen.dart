@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/account_privacy_action.dart';
 
 class SuspendedAccountScreen extends ConsumerWidget {
   const SuspendedAccountScreen({super.key});
@@ -16,6 +17,7 @@ class SuspendedAccountScreen extends ConsumerWidget {
     final user = authState.user;
 
     return Scaffold(
+      appBar: AppBar(actions: const [AccountPrivacyAction()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.paddingLG),
@@ -71,7 +73,8 @@ class SuspendedAccountScreen extends ConsumerWidget {
                         children: [
                           CircleAvatar(
                             radius: 40,
-                            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                            backgroundColor:
+                                theme.colorScheme.surfaceContainerHighest,
                             backgroundImage: user?.photoUrl != null
                                 ? NetworkImage(user!.photoUrl!)
                                 : null,
@@ -80,9 +83,12 @@ class SuspendedAccountScreen extends ConsumerWidget {
                                     user?.fullName.isNotEmpty == true
                                         ? user!.fullName[0].toUpperCase()
                                         : '?',
-                                    style: theme.textTheme.headlineMedium?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
+                                    style: theme.textTheme.headlineMedium
+                                        ?.copyWith(
+                                          color: theme
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
                                   )
                                 : null,
                           ),
@@ -132,7 +138,9 @@ class SuspendedAccountScreen extends ConsumerWidget {
                         ),
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(AppSizes.radiusFull),
+                          borderRadius: BorderRadius.circular(
+                            AppSizes.radiusFull,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -164,7 +172,9 @@ class SuspendedAccountScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(AppSizes.paddingMD),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                  color: theme.colorScheme.errorContainer.withValues(
+                    alpha: 0.3,
+                  ),
                   borderRadius: BorderRadius.circular(AppSizes.radiusMD),
                   border: Border.all(
                     color: theme.colorScheme.error.withValues(alpha: 0.3),
@@ -172,10 +182,7 @@ class SuspendedAccountScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.support_agent,
-                      color: theme.colorScheme.error,
-                    ),
+                    Icon(Icons.support_agent, color: theme.colorScheme.error),
                     const SizedBox(width: AppSizes.spacing12),
                     Expanded(
                       child: Text(

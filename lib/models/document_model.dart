@@ -14,11 +14,13 @@ class DocumentModel extends Equatable {
   final int fileSizeBytes;
   final String uploadedById;
   final String uploadedByName;
+  final String? countyId; // County this document belongs to
   final String? schoolId; // For school-specific documents
   final String? schoolName;
   final int downloadCount;
   final bool isPublic; // Visible to all users or only council members
-  final UserRole? minimumRole; // Minimum role required to view (when isPublic is false)
+  final UserRole?
+  minimumRole; // Minimum role required to view (when isPublic is false)
   final List<String> tags;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -33,6 +35,7 @@ class DocumentModel extends Equatable {
     this.fileSizeBytes = 0,
     required this.uploadedById,
     required this.uploadedByName,
+    this.countyId,
     this.schoolId,
     this.schoolName,
     this.downloadCount = 0,
@@ -80,12 +83,17 @@ class DocumentModel extends Equatable {
       id: doc.id,
       title: data['title'] as String? ?? '',
       description: data['description'] as String?,
-      category: DocumentCategory.fromFirestore(data['category'] as String? ?? 'formulare'),
-      fileType: DocumentFileType.fromFirestore(data['fileType'] as String? ?? 'pdf'),
+      category: DocumentCategory.fromFirestore(
+        data['category'] as String? ?? 'formulare',
+      ),
+      fileType: DocumentFileType.fromFirestore(
+        data['fileType'] as String? ?? 'pdf',
+      ),
       fileUrl: data['fileUrl'] as String? ?? '',
       fileSizeBytes: data['fileSizeBytes'] as int? ?? 0,
       uploadedById: data['uploadedById'] as String? ?? '',
       uploadedByName: data['uploadedByName'] as String? ?? '',
+      countyId: data['countyId'] as String?,
       schoolId: data['schoolId'] as String?,
       schoolName: data['schoolName'] as String?,
       downloadCount: data['downloadCount'] as int? ?? 0,
@@ -113,6 +121,7 @@ class DocumentModel extends Equatable {
       'fileSizeBytes': fileSizeBytes,
       'uploadedById': uploadedById,
       'uploadedByName': uploadedByName,
+      'countyId': countyId,
       'schoolId': schoolId,
       'schoolName': schoolName,
       'downloadCount': downloadCount,
@@ -135,6 +144,7 @@ class DocumentModel extends Equatable {
     int? fileSizeBytes,
     String? uploadedById,
     String? uploadedByName,
+    String? countyId,
     String? schoolId,
     String? schoolName,
     int? downloadCount,
@@ -155,6 +165,7 @@ class DocumentModel extends Equatable {
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
       uploadedById: uploadedById ?? this.uploadedById,
       uploadedByName: uploadedByName ?? this.uploadedByName,
+      countyId: countyId ?? this.countyId,
       schoolId: schoolId ?? this.schoolId,
       schoolName: schoolName ?? this.schoolName,
       downloadCount: downloadCount ?? this.downloadCount,
@@ -168,24 +179,25 @@ class DocumentModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        description,
-        category,
-        fileType,
-        fileUrl,
-        fileSizeBytes,
-        uploadedById,
-        uploadedByName,
-        schoolId,
-        schoolName,
-        downloadCount,
-        isPublic,
-        minimumRole,
-        tags,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    title,
+    description,
+    category,
+    fileType,
+    fileUrl,
+    fileSizeBytes,
+    uploadedById,
+    uploadedByName,
+    countyId,
+    schoolId,
+    schoolName,
+    downloadCount,
+    isPublic,
+    minimumRole,
+    tags,
+    createdAt,
+    updatedAt,
+  ];
 
   /// Check if a user with given role can view this document
   bool canBeViewedBy(UserRole? userRole) {
@@ -196,7 +208,9 @@ class DocumentModel extends Equatable {
     if (userRole == null) return false;
 
     // BEX and Superadmin can view all documents
-    if (userRole == UserRole.bex || userRole == UserRole.superadmin) return true;
+    if (userRole == UserRole.bex || userRole == UserRole.superadmin) {
+      return true;
+    }
 
     // If no minimum role set, only superadmin/bex can view (handled above)
     if (minimumRole == null) return false;

@@ -2,6 +2,54 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_strings.dart';
 
+/// List of all Romanian counties (judete)
+/// Sursa unica de adevar pentru validarea campului `city` / `countyId`.
+const List<String> romanianCounties = [
+  'Alba',
+  'Arad',
+  'Argeș',
+  'Bacău',
+  'Bihor',
+  'Bistrița-Năsăud',
+  'Botoșani',
+  'Brașov',
+  'Brăila',
+  'București',
+  'Buzău',
+  'Caraș-Severin',
+  'Călărași',
+  'Cluj',
+  'Constanța',
+  'Covasna',
+  'Dâmbovița',
+  'Dolj',
+  'Galați',
+  'Giurgiu',
+  'Gorj',
+  'Harghita',
+  'Hunedoara',
+  'Ialomița',
+  'Iași',
+  'Ilfov',
+  'Maramureș',
+  'Mehedinți',
+  'Mureș',
+  'Neamț',
+  'Olt',
+  'Prahova',
+  'Satu Mare',
+  'Sălaj',
+  'Sibiu',
+  'Suceava',
+  'Teleorman',
+  'Timiș',
+  'Tulcea',
+  'Vaslui',
+  'Vâlcea',
+  'Vrancea',
+];
+
+
 /// ============================================
 /// USER ROLE ENUM
 /// ============================================
@@ -249,6 +297,28 @@ enum DepartmentType {
 /// MEETING TYPE ENUM
 /// ============================================
 /// 4 types of meetings
+/// Starea unei sedinte.
+///
+/// O sedinta la care s-a inregistrat deja prezenta NU se sterge: pe prezenta se
+/// sprijina absentele si avertismentele, deci stergerea ei ar distruge probele
+/// care sustin masuri disciplinare. Se marcheaza `cancelled` in schimb --
+/// ramane in evidenta, cu prezenta ei, dar vizibil anulata.
+enum MeetingStatus {
+  scheduled,
+  cancelled;
+
+  String toFirestore() => name;
+
+  static MeetingStatus fromFirestore(String value) {
+    return MeetingStatus.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => MeetingStatus.scheduled,
+    );
+  }
+
+  bool get isCancelled => this == MeetingStatus.cancelled;
+}
+
 enum MeetingType {
   countyAG,
   bex,

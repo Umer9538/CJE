@@ -4,13 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
+import 'blocked_users_screen.dart';
 
 /// Privacy & Security screen for password change and account management
 class PrivacySecurityScreen extends ConsumerStatefulWidget {
   const PrivacySecurityScreen({super.key});
 
   @override
-  ConsumerState<PrivacySecurityScreen> createState() => _PrivacySecurityScreenState();
+  ConsumerState<PrivacySecurityScreen> createState() =>
+      _PrivacySecurityScreenState();
 }
 
 class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
@@ -36,11 +38,13 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
-    // Check if user signed in with Google by checking Firebase Auth providers
+    // Provider-only accounts manage their password with Apple/Google.
     final firebaseUser = FirebaseAuth.instance.currentUser;
-    final isGoogleUser = firebaseUser?.providerData.any(
-      (info) => info.providerId == 'google.com'
-    ) ?? false;
+    final isProviderOnlyUser =
+        !(firebaseUser?.providerData.any(
+              (info) => info.providerId == 'password',
+            ) ??
+            false);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -55,10 +59,20 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (ref.watch(authControllerProvider).isAuthenticated)
+              ListTile(
+                leading: const Icon(Icons.block),
+                title: Text(l10n.translate('blocked_users')),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const BlockedUsersScreen(),
+                  ),
+                ),
+              ),
             // Password Section
             _buildSectionTitle(context, l10n.translate('change_password')),
             const SizedBox(height: 12),
-            _buildPasswordSection(context, l10n, isGoogleUser),
+            _buildPasswordSection(context, l10n, isProviderOnlyUser),
 
             const SizedBox(height: 32),
 
@@ -83,7 +97,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     );
   }
 
-  Widget _buildPasswordSection(BuildContext context, AppLocalizations l10n, bool isGoogleUser) {
+  Widget _buildPasswordSection(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool isGoogleUser,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -106,19 +124,12 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   Widget _buildGoogleUserMessage(BuildContext context, AppLocalizations l10n) {
     return Column(
       children: [
-        Icon(
-          Icons.g_mobiledata,
-          size: 48,
-          color: context.textSecondary,
-        ),
+        Icon(Icons.lock_outline, size: 48, color: context.textSecondary),
         const SizedBox(height: 12),
         Text(
-          l10n.translate('google_password_message'),
+          l10n.translate('provider_password_message'),
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: context.textSecondary,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: context.textSecondary, fontSize: 14),
         ),
       ],
     );
@@ -134,7 +145,9 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           controller: _currentPasswordController,
           label: l10n.translate('current_password'),
           obscure: _obscureCurrentPassword,
-          onToggle: () => setState(() => _obscureCurrentPassword = !_obscureCurrentPassword),
+          onToggle: () => setState(
+            () => _obscureCurrentPassword = !_obscureCurrentPassword,
+          ),
         ),
         const SizedBox(height: 16),
 
@@ -144,7 +157,8 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           controller: _newPasswordController,
           label: l10n.translate('new_password'),
           obscure: _obscureNewPassword,
-          onToggle: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+          onToggle: () =>
+              setState(() => _obscureNewPassword = !_obscureNewPassword),
         ),
         const SizedBox(height: 16),
 
@@ -154,7 +168,9 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
           controller: _confirmPasswordController,
           label: l10n.translate('confirm_password'),
           obscure: _obscureConfirmPassword,
-          onToggle: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+          onToggle: () => setState(
+            () => _obscureConfirmPassword = !_obscureConfirmPassword,
+          ),
         ),
         const SizedBox(height: 24),
 
@@ -162,7 +178,9 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: _isChangingPassword ? null : () => _changePassword(context, l10n),
+            onPressed: _isChangingPassword
+                ? null
+                : () => _changePassword(context, l10n),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.navy,
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -204,11 +222,15 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         fillColor: context.scaffoldBackgroundColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: context.textSecondary.withValues(alpha: 0.3)),
+          borderSide: BorderSide(
+            color: context.textSecondary.withValues(alpha: 0.3),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: context.textSecondary.withValues(alpha: 0.3)),
+          borderSide: BorderSide(
+            color: context.textSecondary.withValues(alpha: 0.3),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -250,7 +272,10 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
                 color: context.errorColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(Icons.delete_forever_rounded, color: context.errorColor),
+              child: Icon(
+                Icons.delete_forever_rounded,
+                color: context.errorColor,
+              ),
             ),
             title: Text(
               l10n.translate('delete_account'),
@@ -261,10 +286,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
             ),
             subtitle: Text(
               l10n.translate('delete_account_subtitle'),
-              style: TextStyle(
-                color: context.textSecondary,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: context.textSecondary, fontSize: 12),
             ),
             trailing: Icon(Icons.chevron_right, color: context.errorColor),
             onTap: () => _showDeleteAccountDialog(context, l10n),
@@ -274,34 +296,49 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     );
   }
 
-  Future<void> _changePassword(BuildContext context, AppLocalizations l10n) async {
+  Future<void> _changePassword(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
     final currentPassword = _currentPasswordController.text.trim();
     final newPassword = _newPasswordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
     // Validation
-    if (currentPassword.isEmpty || newPassword.isEmpty || confirmPassword.isEmpty) {
+    if (currentPassword.isEmpty ||
+        newPassword.isEmpty ||
+        confirmPassword.isEmpty) {
       _showSnackBar(context, l10n.translate('fill_all_fields'), isError: true);
       return;
     }
 
-    if (newPassword.length < 6) {
-      _showSnackBar(context, l10n.translate('password_min_length'), isError: true);
+    if (newPassword.length < 10) {
+      _showSnackBar(
+        context,
+        l10n.translate('password_min_length'),
+        isError: true,
+      );
       return;
     }
 
     if (newPassword != confirmPassword) {
-      _showSnackBar(context, l10n.translate('passwords_not_match'), isError: true);
+      _showSnackBar(
+        context,
+        l10n.translate('passwords_not_match'),
+        isError: true,
+      );
       return;
     }
 
     setState(() => _isChangingPassword = true);
 
     try {
-      await ref.read(authControllerProvider.notifier).changePassword(
-        currentPassword: currentPassword,
-        newPassword: newPassword,
-      );
+      await ref
+          .read(authControllerProvider.notifier)
+          .changePassword(
+            currentPassword: currentPassword,
+            newPassword: newPassword,
+          );
 
       if (mounted) {
         _currentPasswordController.clear();
@@ -323,7 +360,7 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
   void _showDeleteAccountDialog(BuildContext context, AppLocalizations l10n) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
@@ -335,17 +372,15 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
         content: Text(l10n.translate('delete_account_warning')),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(l10n.translate('cancel')),
           ),
           FilledButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _deleteAccount(context, l10n);
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: Text(l10n.translate('delete')),
           ),
         ],
@@ -353,12 +388,28 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     );
   }
 
-  Future<void> _deleteAccount(BuildContext context, AppLocalizations l10n) async {
+  Future<void> _deleteAccount(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
     setState(() => _isDeletingAccount = true);
 
     try {
-      await ref.read(authControllerProvider.notifier).deleteAccount();
-      // User will be signed out and redirected automatically
+      final result = await ref
+          .read(authControllerProvider.notifier)
+          .deleteAccount();
+      if (!result.success && mounted) {
+        setState(() => _isDeletingAccount = false);
+        _showSnackBar(
+          context,
+          result.errorMessage ?? l10n.translate('error_generic'),
+          isError: true,
+        );
+      } else if (result.success && mounted) {
+        // A settings page opened from an account gate must return to the
+        // root auth resolver after deletion, rather than remain on a stale route.
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (e) {
       if (mounted) {
         setState(() => _isDeletingAccount = false);
@@ -367,7 +418,11 @@ class _PrivacySecurityScreenState extends ConsumerState<PrivacySecurityScreen> {
     }
   }
 
-  void _showSnackBar(BuildContext context, String message, {bool isError = false}) {
+  void _showSnackBar(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),

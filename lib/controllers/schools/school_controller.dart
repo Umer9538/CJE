@@ -84,14 +84,17 @@ final _userRepositoryProvider = Provider<UserRepository>((ref) {
 final schoolRepresentativeProvider = FutureProvider.family<UserModel?, String>((ref, schoolId) async {
   if (schoolId.isEmpty) return null;
   final repository = ref.read(_userRepositoryProvider);
-  return repository.getSchoolRepresentative(schoolId);
+  // Regula de citire pe users cere interogare limitata la judet.
+  final currentUser = ref.watch(currentUserProvider);
+  return repository.getSchoolRepresentative(schoolId, countyId: currentUser?.city);
 });
 
 /// Stream provider for school representative (real-time updates)
 final schoolRepresentativeStreamProvider = StreamProvider.family<UserModel?, String>((ref, schoolId) {
   if (schoolId.isEmpty) return Stream.value(null);
   final repository = ref.read(_userRepositoryProvider);
-  return repository.getSchoolRepresentativeStream(schoolId);
+  final currentUser = ref.watch(currentUserProvider);
+  return repository.getSchoolRepresentativeStream(schoolId, countyId: currentUser?.city);
 });
 
 /// School controller for CRUD operations

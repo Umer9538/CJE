@@ -31,7 +31,10 @@ bool _canViewMeeting(UserRole? userRole, UserRole? minVisibilityRole) {
 }
 
 /// Meetings list provider (FutureProvider for one-time fetch)
-final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter>((ref, filter) async {
+final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter>((
+  ref,
+  filter,
+) async {
   // Use ref.watch for reactive dependencies so provider rebuilds when user changes
   final user = ref.watch(currentUserProvider);
   if (user == null) {
@@ -43,62 +46,80 @@ final meetingsProvider = FutureProvider.family<List<MeetingModel>, MeetingFilter
 
   // For BEX/Superadmin, don't filter by school - they see ALL meetings
   // For regular users, ALWAYS use their schoolId for filtering (not filter.schoolId)
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
   try {
-    final meetings = await repository.getMeetings(
-      type: filter.type,
-      schoolId: effectiveSchoolId,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      department: filter.department,
-      upcomingOnly: filter.upcomingOnly,
-      pastOnly: filter.pastOnly,
-      limit: filter.limit,
-    ).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => <MeetingModel>[],
-    );
+    final meetings = await repository
+        .getMeetings(
+          type: filter.type,
+          schoolId: effectiveSchoolId,
+          countyId:
+              effectiveCounty, // Uses selected county for Superadmin, user's county for others
+          department: filter.department,
+          upcomingOnly: filter.upcomingOnly,
+          pastOnly: filter.pastOnly,
+          limit: filter.limit,
+        )
+        .timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => <MeetingModel>[],
+        );
     // Filter by visibility role
-    return meetings.where((m) => _canViewMeeting(user.role, m.minVisibilityRole)).toList();
+    return meetings
+        .where((m) => _canViewMeeting(user.role, m.minVisibilityRole))
+        .toList();
   } catch (e) {
     return <MeetingModel>[];
   }
 });
 
 /// Meetings stream provider (for real-time updates)
-final meetingsStreamProvider = StreamProvider.family<List<MeetingModel>, MeetingFilter>((ref, filter) {
-  final repository = ref.watch(meetingRepositoryProvider);
-  // Use ref.watch for reactive dependencies
-  final user = ref.watch(currentUserProvider);
-  final effectiveCounty = ref.watch(effectiveCountyProvider);
+final meetingsStreamProvider =
+    StreamProvider.family<List<MeetingModel>, MeetingFilter>((ref, filter) {
+      final repository = ref.watch(meetingRepositoryProvider);
+      // Use ref.watch for reactive dependencies
+      final user = ref.watch(currentUserProvider);
+      final effectiveCounty = ref.watch(effectiveCountyProvider);
 
-  // For BEX/Superadmin, don't filter by school - they see ALL meetings
-  // For regular users, ALWAYS use their schoolId for filtering (not filter.schoolId)
-  final shouldFilterBySchool = user?.role != UserRole.superadmin && user?.role != UserRole.bex;
-  final effectiveSchoolId = shouldFilterBySchool ? user?.schoolId : null;
+      // For BEX/Superadmin, don't filter by school - they see ALL meetings
+      // For regular users, ALWAYS use their schoolId for filtering (not filter.schoolId)
+      final shouldFilterBySchool =
+          user?.role != UserRole.superadmin && user?.role != UserRole.bex;
+      final effectiveSchoolId = shouldFilterBySchool ? user?.schoolId : null;
 
-  return repository.getMeetingsStream(
-    type: filter.type,
-    schoolId: effectiveSchoolId,
-    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-    upcomingOnly: filter.upcomingOnly,
-    pastOnly: filter.pastOnly,
-    limit: filter.limit,
-  ).map((meetings) {
-    // Filter by visibility role
-    return meetings.where((m) => _canViewMeeting(user?.role, m.minVisibilityRole)).toList();
-  });
-});
+      return repository
+          .getMeetingsStream(
+            type: filter.type,
+            schoolId: effectiveSchoolId,
+            countyId:
+                effectiveCounty, // Uses selected county for Superadmin, user's county for others
+            upcomingOnly: filter.upcomingOnly,
+            pastOnly: filter.pastOnly,
+            limit: filter.limit,
+          )
+          .map((meetings) {
+            // Filter by visibility role
+            return meetings
+                .where((m) => _canViewMeeting(user?.role, m.minVisibilityRole))
+                .toList();
+          });
+    });
 
 /// Single meeting provider
-final meetingProvider = FutureProvider.family<MeetingModel?, String>((ref, id) async {
+final meetingProvider = FutureProvider.family<MeetingModel?, String>((
+  ref,
+  id,
+) async {
   final repository = ref.watch(meetingRepositoryProvider);
   return repository.getMeetingById(id);
 });
 
 /// Upcoming meetings for home screen (FutureProvider - one-time fetch)
-final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async {
+final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((
+  ref,
+) async {
   // Use ref.watch for reactive dependencies so provider rebuilds when user changes
   final user = ref.watch(currentUserProvider);
   if (user == null) {
@@ -110,26 +131,36 @@ final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async 
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For BEX/Superadmin, don't filter by school - they see ALL upcoming meetings
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
-  debugPrint('upcomingMeetingsProvider: user=${user.fullName}, role=${user.role}, county=$effectiveCounty, schoolId=$effectiveSchoolId');
+  debugPrint(
+    'upcomingMeetingsProvider: role=${user.role}, county=$effectiveCounty, schoolId=$effectiveSchoolId',
+  );
 
   try {
-    final meetings = await repository.getUpcomingMeetings(
-      schoolId: effectiveSchoolId,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      limit: 5,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        debugPrint('upcomingMeetingsProvider: timeout');
-        return <MeetingModel>[];
-      },
-    );
+    final meetings = await repository
+        .getUpcomingMeetings(
+          schoolId: effectiveSchoolId,
+          countyId:
+              effectiveCounty, // Uses selected county for Superadmin, user's county for others
+          limit: 5,
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('upcomingMeetingsProvider: timeout');
+            return <MeetingModel>[];
+          },
+        );
     // Filter by visibility role
-    final filtered = meetings.where((m) => _canViewMeeting(user.role, m.minVisibilityRole)).toList();
-    debugPrint('upcomingMeetingsProvider: returned ${filtered.length} meetings (after visibility filter)');
+    final filtered = meetings
+        .where((m) => _canViewMeeting(user.role, m.minVisibilityRole))
+        .toList();
+    debugPrint(
+      'upcomingMeetingsProvider: returned ${filtered.length} meetings (after visibility filter)',
+    );
     return filtered;
   } catch (e) {
     debugPrint('upcomingMeetingsProvider: error $e');
@@ -138,7 +169,9 @@ final upcomingMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async 
 });
 
 /// Upcoming meetings stream for home screen (StreamProvider - real-time updates)
-final upcomingMeetingsStreamProvider = StreamProvider<List<MeetingModel>>((ref) {
+final upcomingMeetingsStreamProvider = StreamProvider<List<MeetingModel>>((
+  ref,
+) {
   final user = ref.watch(currentUserProvider);
   if (user == null) {
     return Stream.value(<MeetingModel>[]);
@@ -148,26 +181,37 @@ final upcomingMeetingsStreamProvider = StreamProvider<List<MeetingModel>>((ref) 
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For BEX/Superadmin, don't filter by school - they see ALL upcoming meetings
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
-  return repository.getUpcomingMeetingsStream(
-    schoolId: effectiveSchoolId,
-    countyId: effectiveCounty,
-    limit: 5,
-  ).map((meetings) {
-    // Filter by visibility role
-    return meetings.where((m) => _canViewMeeting(user.role, m.minVisibilityRole)).toList();
-  });
+  return repository
+      .getUpcomingMeetingsStream(
+        schoolId: effectiveSchoolId,
+        countyId: effectiveCounty,
+        limit: 5,
+      )
+      .map((meetings) {
+        // Filter by visibility role
+        return meetings
+            .where((m) => _canViewMeeting(user.role, m.minVisibilityRole))
+            .toList();
+      });
 });
 
 /// Provider for department meetings (filtered by current user's department)
-final departmentMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) async {
+final departmentMeetingsProvider = FutureProvider<List<MeetingModel>>((
+  ref,
+) async {
   final user = ref.read(currentUserProvider);
-  debugPrint('departmentMeetingsProvider: user=${user?.fullName}, role=${user?.role}, department=${user?.department}');
+  debugPrint(
+    'departmentMeetingsProvider: role=${user?.role}, department=${user?.department}',
+  );
 
   if (user == null) {
-    debugPrint('departmentMeetingsProvider: user is null, returning empty list');
+    debugPrint(
+      'departmentMeetingsProvider: user is null, returning empty list',
+    );
     return <MeetingModel>[];
   }
 
@@ -177,18 +221,26 @@ final departmentMeetingsProvider = FutureProvider<List<MeetingModel>>((ref) asyn
   try {
     // If user has a specific department assigned, filter by it
     // Otherwise, show all department-type meetings for users with department role
-    final meetings = await repository.getMeetings(
-      type: MeetingType.department,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      department: user.department, // null means show all department meetings
-      limit: 20,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => <MeetingModel>[],
-    );
+    final meetings = await repository
+        .getMeetings(
+          type: MeetingType.department,
+          countyId:
+              effectiveCounty, // Uses selected county for Superadmin, user's county for others
+          department:
+              user.department, // null means show all department meetings
+          limit: 20,
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => <MeetingModel>[],
+        );
     // Filter by visibility role
-    final filtered = meetings.where((m) => _canViewMeeting(user.role, m.minVisibilityRole)).toList();
-    debugPrint('departmentMeetingsProvider: found ${filtered.length} meetings (after visibility filter)');
+    final filtered = meetings
+        .where((m) => _canViewMeeting(user.role, m.minVisibilityRole))
+        .toList();
+    debugPrint(
+      'departmentMeetingsProvider: found ${filtered.length} meetings (after visibility filter)',
+    );
     return filtered;
   } catch (e) {
     debugPrint('departmentMeetingsProvider: error $e');
@@ -207,27 +259,40 @@ final nextMeetingProvider = FutureProvider<MeetingModel?>((ref) async {
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For BEX/Superadmin, don't filter by school - they see ALL meetings
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
-  return repository.getNextMeeting(schoolId: effectiveSchoolId, countyId: effectiveCounty);
+  return repository.getNextMeeting(
+    schoolId: effectiveSchoolId,
+    countyId: effectiveCounty,
+  );
 });
 
 /// Meeting attendance provider
-final meetingAttendanceProvider = FutureProvider.family<List<MeetingAttendance>, String>((ref, meetingId) async {
-  final repository = ref.watch(meetingRepositoryProvider);
-  return repository.getMeetingAttendance(meetingId);
-});
+final meetingAttendanceProvider =
+    FutureProvider.family<List<MeetingAttendance>, String>((
+      ref,
+      meetingId,
+    ) async {
+      final repository = ref.watch(meetingRepositoryProvider);
+      return repository.getMeetingAttendance(meetingId);
+    });
 
 /// Provider to get users by their IDs (for showing participant names)
-final usersByIdsProvider = FutureProvider.family<List<UserModel>, List<String>>((ref, userIds) async {
-  if (userIds.isEmpty) return [];
-  final repository = ref.watch(userRepositoryProvider);
-  return repository.getUsersByIds(userIds);
-});
+final usersByIdsProvider = FutureProvider.family<List<UserModel>, List<String>>(
+  (ref, userIds) async {
+    if (userIds.isEmpty) return [];
+    final repository = ref.watch(userRepositoryProvider);
+    return repository.getUsersByIds(userIds);
+  },
+);
 
 /// Provider for searchable users (for adding participants) - filters by current user's county
-final searchUsersProvider = FutureProvider.family<List<UserModel>, String>((ref, query) async {
+final searchUsersProvider = FutureProvider.family<List<UserModel>, String>((
+  ref,
+  query,
+) async {
   if (query.isEmpty) return [];
   final repository = ref.watch(userRepositoryProvider);
   final currentUser = ref.read(currentUserProvider);
@@ -277,7 +342,12 @@ class MeetingFilter {
 
   @override
   int get hashCode =>
-      type.hashCode ^ schoolId.hashCode ^ department.hashCode ^ upcomingOnly.hashCode ^ pastOnly.hashCode ^ limit.hashCode;
+      type.hashCode ^
+      schoolId.hashCode ^
+      department.hashCode ^
+      upcomingOnly.hashCode ^
+      pastOnly.hashCode ^
+      limit.hashCode;
 }
 
 /// Meeting controller for CRUD operations
@@ -285,7 +355,8 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
   final MeetingRepository _repository;
   final Ref _ref;
 
-  MeetingController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  MeetingController(this._repository, this._ref)
+    : super(const AsyncValue.data(null));
 
   /// Check if user can create/edit a specific meeting type
   bool _canManageMeetingType(UserRole role, MeetingType type) {
@@ -296,15 +367,15 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     // School meetings can be managed by schoolRep, department, bex, superadmin
     if (type == MeetingType.school) {
       return role == UserRole.schoolRep ||
-             role == UserRole.department ||
-             role == UserRole.bex ||
-             role == UserRole.superadmin;
+          role == UserRole.department ||
+          role == UserRole.bex ||
+          role == UserRole.superadmin;
     }
     // Department meetings can be managed by department, bex, superadmin
     if (type == MeetingType.department) {
       return role == UserRole.department ||
-             role == UserRole.bex ||
-             role == UserRole.superadmin;
+          role == UserRole.bex ||
+          role == UserRole.superadmin;
     }
     return false;
   }
@@ -333,7 +404,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     final user = _ref.read(currentUserProvider);
-    debugPrint('createMeeting: user=${user?.fullName}, role=${user?.role}, type=$type');
+    debugPrint('createMeeting: role=${user?.role}, type=$type');
 
     if (user == null) {
       debugPrint('createMeeting: User is null');
@@ -341,10 +412,24 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
+    final effectiveCounty = _ref.read(effectiveCountyProvider);
+    if (effectiveCounty == null || effectiveCounty.isEmpty) {
+      state = AsyncValue.error(
+        'Selecteaza judetul inainte de a crea sedinta',
+        StackTrace.current,
+      );
+      return null;
+    }
+
     // Permission check
     if (!_canManageMeetingType(user.role, type)) {
-      debugPrint('createMeeting: Permission denied for role ${user.role} to create $type meetings');
-      state = AsyncValue.error('Permission denied: Cannot create ${type.displayName} meetings', StackTrace.current);
+      debugPrint(
+        'createMeeting: Permission denied for role ${user.role} to create $type meetings',
+      );
+      state = AsyncValue.error(
+        'Permission denied: Cannot create ${type.displayName} meetings',
+        StackTrace.current,
+      );
       return null;
     }
 
@@ -373,7 +458,10 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       // Only department, BEX, and Superadmin can create department meetings
       // This is already checked in _canManageMeetingType, but adding extra safety
       if (user.role == UserRole.schoolRep) {
-        state = AsyncValue.error('School Representatives cannot create department meetings', StackTrace.current);
+        state = AsyncValue.error(
+          'School Representatives cannot create department meetings',
+          StackTrace.current,
+        );
         return null;
       }
       meetingDepartment = department ?? user.department;
@@ -388,17 +476,27 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       // Add 10 second timeout to entire translation process
       await Future<void>(() async {
         final translatedTitle = await TranslatableContent.fromText(title);
-        titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+        titleTranslations = {
+          'en': translatedTitle.en,
+          'ro': translatedTitle.ro,
+        };
 
         if (description != null && description.isNotEmpty) {
-          final translatedDescription = await TranslatableContent.fromText(description);
-          descriptionTranslations = {'en': translatedDescription.en, 'ro': translatedDescription.ro};
+          final translatedDescription = await TranslatableContent.fromText(
+            description,
+          );
+          descriptionTranslations = {
+            'en': translatedDescription.en,
+            'ro': translatedDescription.ro,
+          };
         }
       }).timeout(const Duration(seconds: 10));
 
       debugPrint('MeetingController: Content translated successfully');
     } catch (e) {
-      debugPrint('MeetingController: Translation failed/timeout - $e, continuing without translations');
+      debugPrint(
+        'MeetingController: Translation failed/timeout - $e, continuing without translations',
+      );
       // Continue without translations if translation fails or times out
     }
 
@@ -414,7 +512,7 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       location: location,
       isOnline: isOnline,
       onlineLink: onlineLink,
-      countyId: user.city, // Save the county for data partitioning (city is the county name)
+      countyId: effectiveCounty,
       schoolId: meetingSchoolId,
       schoolName: meetingSchoolName,
       department: meetingDepartment,
@@ -473,7 +571,10 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
 
     // Permission check - cannot edit county AG or BEX meetings unless BEX/Superadmin
     if (!_canManageMeetingType(user.role, meeting.type)) {
-      state = AsyncValue.error('Permission denied: Cannot edit ${meeting.type.displayName} meetings', StackTrace.current);
+      state = AsyncValue.error(
+        'Permission denied: Cannot edit ${meeting.type.displayName} meetings',
+        StackTrace.current,
+      );
       return false;
     }
 
@@ -483,21 +584,38 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
 
     try {
       await Future<void>(() async {
-        final translatedTitle = await TranslatableContent.fromText(meeting.title);
-        titleTranslations = {'en': translatedTitle.en, 'ro': translatedTitle.ro};
+        final translatedTitle = await TranslatableContent.fromText(
+          meeting.title,
+        );
+        titleTranslations = {
+          'en': translatedTitle.en,
+          'ro': translatedTitle.ro,
+        };
 
         if (meeting.description != null && meeting.description!.isNotEmpty) {
-          final translatedDescription = await TranslatableContent.fromText(meeting.description!);
-          descriptionTranslations = {'en': translatedDescription.en, 'ro': translatedDescription.ro};
+          final translatedDescription = await TranslatableContent.fromText(
+            meeting.description!,
+          );
+          descriptionTranslations = {
+            'en': translatedDescription.en,
+            'ro': translatedDescription.ro,
+          };
         }
       }).timeout(const Duration(seconds: 10));
     } catch (e) {
-      debugPrint('MeetingController: Translation failed/timeout during update - $e, continuing without translations');
+      debugPrint(
+        'MeetingController: Translation failed/timeout during update - $e, continuing without translations',
+      );
     }
 
     final updatedMeeting = meeting.copyWith(
-      titleTranslations: titleTranslations ?? {'en': meeting.title, 'ro': meeting.title},
-      descriptionTranslations: descriptionTranslations ?? (meeting.description != null ? {'en': meeting.description!, 'ro': meeting.description!} : null),
+      titleTranslations:
+          titleTranslations ?? {'en': meeting.title, 'ro': meeting.title},
+      descriptionTranslations:
+          descriptionTranslations ??
+          (meeting.description != null
+              ? {'en': meeting.description!, 'ro': meeting.description!}
+              : null),
     );
 
     final success = await _repository.updateMeeting(updatedMeeting);
@@ -531,8 +649,67 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Delete meeting
+  /// Verifica daca o sedinta poate fi stearsa.
+  ///
+  /// Regula: o sedinta la care s-a inregistrat deja prezenta NU se sterge.
+  /// Pe prezenta se sprijina absentele si avertismentele, deci stergerea ei ar
+  /// distruge probele care sustin masuri disciplinare. Superadminul are voie
+  /// oricum -- este calea de scapare pentru greseli reale.
+  ///
+  /// Returneaza `null` daca stergerea e permisa, altfel motivul refuzului.
+  ///
+  /// Nota: aceasta verificare NU poate fi mutata in regulile Firestore. A sti
+  /// daca exista vreo prezenta pentru o sedinta cere o INTEROGARE pe
+  /// meeting_attendance, iar regulile pot face doar `get()` si `exists()` pe cai
+  /// cunoscute. Id-urile de prezenta sunt `{meetingId}_{userId}`, deci ar trebui
+  /// stiut dinainte fiecare userId. Garda traieste asadar in cod.
+  static String? blocajStergere({
+    required int prezenteInregistrate,
+    required bool esteSuperadmin,
+  }) {
+    if (esteSuperadmin) return null;
+    if (prezenteInregistrate == 0) return null;
+    return 'Sedinta are $prezenteInregistrate inregistrare(i) de prezenta si nu '
+        'poate fi stearsa: pe ele se bazeaza absentele si avertismentele. '
+        'Anuleaza sedinta in schimb -- ramane in evidenta, marcata ca anulata.';
+  }
+
+  /// Anuleaza o sedinta, pastrand-o in evidenta impreuna cu prezenta ei.
+  Future<bool> cancelMeeting(String id) async {
+    state = const AsyncValue.loading();
+
+    final success = await _repository.updateMeetingFields(id, {
+      'status': MeetingStatus.cancelled.toFirestore(),
+    });
+
+    if (success) {
+      state = const AsyncValue.data(null);
+      _ref.invalidate(meetingsProvider);
+      _ref.invalidate(meetingsStreamProvider);
+      _ref.invalidate(upcomingMeetingsProvider);
+      _ref.invalidate(nextMeetingProvider);
+      _ref.invalidate(departmentMeetingsProvider);
+    } else {
+      state = AsyncValue.error('Failed to cancel meeting', StackTrace.current);
+    }
+
+    return success;
+  }
+
   Future<bool> deleteMeeting(String id) async {
     state = const AsyncValue.loading();
+
+    final user = _ref.read(currentUserProvider);
+    final prezente = await _repository.getMeetingAttendance(id);
+    final blocaj = blocajStergere(
+      prezenteInregistrate: prezente.length,
+      esteSuperadmin: user?.role == UserRole.superadmin,
+    );
+
+    if (blocaj != null) {
+      state = AsyncValue.error(blocaj, StackTrace.current);
+      return false;
+    }
 
     final success = await _repository.deleteMeeting(id);
 
@@ -585,8 +762,15 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Update attendance status
-  Future<bool> updateAttendance(String attendanceId, AttendanceStatus status, String meetingId) async {
-    final success = await _repository.updateAttendanceStatus(attendanceId, status);
+  Future<bool> updateAttendance(
+    String attendanceId,
+    AttendanceStatus status,
+    String meetingId,
+  ) async {
+    final success = await _repository.updateAttendanceStatus(
+      attendanceId,
+      status,
+    );
     if (success) {
       _ref.invalidate(meetingAttendanceProvider(meetingId));
     }
@@ -645,7 +829,9 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
       if (meeting == null) return false;
 
       // Remove from attendeeIds
-      final updatedAttendeeIds = meeting.attendeeIds.where((id) => id != oderId).toList();
+      final updatedAttendeeIds = meeting.attendeeIds
+          .where((id) => id != oderId)
+          .toList();
       final updatedMeeting = meeting.copyWith(
         attendeeIds: updatedAttendeeIds,
         updatedAt: DateTime.now(),
@@ -701,11 +887,14 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
         effectiveMinRole = _higherRole(minVisibilityRole, UserRole.department);
       }
 
-      debugPrint('MeetingNotification: Sending with effectiveMinRole=$effectiveMinRole, schoolId=$schoolId, type=$type, countyId=${user?.city}');
+      debugPrint(
+        'MeetingNotification: Sending with effectiveMinRole=$effectiveMinRole, schoolId=$schoolId, type=$type, countyId=${user?.city}',
+      );
 
       await notificationRepo.sendCountyWideNotification(
         title: 'New ${type.displayName} Meeting: $title',
-        body: 'Scheduled for ${DateFormat('MMM d, yyyy').format(dateTime)} at ${DateFormat('h:mm a').format(dateTime)}',
+        body:
+            'Scheduled for ${DateFormat('MMM d, yyyy').format(dateTime)} at ${DateFormat('h:mm a').format(dateTime)}',
         type: NotificationType.meetingReminder,
         countyId: user?.city,
         schoolId: type == MeetingType.school ? schoolId : null,
@@ -714,22 +903,34 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
         senderName: user?.fullName ?? 'System',
         additionalData: {'meetingId': meetingId},
         titleBuilder: (lang) {
-          final typeName = AppLocalizations.translateForLocale(lang, meetingTypeKey);
+          final typeName = AppLocalizations.translateForLocale(
+            lang,
+            meetingTypeKey,
+          );
           return AppLocalizations.translateForLocaleWithParams(
-              lang, 'notif_new_meeting', {'type': typeName, 'title': meetingTitle});
+            lang,
+            'notif_new_meeting',
+            {'type': typeName, 'title': meetingTitle},
+          );
         },
         bodyBuilder: (lang) {
           final locale = lang == 'ro' ? 'ro_RO' : 'en_US';
-          final dateStr = DateFormat('MMM d, yyyy', locale).format(meetingDateTime);
+          final dateStr = DateFormat(
+            'MMM d, yyyy',
+            locale,
+          ).format(meetingDateTime);
           final timeStr = DateFormat('h:mm a', locale).format(meetingDateTime);
           var body = AppLocalizations.translateForLocaleWithParams(
-              lang, 'notif_meeting_scheduled', {'date': dateStr, 'time': timeStr});
+            lang,
+            'notif_meeting_scheduled',
+            {'date': dateStr, 'time': timeStr},
+          );
           if (meetingLocation != null) body += ' - $meetingLocation';
           return body;
         },
       );
 
-      debugPrint('Sent notification for meeting: $title');
+      debugPrint('Sent notification for meeting');
     } catch (e) {
       debugPrint('Error sending meeting notification: $e');
     }
@@ -772,22 +973,34 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
         senderName: user?.fullName ?? 'System',
         additionalData: {'meetingId': meetingId},
         titleBuilder: (lang) {
-          final typeName = AppLocalizations.translateForLocale(lang, meetingTypeKey);
+          final typeName = AppLocalizations.translateForLocale(
+            lang,
+            meetingTypeKey,
+          );
           return AppLocalizations.translateForLocaleWithParams(
-              lang, 'notif_meeting_updated', {'type': typeName, 'title': meetingTitle});
+            lang,
+            'notif_meeting_updated',
+            {'type': typeName, 'title': meetingTitle},
+          );
         },
         bodyBuilder: (lang) {
           final locale = lang == 'ro' ? 'ro_RO' : 'en_US';
-          final dateStr = DateFormat('MMM d, yyyy', locale).format(meetingDateTime);
+          final dateStr = DateFormat(
+            'MMM d, yyyy',
+            locale,
+          ).format(meetingDateTime);
           final timeStr = DateFormat('h:mm a', locale).format(meetingDateTime);
           var body = AppLocalizations.translateForLocaleWithParams(
-              lang, 'notif_meeting_updated_body', {'date': dateStr, 'time': timeStr});
+            lang,
+            'notif_meeting_updated_body',
+            {'date': dateStr, 'time': timeStr},
+          );
           if (meetingLocation != null) body += ' - $meetingLocation';
           return body;
         },
       );
 
-      debugPrint('Sent update notification for meeting: $title');
+      debugPrint('Sent update notification for meeting');
     } catch (e) {
       debugPrint('Error sending meeting update notification: $e');
     }
@@ -803,11 +1016,8 @@ class MeetingController extends StateNotifier<AsyncValue<void>> {
 /// Meeting controller provider
 final meetingControllerProvider =
     StateNotifierProvider<MeetingController, AsyncValue<void>>((ref) {
-  return MeetingController(
-    ref.watch(meetingRepositoryProvider),
-    ref,
-  );
-});
+      return MeetingController(ref.watch(meetingRepositoryProvider), ref);
+    });
 
 /// Check if current user can create meetings
 /// - BEX and Superadmin can create any meeting type
@@ -817,9 +1027,9 @@ final canCreateMeetingsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.schoolRep ||
-         user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.department ||
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can create county AG meetings (BEX only)

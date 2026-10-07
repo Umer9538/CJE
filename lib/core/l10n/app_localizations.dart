@@ -8,10 +8,7 @@ class AppLocales {
   static const Locale english = Locale('en', 'US');
 
   /// List of all supported locales
-  static const List<Locale> supportedLocales = [
-    english,
-    romanian,
-  ];
+  static const List<Locale> supportedLocales = [english, romanian];
 
   /// Default locale
   static const Locale defaultLocale = english;
@@ -78,8 +75,9 @@ class AppLocalizations {
 
   /// Check if locale is supported
   static bool isSupported(Locale locale) {
-    return AppLocales.supportedLocales
-        .any((l) => l.languageCode == locale.languageCode);
+    return AppLocales.supportedLocales.any(
+      (l) => l.languageCode == locale.languageCode,
+    );
   }
 
   /// Get translations map based on current locale
@@ -106,7 +104,10 @@ class AppLocalizations {
 
   /// Translate a key for a specific locale with parameter substitution
   static String translateForLocaleWithParams(
-      String languageCode, String key, Map<String, String> params) {
+    String languageCode,
+    String key,
+    Map<String, String> params,
+  ) {
     var result = translateForLocale(languageCode, key);
     params.forEach((paramKey, value) {
       result = result.replaceAll('{$paramKey}', value);
@@ -591,6 +592,10 @@ const Map<String, String> _roStrings = {
   'error_loading_schools': 'Eroare la încărcarea școlilor',
   'sort': 'Sortează',
   'view': 'Vezi',
+  'access_denied': 'Acces refuzat',
+  'platform_support': 'Suport aplicație și confidențialitate',
+  'provider_password_message':
+      'Te autentifici prin Apple sau Google. Gestionează parola în contul furnizorului, nu în aplicație.',
   'view_all': 'Vezi tot',
   'see_more': 'Vezi mai mult',
   'see_less': 'Vezi mai puțin',
@@ -646,6 +651,7 @@ const Map<String, String> _roStrings = {
   'full_name': 'Nume complet',
   'phone': 'Telefon',
   'phone_number': 'Număr de telefon',
+  'phone_number_optional': 'Număr de telefon (opțional)',
   'date_of_birth': 'Data nașterii',
   'gender': 'Gen',
   'male': 'Masculin',
@@ -677,7 +683,8 @@ const Map<String, String> _roStrings = {
   'notifications_subtitle': 'Push, email, SMS',
   'notify': 'Notifică',
   'send_notification': 'Trimite notificare',
-  'county_notification_info': 'Această notificare va fi trimisă tuturor utilizatorilor selectați din județ.',
+  'county_notification_info':
+      'Această notificare va fi trimisă tuturor utilizatorilor selectați din județ.',
   'notification_type': 'Tip notificare',
   'notification_title_hint': 'Introdu titlul notificării',
   'notification_body_hint': 'Scrie mesajul notificării...',
@@ -687,7 +694,8 @@ const Map<String, String> _roStrings = {
   'select_roles': 'Selectează rolurile',
   'select_at_least_one_role': 'Selectează cel puțin un rol',
   'confirm_send': 'Confirmă trimiterea',
-  'send_notification_confirm': 'Ești sigur că vrei să trimiți această notificare?',
+  'send_notification_confirm':
+      'Ești sigur că vrei să trimiți această notificare?',
   'sending': 'Se trimite...',
   'notification_sent': 'Notificare trimisă cu succes',
   'error_sending_notification': 'Eroare la trimiterea notificării',
@@ -806,7 +814,8 @@ const Map<String, String> _roStrings = {
   'move_to_debate': 'Spre dezbatere',
   'move_to_voting': 'Spre vot',
   'reject_initiative': 'Respinge inițiativa',
-  'reject_initiative_reason': 'Te rugăm să furnizezi un motiv pentru respingere:',
+  'reject_initiative_reason':
+      'Te rugăm să furnizezi un motiv pentru respingere:',
   'rejection_reason': 'Motiv respingere',
   'enter_reason': 'Introdu motivul...',
   'reason_required': 'Motivul este obligatoriu',
@@ -992,10 +1001,13 @@ const Map<String, String> _roStrings = {
   'participants': 'Participanți',
   'created_by': 'Creat de',
   'no_agenda': 'Fără agendă',
-  'no_agenda_description': 'Nu a fost adăugată nicio agendă pentru această ședință',
-  'no_documents_description': 'Nu au fost adăugate documente pentru această ședință',
+  'no_agenda_description':
+      'Nu a fost adăugată nicio agendă pentru această ședință',
+  'no_documents_description':
+      'Nu au fost adăugate documente pentru această ședință',
   'no_participants': 'Fără participanți',
-  'no_participants_description': 'Nu au fost adăugați participanți pentru această ședință',
+  'no_participants_description':
+      'Nu au fost adăugați participanți pentru această ședință',
   'invited': 'invitați',
   'attendance_not_recorded': 'Prezența nu a fost încă înregistrată',
   'error_loading_participants': 'Eroare la încărcarea participanților',
@@ -1071,7 +1083,8 @@ const Map<String, String> _roStrings = {
   'create_new_account': 'Creează un cont nou',
   'join_student_council': 'Alătură-te consiliului elevilor',
   'reset_password_title': 'Resetează parola',
-  'reset_password_description': 'Introdu adresa de email și îți vom trimite un link pentru resetarea parolei.',
+  'reset_password_description':
+      'Introdu adresa de email și îți vom trimite un link pentru resetarea parolei.',
   'send_reset_link': 'Trimite link de resetare',
   'back_to_login': 'Înapoi la autentificare',
   'password_reset_sent': 'Link de resetare trimis!',
@@ -1084,11 +1097,23 @@ const Map<String, String> _roStrings = {
   'use_different_account': 'Folosește alt cont',
   'complete_profile': 'Completează profilul',
   'complete_your_profile': 'Completează-ți profilul',
-  'complete_profile_description': 'Pentru a finaliza înregistrarea, te rugăm să completezi informațiile de mai jos.',
+  'complete_profile_description':
+      'Pentru a finaliza înregistrarea, te rugăm să completezi informațiile de mai jos.',
   'signed_in_with_google': 'Conectat cu Google',
+  'registration_approval_info':
+      'După înregistrare, contul tău va fi în așteptare până când un SuperAdmin sau BEX îl va aproba.',
   'signed_in_with_apple': 'Conectat cu Apple',
+  'terms_acceptance_required': 'Trebuie să accepți Termenii de utilizare.',
+  'terms_acceptance_label': 'Accept Termenii de utilizare ai aplicației.',
+  'report_failed': 'Raportarea nu a fost salvată. Încearcă din nou.',
+  'moderation_reports': 'Raportări de conținut',
+  'blocked_users': 'Utilizatori blocați',
+  'unblock_user': 'Deblochează',
+  'dismiss_report': 'Respinge raportarea',
+  'mark_reviewed': 'Marchează ca analizată',
   'terms_agreement_title': 'Termeni și Condiții',
-  'terms_agreement_body': 'Prin utilizarea aplicației CJE, ești de acord cu Termenii noștri de Utilizare. Aplicația nu tolerează conținut inadecvat sau comportament abuziv. Utilizatorii care încalcă regulile vor fi eliminați. Trebuie să ai cel puțin 13 ani pentru a utiliza această aplicație.',
+  'terms_agreement_body':
+      'Prin utilizarea aplicației CJE, ești de acord cu Termenii noștri de Utilizare. Aplicația nu tolerează conținut inadecvat sau comportament abuziv. Utilizatorii care încalcă regulile vor fi eliminați. Trebuie să ai cel puțin 13 ani pentru a utiliza această aplicație.',
   'accept_terms': 'Accept',
   'decline': 'Refuz',
   'view_full_terms': 'Vezi termenii completi',
@@ -1102,18 +1127,43 @@ const Map<String, String> _roStrings = {
   'report_spam': 'Spam',
   'report_other': 'Alt motiv',
   'report_title': 'Raportează',
-  'block_user_confirm': 'Ești sigur că vrei să blochezi acest utilizator? Nu vei mai vedea conținutul său.',
-  'registration_approval_info': 'După înregistrare, contul tău va fi în așteptare până când un SuperAdmin sau BEX îl va aproba.',
+  'block_user_confirm':
+      'Ești sigur că vrei să blochezi acest utilizator? Nu vei mai vedea conținutul său.',
   'complete_registration': 'Finalizează înregistrarea',
+  'age_group_label': 'Categoria de vârstă',
+  'age_16_or_over': 'Am împlinit 16 ani',
+  'age_under_16_with_authorization':
+      'Am 13–15 ani și autorizarea părintelui/tutorelui',
+  'age_group_required': 'Selectează categoria de vârstă',
+  'privacy_acknowledgement':
+      'Confirm că am citit Politica de confidențialitate și că informațiile furnizate sunt corecte.',
+  'privacy_acknowledgement_required':
+      'Confirmarea Politicii de confidențialitate este obligatorie',
+  'view_privacy_policy': 'Deschide Politica de confidențialitate',
+  'under_16_activation_notice':
+      'Contul rămâne în așteptare. Un administrator îl poate activa numai după ce verifică autorizarea părintelui sau tutorelui legal.',
+  'privacy_onboarding_title': 'Confidențialitate',
+  'privacy_onboarding_heading': 'Completează înainte de a continua',
+  'privacy_onboarding_description':
+      'Contul tău a fost creat de un administrator sau înainte de versiunea actuală a politicii. Confirmă personal informarea și categoria de vârstă. Nu solicităm data nașterii.',
+  'privacy_onboarding_continue': 'Salvează și continuă',
+  'verify_parental_authorization_title': 'Verificare autorizare părinte/tutore',
+  'verify_parental_authorization_message':
+      'Utilizatorul a declarat că are sub 16 ani. Aprobă contul numai dacă ai verificat efectiv autorizarea părintelui sau tutorelui legal. Confirmarea ta va fi înregistrată.',
+  'verify_and_approve': 'Am verificat — aprobă contul',
   'account_pending': 'Cont în așteptare',
-  'account_pending_description': 'Contul tău a fost creat și așteaptă aprobarea unui SuperAdmin sau BEX.',
-  'pending_approval_info': 'Vei primi o notificare când contul tău va fi aprobat. Acest proces poate dura câteva ore.',
+  'account_pending_description':
+      'Contul tău a fost creat și așteaptă aprobarea unui SuperAdmin sau BEX.',
+  'pending_approval_info':
+      'Vei primi o notificare când contul tău va fi aprobat. Acest proces poate dura câteva ore.',
   'check_status': 'Verifică statusul',
   'status_pending': 'În așteptare',
   'account_suspended': 'Cont suspendat',
-  'account_suspended_description': 'Contul tău a fost suspendat. Contactează un administrator pentru mai multe informații.',
+  'account_suspended_description':
+      'Contul tău a fost suspendat. Contactează un administrator pentru mai multe informații.',
   'status_suspended': 'Suspendat',
-  'contact_admin_for_help': 'Dacă crezi că aceasta este o eroare, contactează administratorul școlii tale.',
+  'contact_admin_for_help':
+      'Dacă crezi că aceasta este o eroare, contactează administratorul școlii tale.',
   'personal_info': 'Informații personale',
   'account': 'Cont',
   'member_since': 'Membru din',
@@ -1134,7 +1184,8 @@ const Map<String, String> _roStrings = {
   'content': 'Conținut',
   'attachments': 'Atașamente',
   'delete_announcement': 'Șterge anunțul',
-  'delete_announcement_confirm': 'Ești sigur că vrei să ștergi acest anunț? Această acțiune nu poate fi anulată.',
+  'delete_announcement_confirm':
+      'Ești sigur că vrei să ștergi acest anunț? Această acțiune nu poate fi anulată.',
   'announcement_deleted': 'Anunț șters',
   'announcement_title_hint': 'Introdu titlul anunțului',
   'announcement_content_hint': 'Scrie conținutul anunțului aici...',
@@ -1182,7 +1233,8 @@ const Map<String, String> _roStrings = {
   'impact': 'Impact',
   'status': 'Status',
   'delete_initiative': 'Șterge inițiativa',
-  'delete_initiative_confirm': 'Ești sigur că vrei să ștergi această inițiativă?',
+  'delete_initiative_confirm':
+      'Ești sigur că vrei să ștergi această inițiativă?',
   'initiative_deleted': 'Inițiativă ștearsă',
   'initiative_title_hint': 'Introdu titlul inițiativei',
   'initiative_description_hint': 'Descrie inițiativa ta...',
@@ -1205,7 +1257,8 @@ const Map<String, String> _roStrings = {
   'account_information': 'Informații cont',
   'profile_updated': 'Profil actualizat cu succes',
   'error_updating_profile': 'Eroare la actualizarea profilului',
-  'delete_account_warning': 'Această acțiune este permanentă și nu poate fi anulată. Toate datele tale vor fi șterse.',
+  'delete_account_warning':
+      'Această acțiune este permanentă și nu poate fi anulată. Toate datele tale vor fi șterse.',
   'choose_photo': 'Alege fotografia',
   'camera': 'Cameră',
   'gallery': 'Galerie',
@@ -1253,8 +1306,10 @@ const Map<String, String> _roStrings = {
   'reactivate_user': 'Reactivează utilizator',
   'delete_user_permanently': 'Șterge permanent utilizator',
   'delete_user_title': 'Șterge utilizator',
-  'delete_user_warning': 'Această acțiune este PERMANENTĂ și nu poate fi anulată!',
-  'delete_user_confirmation': 'Ești sigur că vrei să ștergi permanent acest utilizator?',
+  'delete_user_warning':
+      'Această acțiune este PERMANENTĂ și nu poate fi anulată!',
+  'delete_user_confirmation':
+      'Ești sigur că vrei să ștergi permanent acest utilizator?',
   'delete_permanently': 'Șterge permanent',
   'user_deleted_successfully': 'Utilizator șters cu succes',
   'error_deleting_user': 'Eroare la ștergerea utilizatorului',
@@ -1268,11 +1323,14 @@ const Map<String, String> _roStrings = {
   'reject_user_confirm': 'Ești sigur că vrei să respingi pe',
   'error_changing_role': 'Eroare la schimbarea rolului',
   'select_department': 'Selectează departamentul',
-  'select_department_description': 'Alege departamentul pentru acest utilizator',
+  'select_department_description':
+      'Alege departamentul pentru acest utilizator',
   'confirm_role_change': 'Confirmă schimbarea rolului',
-  'confirm_role_change_desc': 'Ești sigur că vrei să schimbi rolul acestui utilizator în',
+  'confirm_role_change_desc':
+      'Ești sigur că vrei să schimbi rolul acestui utilizator în',
   'confirm_suspend': 'Confirmă suspendarea',
-  'confirm_suspend_desc': 'Ești sigur că vrei să suspendezi acest utilizator? Nu va mai putea accesa aplicația.',
+  'confirm_suspend_desc':
+      'Ești sigur că vrei să suspendezi acest utilizator? Nu va mai putea accesa aplicația.',
   'account_info': 'Informații cont',
   'joined': 'Înregistrat',
   'last_active': 'Ultima activitate',
@@ -1281,22 +1339,27 @@ const Map<String, String> _roStrings = {
   'suspend_user_warning': 'Utilizatorul nu va mai putea accesa aplicația.',
   'error_reactivating_user': 'Eroare la reactivarea utilizatorului',
   'change_role_to': 'Schimbă rolul în',
-  'superadmin_role_protected': 'Rolul Superadmin este protejat și nu poate fi modificat',
+  'superadmin_role_protected':
+      'Rolul Superadmin este protejat și nu poate fi modificat',
   'bex_role_protected': 'Rolul BEX poate fi modificat doar de Superadmin',
 
   // Admin Setup
   'admin_setup': 'Configurare Admin',
-  'admin_setup_warning': 'Acest ecran este doar pentru configurarea inițială. Super Admin are control total asupra aplicației.',
+  'admin_setup_warning':
+      'Acest ecran este doar pentru configurarea inițială. Super Admin are control total asupra aplicației.',
   'current_super_admins': 'Super Admini Actuali',
   'add_super_admin': 'Adaugă Super Admin',
-  'add_super_admin_desc': 'Introdu emailul unui utilizator înregistrat pentru a-l face Super Admin.',
+  'add_super_admin_desc':
+      'Introdu emailul unui utilizator înregistrat pentru a-l face Super Admin.',
   'user_email': 'Email utilizator',
   'admin_email_hint': 'admin@example.com',
   'please_enter_email': 'Te rugăm să introduci un email',
   'please_enter_valid_email': 'Te rugăm să introduci un email valid',
   'set_as_super_admin': 'Setează ca Super Admin',
-  'super_admin_set_success': 'Super Admin setat cu succes! Utilizatorul poate acum gestiona întreaga aplicație.',
-  'super_admin_set_failed': 'Setarea Super Admin a eșuat. Asigură-te că emailul este înregistrat în aplicație.',
+  'super_admin_set_success':
+      'Super Admin setat cu succes! Utilizatorul poate acum gestiona întreaga aplicație.',
+  'super_admin_set_failed':
+      'Setarea Super Admin a eșuat. Asigură-te că emailul este înregistrat în aplicație.',
   'super_admin_capabilities': 'Capacități Super Admin',
   'cap_view_manage_users': 'Vizualizează și gestionează toți utilizatorii',
   'cap_approve_users': 'Aprobă sau suspendă orice utilizator',
@@ -1307,7 +1370,8 @@ const Map<String, String> _roStrings = {
 
   // Admin Dashboard
   'all_counties': 'Toate județele',
-  'select_county_first': 'Selectează un județ din meniul principal pentru a vedea școlile',
+  'select_county_first':
+      'Selectează un județ din meniul principal pentru a vedea școlile',
   'statistics': 'Statistici',
   'total_users': 'Total utilizatori',
 
@@ -1326,7 +1390,8 @@ const Map<String, String> _roStrings = {
   'user_added_successfully': 'Utilizator adăugat cu succes',
   'error_creating_user': 'Eroare la crearea utilizatorului',
   'error_saving_profile': 'Eroare la salvarea profilului. Încearcă din nou.',
-  'user_password_info': 'Utilizatorul va trebui să folosească "Am uitat parola" pentru a-și seta parola la prima autentificare.',
+  'user_password_info':
+      'Se creeaza un cont complet, iar contul asteapta aprobarea ta. Spune-i utilizatorului sa deschida aplicatia, sa apese "Am uitat parola" si sa introduca acest email: va primi de la Firebase un link de setare a parolei. Dupa ce isi seteaza parola si il aprobi, se poate autentifica.',
   'bex_county_restriction': 'Poți adăuga utilizatori doar în județul tău',
   'announce': 'Anunț',
   'pending_approvals': 'În așteptare',
@@ -1351,7 +1416,8 @@ const Map<String, String> _roStrings = {
   'error_saving_school': 'Eroare la salvarea școlii',
   'error_updating_school': 'Eroare la actualizarea școlii',
   'error_deleting_school': 'Eroare la ștergerea școlii',
-  'delete_school_warning': 'Ești sigur că vrei să ștergi această școală? Acest lucru va afecta toți elevii asociați.',
+  'delete_school_warning':
+      'Ești sigur că vrei să ștergi această școală? Acest lucru va afecta toți elevii asociați.',
 
   // Polls Creation
   'poll_type': 'Tip Sondaj',
@@ -1362,11 +1428,13 @@ const Map<String, String> _roStrings = {
   'enter_description': 'Introdu o descriere',
   'option': 'Opțiune',
   'anonymous_voting': 'Vot Anonim',
-  'anonymous_voting_desc': 'Identitățile votanților vor fi ascunse',
+  'anonymous_voting_desc':
+      'Opțiunile individuale sunt confidențiale; participarea poate fi vizibilă',
   'allow_multiple_votes': 'Permite Voturi Multiple',
   'allow_multiple_votes_desc': 'Utilizatorii pot vota pentru mai multe opțiuni',
   'voting_period': 'Perioada de Votare',
-  'end_date_before_start': 'Data de sfârșit trebuie să fie după data de început',
+  'end_date_before_start':
+      'Data de sfârșit trebuie să fie după data de început',
   'poll_created': 'Sondajul a fost creat',
   'error_creating_poll': 'Eroare la crearea sondajului',
   'continue': 'Continuă',
@@ -1378,13 +1446,16 @@ const Map<String, String> _roStrings = {
   'tags': 'Etichete',
   'add_tag': 'Adaugă o etichetă',
   'public_document': 'Document Public',
-  'public_document_desc': 'Acest document va fi vizibil pentru toți utilizatorii',
+  'public_document_desc':
+      'Acest document va fi vizibil pentru toți utilizatorii',
   'minimum_role_required': 'Rol minim necesar',
   'select_minimum_role': 'Selectează rolul minim',
-  'minimum_role_hint': 'Utilizatorii cu acest rol sau superior pot vizualiza documentul',
+  'minimum_role_hint':
+      'Utilizatorii cu acest rol sau superior pot vizualiza documentul',
   'school_document': 'Document Școlar',
   'school_document_desc': 'Acest document aparține școlii tale',
-  'school_document_required': 'Ca reprezentant de școală, documentele tale sunt asociate școlii',
+  'school_document_required':
+      'Ca reprezentant de școală, documentele tale sunt asociate școlii',
   'department_document': 'Document Departamental',
   'will_be_added_to': 'Va fi adăugat la',
   'document_title_hint': 'Introdu titlul documentului',
@@ -1394,7 +1465,8 @@ const Map<String, String> _roStrings = {
 
   // Initiatives Creation
   'basic_information': 'Informații de Bază',
-  'basic_info_desc': 'Începe prin adăugarea informațiilor de bază despre inițiativa ta',
+  'basic_info_desc':
+      'Începe prin adăugarea informațiilor de bază despre inițiativa ta',
   'tags_desc': 'Adaugă până la 5 etichete pentru a-ți categorisi inițiativa',
   'detailed_proposal': 'Propunere Detaliată',
   'detailed_proposal_desc': 'Oferă mai multe detalii despre inițiativa ta',
@@ -1403,19 +1475,23 @@ const Map<String, String> _roStrings = {
   'expected_impact': 'Impactul Așteptat',
   'comments_support': 'Comentarii și Susținere',
   'no_impact': 'Niciun impact definit',
-  'no_impact_description': 'Această inițiativă nu are încă un impact așteptat definit.',
+  'no_impact_description':
+      'Această inițiativă nu are încă un impact așteptat definit.',
   'review_submit': 'Revizuire și Trimitere',
   'review_submit_desc': 'Revizuiește inițiativa înainte de trimitere',
   'untitled': 'Fără titlu',
   'no_description': 'Nicio descriere oferită',
   'proposal_details': 'Detalii Propunere',
-  'initiative_review_info': 'Inițiativa ta va fi revizuită de consiliul elevilor înainte de a fi publicată.',
-  'description_too_short': 'Descrierea trebuie să aibă cel puțin 50 de caractere',
+  'initiative_review_info':
+      'Inițiativa ta va fi revizuită de consiliul elevilor înainte de a fi publicată.',
+  'description_too_short':
+      'Descrierea trebuie să aibă cel puțin 50 de caractere',
   'error_submitting_initiative': 'Eroare la trimiterea inițiativei',
 
   // User Detail
   'delete_user': 'Șterge Utilizator',
-  'delete_user_confirm': 'Ești sigur că vrei să ștergi acest utilizator? Această acțiune nu poate fi anulată.',
+  'delete_user_confirm':
+      'Ești sigur că vrei să ștergi acest utilizator? Această acțiune nu poate fi anulată.',
   'user_deleted': 'Utilizatorul a fost șters',
   'users': 'Utilizatori',
 
@@ -1426,7 +1502,8 @@ const Map<String, String> _roStrings = {
   'issue_warning': 'Emite Mustrare',
   'warning_type': 'Tip Mustrare',
   'deactivate_warning': 'Dezactivează Mustrare',
-  'deactivate_warning_confirm': 'Ești sigur că vrei să dezactivezi această mustrare?',
+  'deactivate_warning_confirm':
+      'Ești sigur că vrei să dezactivezi această mustrare?',
   'warning_deactivated': 'Mustrare dezactivată',
   'error_deactivating_warning': 'Eroare la dezactivarea mustrării',
   'mark_excused': 'Marchează Motivat',
@@ -1553,7 +1630,8 @@ const Map<String, String> _roStrings = {
   'error_details': 'Detalii Erori',
 
   // Share App
-  'share_app_message': 'Descoperă aplicația CJE - Consiliul Județean al Elevilor! Conectează-te cu comunitatea ta școlară și implică-te în activitățile consiliului. 🎓📱',
+  'share_app_message':
+      'Descoperă aplicația CJE - Consiliul Județean al Elevilor! Conectează-te cu comunitatea ta școlară și implică-te în activitățile consiliului. 🎓📱',
 
   // User Detail Screen
   'select_new_role': 'Selectează un nou rol',
@@ -1561,9 +1639,11 @@ const Map<String, String> _roStrings = {
   'user_information': 'Informații Utilizator',
   'user_not_found': 'Utilizator negăsit',
   'confirm_remove_warning': 'Confirmă ștergerea mustrării',
-  'remove_warning_message': 'Ești sigur că vrei să ștergi această mustrare? Această acțiune nu poate fi anulată.',
+  'remove_warning_message':
+      'Ești sigur că vrei să ștergi această mustrare? Această acțiune nu poate fi anulată.',
   'confirm_remove_absence': 'Confirmă ștergerea absenței',
-  'remove_absence_message': 'Ești sigur că vrei să ștergi această absență? Această acțiune nu poate fi anulată.',
+  'remove_absence_message':
+      'Ești sigur că vrei să ștergi această absență? Această acțiune nu poate fi anulată.',
   'warning_reason_hint': 'Introdu motivul mustrării...',
   'resolution_note_hint': 'Notă opțională de rezolvare...',
   'excuse_reason_hint': 'Introdu motivul pentru absență...',
@@ -1584,7 +1664,8 @@ const Map<String, String> _roStrings = {
 
   // Search Screen
   'search_title': 'Caută',
-  'search_description': 'Caută comunicări, ședințe, inițiative, sondaje și documente',
+  'search_description':
+      'Caută comunicări, ședințe, inițiative, sondaje și documente',
   'search_placeholder': 'Caută...',
   'search_min_length': 'Introdu cel puțin 2 caractere',
   'no_results': 'Niciun rezultat',
@@ -1598,7 +1679,8 @@ const Map<String, String> _roStrings = {
   'all_marked_read': 'Toate notificările au fost marcate ca citite',
   'error_marking_read': 'Eroare la marcarea notificărilor',
   'clear_all_notifications': 'Șterge toate notificările',
-  'clear_all_notifications_desc': 'Ești sigur că vrei să ștergi toate notificările? Această acțiune nu poate fi anulată.',
+  'clear_all_notifications_desc':
+      'Ești sigur că vrei să ștergi toate notificările? Această acțiune nu poate fi anulată.',
   'notifications_cleared': 'Notificările au fost șterse',
   'error_clearing_notifications': 'Eroare la ștergerea notificărilor',
 
@@ -1610,7 +1692,8 @@ const Map<String, String> _roStrings = {
   'password_min_length': 'Parola trebuie să aibă cel puțin 6 caractere',
   'passwords_not_match': 'Parolele nu se potrivesc',
   'password_changed_success': 'Parola a fost schimbată cu succes',
-  'google_password_message': 'Te-ai autentificat cu Google. Pentru a schimba parola, accesează setările contului tău Google.',
+  'google_password_message':
+      'Te-ai autentificat cu Google. Pentru a schimba parola, accesează setările contului tău Google.',
 
   // Help & Support (new keys only)
   'help_support': 'Ajutor & Suport',
@@ -1621,40 +1704,67 @@ const Map<String, String> _roStrings = {
   'website': 'Site web',
   'faq': 'Întrebări frecvente',
   'faq_q1': 'Cum pot să-mi schimb parola?',
-  'faq_a1': 'Mergi la Profil > Confidențialitate & Securitate > Schimbă parola. Introdu parola curentă și noua parolă pentru a face modificarea.',
+  'faq_a1':
+      'Mergi la Profil > Confidențialitate & Securitate > Schimbă parola. Introdu parola curentă și noua parolă pentru a face modificarea.',
   'faq_q2': 'Cum pot participa la sondaje?',
-  'faq_a2': 'Deschide secțiunea Sondaje din meniul principal. Selectează un sondaj activ și votează pentru opțiunea preferată.',
+  'faq_a2':
+      'Deschide secțiunea Sondaje din meniul principal. Selectează un sondaj activ și votează pentru opțiunea preferată.',
   'faq_q3': 'Cum propun o inițiativă?',
-  'faq_a3': 'Mergi la secțiunea Inițiative și apasă butonul + pentru a crea o nouă inițiativă. Completează detaliile și trimite pentru aprobare.',
+  'faq_a3':
+      'Mergi la secțiunea Inițiative și apasă butonul + pentru a crea o nouă inițiativă. Completează detaliile și trimite pentru aprobare.',
   'faq_q4': 'Cine poate vedea datele mele?',
-  'faq_a4': 'Datele tale personale sunt vizibile doar pentru administratorii CJE și reprezentanții școlii tale. Nu partajăm date cu terți.',
+  'faq_a4':
+      'Accesul depinde de rol și județ. Profilurile și activitatea pot fi vizibile colegilor autorizați și administratorilor, iar furnizorii tehnici prelucrează date pentru funcționarea aplicației. Consultă Politica de confidențialitate pentru detalii.',
   'faq_q5': 'Cum contactez suportul tehnic?',
-  'faq_a5': 'Poți să ne trimiți un email la support@cje.ro sau să ne suni la numărul afișat în secțiunea Contactează-ne.',
+  'faq_a5':
+      'Pentru aplicație, moderare și confidențialitate: app.consiliulelevilor@gmail.com. Pentru probleme organizaționale, folosește contactele județului din secțiunea Contactează-ne.',
 
   // Legal - Terms of Service
-  'last_updated': 'Ultima actualizare: Decembrie 2024',
+  'last_updated': 'Ultima actualizare: 30 septembrie 2026',
   'terms_section_1_title': '1. Acceptarea Termenilor',
-  'terms_section_1_content': 'Prin accesarea și utilizarea aplicației Consiliul Județean al Elevilor (CJE), acceptați să fiți obligat de acești Termeni și Condiții. Dacă nu sunteți de acord cu acești termeni, vă rugăm să nu utilizați aplicația.',
+  'terms_section_1_content':
+      'Prin accesarea și utilizarea aplicației Consiliul Județean al Elevilor (CJE), acceptați să fiți obligat de acești Termeni și Condiții. Dacă nu sunteți de acord cu acești termeni, vă rugăm să nu utilizați aplicația.',
   'terms_section_2_title': '2. Utilizarea Aplicației',
-  'terms_section_2_content': 'Aplicația CJE este destinată elevilor, reprezentanților școlari și administratorilor din cadrul consiliilor județene ale elevilor. Utilizatorii trebuie să furnizeze informații corecte la înregistrare și să mențină confidențialitatea contului lor.',
+  'terms_section_2_content':
+      'Aplicația CJE este destinată elevilor de cel puțin 13 ani, reprezentanților școlari și administratorilor din cadrul consiliilor județene ale elevilor. Aceasta este o limită a serviciului, nu un prag universal RGPD. Pentru minori se aplică separat regulile legale de reprezentare și încuviințare a contractelor; împlinirea vârstei de 16 ani nu le înlocuiește. Folosirea operațională într-un județ necesită activarea juridică documentată a parteneriatului și informarea locală. Utilizatorii trebuie să furnizeze informații corecte și să protejeze accesul la cont.',
   'terms_section_3_title': '3. Conduita Utilizatorului',
-  'terms_section_3_content': 'Utilizatorii se angajează să folosească aplicația în mod responsabil, să respecte drepturile celorlalți utilizatori și să nu distribuie conținut ofensator, ilegal sau dăunător. Încălcarea acestor reguli poate duce la suspendarea contului.',
+  'terms_section_3_content':
+      'Utilizatorii se angajează să folosească aplicația în mod responsabil, să respecte drepturile celorlalți utilizatori și să nu distribuie conținut ofensator, ilegal sau dăunător. Încălcarea acestor reguli poate duce la suspendarea contului.',
   'terms_section_4_title': '4. Proprietate Intelectuală',
-  'terms_section_4_content': 'Tot conținutul aplicației, inclusiv design-ul, textele și funcționalitățile, este proprietatea CJE. Utilizatorii nu au dreptul să copieze, modifice sau distribuie conținutul fără acordul prealabil.',
+  'terms_section_4_content':
+      'Drepturile asupra codului, designului și conținutului aparțin titularilor lor respectivi. Încărcând conținut, confirmi că ai dreptul să îl distribui și permiți prelucrarea lui numai pentru funcționarea serviciului și moderare. Acest lucru nu transferă automat proprietatea asupra conținutului către un consiliu.',
   'terms_section_5_title': '5. Limitarea Răspunderii',
-  'terms_section_5_content': 'CJE nu își asumă răspunderea pentru eventualele pierderi sau daune rezultate din utilizarea aplicației. Serviciul este oferit "așa cum este" fără garanții de niciun fel.',
+  'terms_section_5_content':
+      'În măsura maximă permisă de lege, aplicația este furnizată fără garanția funcționării neîntrerupte sau lipsite de erori. CJE și operatorul răspund potrivit legii și acordurilor aplicabile. Nicio prevedere din acești Termeni nu exclude sau limitează o răspundere care nu poate fi exclusă ori limitată prin lege.',
 
   // Legal - Privacy Policy
-  'privacy_section_1_title': '1. Colectarea Datelor',
-  'privacy_section_1_content': 'Colectăm date personale precum: nume, adresă de email, școală, clasă și rol în consiliu. Aceste informații sunt necesare pentru funcționarea corectă a aplicației și pentru identificarea utilizatorilor.',
-  'privacy_section_2_title': '2. Utilizarea Datelor',
-  'privacy_section_2_content': 'Datele colectate sunt folosite pentru: autentificare, comunicare între membri, gestionarea activităților consiliului și îmbunătățirea serviciilor. Nu vindem și nu partajăm datele cu terți pentru scopuri comerciale.',
-  'privacy_section_3_title': '3. Stocarea și Securitatea',
-  'privacy_section_3_content': 'Datele sunt stocate securizat folosind serviciile Firebase (Google). Implementăm măsuri tehnice și organizatorice pentru a proteja informațiile împotriva accesului neautorizat.',
-  'privacy_section_4_title': '4. Drepturile Utilizatorilor',
-  'privacy_section_4_content': 'Aveți dreptul să: accesați datele dvs., să solicitați corectarea sau ștergerea lor, să vă opuneți procesării și să solicitați portabilitatea datelor. Contactați-ne pentru exercitarea acestor drepturi.',
-  'privacy_section_5_title': '5. Contact',
-  'privacy_section_5_content': 'Pentru întrebări legate de politica de confidențialitate sau pentru exercitarea drepturilor GDPR, ne puteți contacta la adresa de email: privacy@cje.ro',
+  'privacy_section_1_title': '1. Operatorul de date',
+  'privacy_section_1_content':
+      'În configurația actuală, Gavrilă Andrei-Zian, furnizorul aplicației CJE – Consiliul Elevilor, este operator pentru propriile scopuri de furnizare și administrare a platformei, inclusiv securitate. Contact: app.consiliulelevilor@gmail.com. Într-un județ activat, instituția parteneră care stabilește efectiv scopurile și mijloacele activităților locale poate fi operator separat sau asociat pentru acele operațiuni. Denumirea, contactele, temeiurile și responsabilitățile sale se comunică într-o informare locală înaintea folosirii operaționale. Semnarea unui acord nu transferă automat toate obligațiile Furnizorului și nu îl face pe președintele CJE garant personal. Calitatea de operator urmează activitatea reală, nu doar numele din acord sau din magazine.',
+  'privacy_section_2_title': '2. Ce date colectam',
+  'privacy_section_2_content':
+      'Date de cont și afiliere: nume afișat, e-mail (inclusiv adresă de relay Apple, dacă alegi), telefon opțional, județ, școală, clasă, rol, starea contului și fotografie opțională. Nu solicităm data nașterii: înregistrăm doar categoria sub/peste 16 ani, versiunile și momentele confirmării politicii și acceptării termenilor, declarația de autorizare parentală și data/administratorul verificării, dacă este necesar.\n\nActivitate în consiliu: prezență, avertismente și absențe împreună cu motivele lor. Nu introduceți informații medicale sau alte date sensibile în motive ori comentarii.\n\nConținut: anunțuri, inițiative, comentarii, voturi, sondaje, documente și fișiere încărcate. Moderare: identificatori de conținut și utilizator, motivul și momentul raportării, județ, starea soluționării și lista utilizatorilor blocați.\n\nDate tehnice: identificatorul contului, token push, limba, momentele autentificării și date de securitate Firebase precum IP și jurnale. ML Kit colectează metrici tehnice de diagnostic și utilizare, inclusiv versiuni de dispozitiv/sistem/aplicație, latență, erori, evenimente, limbile configurate și identificator de instalare. Nu colectăm GPS, contacte sau date de plată și nu folosim publicitate ori analiză comportamentală.',
+  'privacy_section_3_title': '3. De ce si pe ce temei le folosim',
+  'privacy_section_3_content':
+      'Pentru cont și funcțiile solicitate folosim art. 6 alin. (1) lit. b RGPD numai în măsura în care prelucrarea este obiectiv necesară unui contract valabil cu utilizatorul; acordul cu o instituție nu dovedește singur acest temei pentru elevi. Pentru administrarea sigură a serviciului și prevenirea abuzurilor folosim interesul legitim (lit. f), cu evaluarea necesității și a drepturilor utilizatorilor, în special ale copiilor. Pentru elementele opționale care necesită consimțământ folosim lit. a, iar pentru îndeplinirea unei obligații legale concret aplicabile folosim lit. c. Confirmarea citirii politicii și acceptarea termenilor nu sunt automat consimțământ RGPD.\n\nTemeiurile activităților locale, precum evidențele de prezență, avertismentele și voturile, trebuie documentate și comunicate înaintea activării județului. Art. 6 alin. (1) lit. e poate fi folosit numai pentru o sarcină de interes public ori autoritate oficială întemeiată concret în lege, nu doar pentru că aplicația are scop educațional. Până la validarea temeiurilor, a condițiilor pentru minori și a informării locale, parteneriatul rămâne pregătitor: nu se invită, importă sau activează elevi pentru folosire operațională. Nu vindem datele, nu le folosim pentru publicitate și nu luăm decizii exclusiv automatizate cu efect juridic.',
+  'privacy_section_4_title': '4. Unde sunt stocate',
+  'privacy_section_4_content':
+      'Folosim serviciile Google Firebase: Authentication, Cloud Firestore, Cloud Storage, Cloud Functions și Cloud Messaging, precum și ML Kit pentru traducere. Google acționează, în general, ca persoană împuternicită pentru datele de client Firebase. Textul și rezultatul traducerii sunt procesate pe dispozitiv și nu sunt trimise la Google de ML Kit; Google primește însă metricile tehnice descrise mai sus și poate descărca pe dispozitiv modelele de limbă. Pentru aceste metrici, Google prelucrează datele potrivit termenilor ML Kit și propriei politici de confidențialitate. Baza Firestore este configurată în regiunea multi-regională nam5 din Statele Unite, Firebase Authentication funcționează în centre de date din SUA, iar alte servicii pot prelucra date global. Se folosesc mecanismele de transfer aplicabile ale Google, inclusiv clauze contractuale standard, după caz; ele necesită evaluarea aplicabilității și a măsurilor suplimentare pentru utilizarea concretă, nu garantează singure conformitatea.\n\nAccesul în aplicație este limitat după rol și județ; superadministratorul tehnic poate avea acces pentru administrare și securitate. Unele linkuri permanente de descărcare pot permite acces fără autentificare persoanei care deține linkul. Nu redistribui linkurile și nu încărca documente cu date personale confidențiale ale elevilor prin acest mecanism până la remedierea riscului ori o evaluare documentată care justifică folosirea concretă. Acceptarea unui risc nu înlocuiește obligațiile de securitate ale operatorului.',
+  'privacy_section_5_title': '5. Cat timp le pastram',
+  'privacy_section_5_content':
+      'Profilul, confirmările și lista de blocări: până la ștergerea contului sau încetarea necesității lui. Notificări: în mod normal 30 de zile.\n\nAnunțuri, sondaje și inițiative, cu comentariile și voturile: în mod normal 90 de zile de la creare. Ședințe fără prezență: cel puțin 90 de zile după data ședinței. Ședințe cu prezență: până la următorul 1 septembrie după ședință și cel puțin 90 de zile după aceasta; nu sunt șterse cât sunt viitoare.\n\nAvertismente și absențe: până la următorul 1 septembrie. Raportări: cât timp sunt nesoluționate, cu revizuire periodică; cele soluționate sunt șterse în mod normal după 90 de zile.\n\nDocumente: până la retragerea de către un administrator autorizat sau încetarea scopului/parteneriatului. Curățarea se efectuează programat, nu exact la secundă. Copiile de siguranță și jurnalele pot rămâne temporar conform ciclurilor furnizorului sau unei obligații legale.',
+  'privacy_section_6_title': '6. Drepturile tale',
+  'privacy_section_6_content':
+      'Poți cere accesul, rectificarea, ștergerea, restricționarea, portabilitatea datelor și te poți opune prelucrării, în condițiile RGPD. Îți poți retrage consimțământul fără a afecta prelucrarea anterioară. Scrie la app.consiliulelevilor@gmail.com; răspundem, de regulă, în cel mult o lună. Poți depune o plângere la Autoritatea Națională de Supraveghere a Prelucrării Datelor cu Caracter Personal (ANSPDCP).',
+  'privacy_section_7_title': '7. Ce se intampla cand iti stergi contul',
+  'privacy_section_7_content':
+      'Poți iniția ștergerea din Profil → Confidențialitate și securitate → Șterge contul sau prin e-mail. Se elimină autentificarea, profilul, fotografia, tokenul de notificări, notificările, comentariile, voturile și datele disciplinare asociate. În conținutul organizațional păstrat temporar, identificatorul și numele autorului sunt înlocuite cu „Utilizator șters”, iar fotografia autorului este eliminată. Aceasta nu garantează că textul sau documentele încărcate nu conțin alte date personale: acestea se verifică și se șterg sau se redactează la cerere, când păstrarea nu are un temei aplicabil. Conținutul rămas expiră potrivit perioadelor de păstrare de mai sus. O ștergere întreruptă este reluată automat; dacă există o obligație legală de păstrare, vei fi informat.',
+  'privacy_section_8_title': '8. Utilizatori sub 16 ani',
+  'privacy_section_8_content':
+      'Aplicația este destinată și elevilor minori. Atunci când art. 8 RGPD este aplicabil unei prelucrări bazate pe consimțământ și utilizatorul are sub 16 ani, consimțământul trebuie acordat sau autorizat de părintele ori tutorele legal și verificat înainte de activarea contului. Declarația elevului ori o casetă bifată nu sunt singure dovadă suficientă. Instituția parteneră verifică autorizarea prin procedura documentată, iar aplicația păstrează starea, momentul și administratorul verificării, fără copii de acte. Pentru minorii de 13–17 ani se verifică separat reprezentarea sau încuviințarea necesară unui contract valabil, când acesta este temeiul folosit. Un părinte ori tutore poate solicita exercitarea drepturilor copilului la adresa de contact; calitatea și întinderea reprezentării se verifică proporțional potrivit legii.',
+  'privacy_section_9_title': '9. Contact',
+  'privacy_section_9_content':
+      'Pentru întrebări, incidente de securitate sau exercitarea drepturilor, scrie la app.consiliulelevilor@gmail.com. Nu trimite parole, copii de acte sau alte date care nu sunt necesare solicitării.',
 
   // Greetings
   'good_morning': 'Bună dimineața',
@@ -1671,7 +1781,8 @@ const Map<String, String> _roStrings = {
 
   // Cancel Registration Dialog
   'cancel_registration': 'Anulezi înregistrarea?',
-  'cancel_registration_message': 'Dacă anulezi, vei fi deconectat și va trebui să te înregistrezi din nou.',
+  'cancel_registration_message':
+      'Dacă anulezi, vei fi deconectat și va trebui să te înregistrezi din nou.',
   'yes_cancel': 'Da, anulează',
 
   // Login Screen
@@ -1712,7 +1823,8 @@ const Map<String, String> _roStrings = {
   'analytics_subtitle': 'Statistici și rapoarte',
   'county_settings': 'Setări Județ',
   'county_settings_subtitle': 'Contact și rețele sociale',
-  'county_settings_description': 'Editează informațiile de contact pentru Help & Support',
+  'county_settings_description':
+      'Editează informațiile de contact pentru Help & Support',
   'settings_info': 'Modificările vor fi vizibile în secțiunea Help & Support',
   'select_county': 'Selectează Județul',
   'contact_info': 'Informații de Contact',
@@ -1726,7 +1838,8 @@ const Map<String, String> _roStrings = {
   'show_active_polls_only': 'Afișează doar sondajele active',
 
   // Edit Initiative
-  'edit_initiative_info': 'Actualizează detaliile inițiativei tale. Modificările vor fi salvate imediat.',
+  'edit_initiative_info':
+      'Actualizează detaliile inițiativei tale. Modificările vor fi salvate imediat.',
   'update_initiative': 'Actualizează Inițiativa',
   'initiative_updated': 'Inițiativa a fost actualizată cu succes',
   'error_updating_initiative': 'Eroare la actualizarea inițiativei',
@@ -1743,10 +1856,12 @@ const Map<String, String> _roStrings = {
   'error_picking_files': 'Eroare la selectarea fișierelor',
   'user_rejected': 'Utilizator respins',
   'error_rejecting_user': 'Eroare la respingerea utilizatorului',
-  'initiative_submitted_for_review': 'Inițiativa a fost trimisă pentru verificare',
+  'initiative_submitted_for_review':
+      'Inițiativa a fost trimisă pentru verificare',
   'action_failed': 'Acțiunea a eșuat',
   'failed': 'Eșuat',
-  'contact_support_delete_account': 'Vă rugăm contactați suportul pentru a vă șterge contul',
+  'contact_support_delete_account':
+      'Vă rugăm contactați suportul pentru a vă șterge contul',
   'error_importing': 'Eroare la import',
   'cannot_open_document': 'Nu se poate deschide documentul',
   'cannot_open_link': 'Nu se poate deschide linkul',
@@ -1755,7 +1870,8 @@ const Map<String, String> _roStrings = {
   // Visibility Settings
   'visibility': 'Vizibilitate',
   'visible_to_all': 'Vizibil pentru toți',
-  'visibility_hint': 'Restricționați cine poate vedea acest conținut în funcție de rol.',
+  'visibility_hint':
+      'Restricționați cine poate vedea acest conținut în funcție de rol.',
   'visibility_level': 'Nivel de Vizibilitate',
   'who_can_see_initiative': 'Alege cine poate vedea această inițiativă',
   'everyone_can_see': 'Toată lumea poate vedea această inițiativă',
@@ -1773,13 +1889,18 @@ const Map<String, String> _roStrings = {
   'auth_error_wrong_password': 'Parola este incorectă.',
   'auth_error_invalid_email': 'Adresa de email nu este validă.',
   'auth_error_user_disabled': 'Acest cont a fost dezactivat.',
-  'auth_error_email_already_in_use': 'Există deja un cont cu această adresă de email.',
-  'auth_error_weak_password': 'Parola este prea slabă. Folosește cel puțin 6 caractere.',
+  'auth_error_email_already_in_use':
+      'Există deja un cont cu această adresă de email.',
+  'auth_error_weak_password':
+      'Parola este prea slabă. Folosește cel puțin 6 caractere.',
   'auth_error_operation_not_allowed': 'Această operațiune nu este permisă.',
-  'auth_error_too_many_requests': 'Prea multe încercări. Încearcă din nou mai târziu.',
-  'auth_error_network_request_failed': 'Eroare de conexiune. Verifică internetul.',
+  'auth_error_too_many_requests':
+      'Prea multe încercări. Încearcă din nou mai târziu.',
+  'auth_error_network_request_failed':
+      'Eroare de conexiune. Verifică internetul.',
   'auth_error_invalid_credential': 'Email sau parolă incorectă.',
-  'auth_error_requires_recent_login': 'Te rugăm să te autentifici din nou pentru această operațiune.',
+  'auth_error_requires_recent_login':
+      'Te rugăm să te autentifici din nou pentru această operațiune.',
   'auth_error_default': 'A apărut o eroare. Încearcă din nou.',
 
   // Not Found Messages
@@ -1794,16 +1915,20 @@ const Map<String, String> _roStrings = {
   'you_have_voted': 'Ai votat deja',
   'vote_recorded': 'Votul tău a fost înregistrat',
   'voting_permissions': 'Permisiuni de vot',
-  'select_voting_role': 'Selectează rolul minim necesar pentru a vota pe această inițiativă:',
+  'select_voting_role':
+      'Selectează rolul minim necesar pentru a vota pe această inițiativă:',
   'and_above': 'și mai sus',
-  'voting_role_hint': 'Doar utilizatorii cu acest rol sau mai sus vor putea vota.',
+  'voting_role_hint':
+      'Doar utilizatorii cu acest rol sau mai sus vor putea vota.',
   'start_voting': 'Pornește votarea',
   'eligible_voters': 'Alegători eligibili',
-  'insufficient_role_to_vote': 'Rolul tău nu îți permite să votezi pe această inițiativă.',
+  'insufficient_role_to_vote':
+      'Rolul tău nu îți permite să votezi pe această inițiativă.',
 
   // Participant Messages
   'no_available_users': 'Nu există utilizatori disponibili',
-  'all_users_already_added': 'Toți utilizatorii din județ au fost deja adăugați',
+  'all_users_already_added':
+      'Toți utilizatorii din județ au fost deja adăugați',
   'available_participants': 'Participanți disponibili',
   'error_loading_users': 'Eroare la încărcarea utilizatorilor',
 
@@ -1882,6 +2007,10 @@ const Map<String, String> _enStrings = {
   'error_loading_schools': 'Error loading schools',
   'sort': 'Sort',
   'view': 'View',
+  'access_denied': 'Access denied',
+  'platform_support': 'App support and privacy',
+  'provider_password_message':
+      'You sign in through Apple or Google. Manage your password with that provider, not in this app.',
   'view_all': 'View all',
   'see_more': 'See more',
   'see_less': 'See less',
@@ -1937,6 +2066,7 @@ const Map<String, String> _enStrings = {
   'full_name': 'Full name',
   'phone': 'Phone',
   'phone_number': 'Phone number',
+  'phone_number_optional': 'Phone number (optional)',
   'date_of_birth': 'Date of birth',
   'gender': 'Gender',
   'male': 'Male',
@@ -1968,7 +2098,8 @@ const Map<String, String> _enStrings = {
   'notifications_subtitle': 'Push, email, SMS',
   'notify': 'Notify',
   'send_notification': 'Send notification',
-  'county_notification_info': 'This notification will be sent to all selected users in the county.',
+  'county_notification_info':
+      'This notification will be sent to all selected users in the county.',
   'notification_type': 'Notification type',
   'notification_title_hint': 'Enter notification title',
   'notification_body_hint': 'Write your notification message...',
@@ -1978,7 +2109,8 @@ const Map<String, String> _enStrings = {
   'select_roles': 'Select roles',
   'select_at_least_one_role': 'Select at least one role',
   'confirm_send': 'Confirm send',
-  'send_notification_confirm': 'Are you sure you want to send this notification?',
+  'send_notification_confirm':
+      'Are you sure you want to send this notification?',
   'sending': 'Sending...',
   'notification_sent': 'Notification sent successfully',
   'error_sending_notification': 'Error sending notification',
@@ -2286,7 +2418,8 @@ const Map<String, String> _enStrings = {
   'no_agenda_description': 'No agenda has been added for this meeting',
   'no_documents_description': 'No documents have been added for this meeting',
   'no_participants': 'No participants',
-  'no_participants_description': 'No participants have been added for this meeting',
+  'no_participants_description':
+      'No participants have been added for this meeting',
   'invited': 'invited',
   'attendance_not_recorded': 'Attendance has not been recorded yet',
   'error_loading_participants': 'Error loading participants',
@@ -2362,7 +2495,8 @@ const Map<String, String> _enStrings = {
   'create_new_account': 'Create a new account',
   'join_student_council': 'Join the student council',
   'reset_password_title': 'Reset password',
-  'reset_password_description': 'Enter your email address and we will send you a link to reset your password.',
+  'reset_password_description':
+      'Enter your email address and we will send you a link to reset your password.',
   'send_reset_link': 'Send reset link',
   'back_to_login': 'Back to login',
   'password_reset_sent': 'Reset link sent!',
@@ -2375,11 +2509,23 @@ const Map<String, String> _enStrings = {
   'use_different_account': 'Use different account',
   'complete_profile': 'Complete profile',
   'complete_your_profile': 'Complete your profile',
-  'complete_profile_description': 'To finish registration, please fill in the information below.',
+  'complete_profile_description':
+      'To finish registration, please fill in the information below.',
   'signed_in_with_google': 'Signed in with Google',
+  'registration_approval_info':
+      'After registration, your account will be pending until a SuperAdmin or BEX approves it.',
   'signed_in_with_apple': 'Signed in with Apple',
+  'terms_acceptance_required': 'You must accept the Terms of Use.',
+  'terms_acceptance_label': 'I accept the application Terms of Use.',
+  'report_failed': 'The report was not saved. Please try again.',
+  'moderation_reports': 'Content reports',
+  'blocked_users': 'Blocked users',
+  'unblock_user': 'Unblock',
+  'dismiss_report': 'Dismiss report',
+  'mark_reviewed': 'Mark as reviewed',
   'terms_agreement_title': 'Terms & Conditions',
-  'terms_agreement_body': 'By using the CJE app, you agree to our Terms of Use. Our app has zero tolerance for objectionable content or abusive behavior. Users who violate these rules will be removed. You must be at least 13 years old to use this app.',
+  'terms_agreement_body':
+      'By using the CJE app, you agree to our Terms of Use. Our app has zero tolerance for objectionable content or abusive behavior. Users who violate these rules will be removed. You must be at least 13 years old to use this app.',
   'accept_terms': 'I Agree',
   'decline': 'Decline',
   'view_full_terms': 'View full terms',
@@ -2393,18 +2539,42 @@ const Map<String, String> _enStrings = {
   'report_spam': 'Spam',
   'report_other': 'Other reason',
   'report_title': 'Report',
-  'block_user_confirm': 'Are you sure you want to block this user? You will no longer see their content.',
-  'registration_approval_info': 'After registration, your account will be pending until a SuperAdmin or BEX approves it.',
+  'block_user_confirm':
+      'Are you sure you want to block this user? You will no longer see their content.',
   'complete_registration': 'Complete registration',
+  'age_group_label': 'Age group',
+  'age_16_or_over': 'I am 16 or older',
+  'age_under_16_with_authorization':
+      'I am 13–15 and have parent/guardian authorisation',
+  'age_group_required': 'Select your age group',
+  'privacy_acknowledgement':
+      'I confirm that I have read the Privacy Policy and that the information provided is accurate.',
+  'privacy_acknowledgement_required': 'You must acknowledge the Privacy Policy',
+  'view_privacy_policy': 'Open the Privacy Policy',
+  'under_16_activation_notice':
+      'The account remains pending. An administrator may activate it only after verifying authorisation from a parent or legal guardian.',
+  'privacy_onboarding_title': 'Privacy',
+  'privacy_onboarding_heading': 'Complete this step to continue',
+  'privacy_onboarding_description':
+      'Your account was created by an administrator or before the current notice version. Personally acknowledge the notice and select your age band. We do not request your date of birth.',
+  'privacy_onboarding_continue': 'Save and continue',
+  'verify_parental_authorization_title': 'Verify parent/guardian authorisation',
+  'verify_parental_authorization_message':
+      'The user declared that they are under 16. Approve the account only if you have actually verified authorisation from a parent or legal guardian. Your confirmation will be recorded.',
+  'verify_and_approve': 'Verified — approve account',
   'account_pending': 'Account pending',
-  'account_pending_description': 'Your account has been created and is waiting for SuperAdmin or BEX approval.',
-  'pending_approval_info': 'You will receive a notification when your account is approved. This process may take a few hours.',
+  'account_pending_description':
+      'Your account has been created and is waiting for SuperAdmin or BEX approval.',
+  'pending_approval_info':
+      'You will receive a notification when your account is approved. This process may take a few hours.',
   'check_status': 'Check status',
   'status_pending': 'Pending',
   'account_suspended': 'Account suspended',
-  'account_suspended_description': 'Your account has been suspended. Contact an administrator for more information.',
+  'account_suspended_description':
+      'Your account has been suspended. Contact an administrator for more information.',
   'status_suspended': 'Suspended',
-  'contact_admin_for_help': 'If you believe this is an error, contact your school administrator.',
+  'contact_admin_for_help':
+      'If you believe this is an error, contact your school administrator.',
   'personal_info': 'Personal information',
   'account': 'Account',
   'member_since': 'Member since',
@@ -2425,7 +2595,8 @@ const Map<String, String> _enStrings = {
   'content': 'Content',
   'attachments': 'Attachments',
   'delete_announcement': 'Delete announcement',
-  'delete_announcement_confirm': 'Are you sure you want to delete this announcement? This action cannot be undone.',
+  'delete_announcement_confirm':
+      'Are you sure you want to delete this announcement? This action cannot be undone.',
   'announcement_deleted': 'Announcement deleted',
   'announcement_title_hint': 'Enter announcement title',
   'announcement_content_hint': 'Write your announcement content here...',
@@ -2473,7 +2644,8 @@ const Map<String, String> _enStrings = {
   'impact': 'Impact',
   'status': 'Status',
   'delete_initiative': 'Delete initiative',
-  'delete_initiative_confirm': 'Are you sure you want to delete this initiative?',
+  'delete_initiative_confirm':
+      'Are you sure you want to delete this initiative?',
   'initiative_deleted': 'Initiative deleted',
   'initiative_title_hint': 'Enter initiative title',
   'initiative_description_hint': 'Describe your initiative...',
@@ -2496,7 +2668,8 @@ const Map<String, String> _enStrings = {
   'account_information': 'Account Information',
   'profile_updated': 'Profile updated successfully',
   'error_updating_profile': 'Error updating profile',
-  'delete_account_warning': 'This action is permanent and cannot be undone. All your data will be deleted.',
+  'delete_account_warning':
+      'This action is permanent and cannot be undone. All your data will be deleted.',
   'choose_photo': 'Choose Photo',
   'camera': 'Camera',
   'gallery': 'Gallery',
@@ -2545,7 +2718,8 @@ const Map<String, String> _enStrings = {
   'delete_user_permanently': 'Delete User Permanently',
   'delete_user_title': 'Delete User',
   'delete_user_warning': 'This action is PERMANENT and cannot be undone!',
-  'delete_user_confirmation': 'Are you sure you want to permanently delete this user?',
+  'delete_user_confirmation':
+      'Are you sure you want to permanently delete this user?',
   'delete_permanently': 'Delete Permanently',
   'user_deleted_successfully': 'User deleted successfully',
   'error_deleting_user': 'Error deleting user',
@@ -2561,9 +2735,11 @@ const Map<String, String> _enStrings = {
   'select_department': 'Select Department',
   'select_department_description': 'Choose the department for this user',
   'confirm_role_change': 'Confirm Role Change',
-  'confirm_role_change_desc': 'Are you sure you want to change this user\'s role to',
+  'confirm_role_change_desc':
+      'Are you sure you want to change this user\'s role to',
   'confirm_suspend': 'Confirm Suspension',
-  'confirm_suspend_desc': 'Are you sure you want to suspend this user? They will no longer be able to access the app.',
+  'confirm_suspend_desc':
+      'Are you sure you want to suspend this user? They will no longer be able to access the app.',
   'account_info': 'Account Info',
   'joined': 'Joined',
   'last_active': 'Last active',
@@ -2572,22 +2748,27 @@ const Map<String, String> _enStrings = {
   'suspend_user_warning': 'The user will no longer be able to access the app.',
   'error_reactivating_user': 'Error reactivating user',
   'change_role_to': 'Change role to',
-  'superadmin_role_protected': 'Superadmin role is protected and cannot be modified',
+  'superadmin_role_protected':
+      'Superadmin role is protected and cannot be modified',
   'bex_role_protected': 'BEX role can only be modified by Superadmin',
 
   // Admin Setup
   'admin_setup': 'Admin Setup',
-  'admin_setup_warning': 'This screen is for initial setup only. Super Admins have full control over the app.',
+  'admin_setup_warning':
+      'This screen is for initial setup only. Super Admins have full control over the app.',
   'current_super_admins': 'Current Super Admins',
   'add_super_admin': 'Add Super Admin',
-  'add_super_admin_desc': 'Enter the email of a registered user to make them a Super Admin.',
+  'add_super_admin_desc':
+      'Enter the email of a registered user to make them a Super Admin.',
   'user_email': 'User Email',
   'admin_email_hint': 'admin@example.com',
   'please_enter_email': 'Please enter an email',
   'please_enter_valid_email': 'Please enter a valid email',
   'set_as_super_admin': 'Set as Super Admin',
-  'super_admin_set_success': 'Super Admin set successfully! The user can now manage the entire app.',
-  'super_admin_set_failed': 'Failed to set Super Admin. Make sure the email is registered in the app.',
+  'super_admin_set_success':
+      'Super Admin set successfully! The user can now manage the entire app.',
+  'super_admin_set_failed':
+      'Failed to set Super Admin. Make sure the email is registered in the app.',
   'super_admin_capabilities': 'Super Admin Capabilities',
   'cap_view_manage_users': 'View and manage all users',
   'cap_approve_users': 'Approve or suspend any user',
@@ -2617,7 +2798,8 @@ const Map<String, String> _enStrings = {
   'user_added_successfully': 'User added successfully',
   'error_creating_user': 'Error creating user',
   'error_saving_profile': 'Error saving profile. Please try again.',
-  'user_password_info': 'The user will need to use "Forgot Password" to set their password on first login.',
+  'user_password_info':
+      'A full account is created and left waiting for your approval. Tell the user to open the app, tap "Forgot password" and enter this email address: Firebase will send them a link to set their password. Once they set it and you approve the account, they can sign in.',
   'bex_county_restriction': 'You can only add users to your own county',
   'announce': 'Announce',
   'pending_approvals': 'Pending Approvals',
@@ -2642,7 +2824,8 @@ const Map<String, String> _enStrings = {
   'error_saving_school': 'Error saving school',
   'error_updating_school': 'Error updating school',
   'error_deleting_school': 'Error deleting school',
-  'delete_school_warning': 'Are you sure you want to delete this school? This will also affect all students associated with it.',
+  'delete_school_warning':
+      'Are you sure you want to delete this school? This will also affect all students associated with it.',
 
   // Polls Creation
   'poll_type': 'Poll Type',
@@ -2653,7 +2836,8 @@ const Map<String, String> _enStrings = {
   'enter_description': 'Enter a description',
   'option': 'Option',
   'anonymous_voting': 'Anonymous Voting',
-  'anonymous_voting_desc': 'Voters\' identities will be hidden',
+  'anonymous_voting_desc':
+      'Individual choices are confidential; participation may be visible',
   'allow_multiple_votes': 'Allow Multiple Votes',
   'allow_multiple_votes_desc': 'Users can vote for multiple options',
   'voting_period': 'Voting Period',
@@ -2675,7 +2859,8 @@ const Map<String, String> _enStrings = {
   'minimum_role_hint': 'Users with this role or higher can view the document',
   'school_document': 'School Document',
   'school_document_desc': 'This document belongs to your school',
-  'school_document_required': 'As a school representative, your documents are associated with your school',
+  'school_document_required':
+      'As a school representative, your documents are associated with your school',
   'department_document': 'Department Document',
   'will_be_added_to': 'Will be added to',
   'document_title_hint': 'Enter document title',
@@ -2694,19 +2879,22 @@ const Map<String, String> _enStrings = {
   'expected_impact': 'Expected Impact',
   'comments_support': 'Comments & Support',
   'no_impact': 'No impact defined',
-  'no_impact_description': 'This initiative does not have an expected impact defined yet.',
+  'no_impact_description':
+      'This initiative does not have an expected impact defined yet.',
   'review_submit': 'Review & Submit',
   'review_submit_desc': 'Review your initiative before submitting',
   'untitled': 'Untitled',
   'no_description': 'No description provided',
   'proposal_details': 'Proposal Details',
-  'initiative_review_info': 'Your initiative will be reviewed by the student council before being published.',
+  'initiative_review_info':
+      'Your initiative will be reviewed by the student council before being published.',
   'description_too_short': 'Description must be at least 50 characters',
   'error_submitting_initiative': 'Error submitting initiative',
 
   // User Detail
   'delete_user': 'Delete User',
-  'delete_user_confirm': 'Are you sure you want to delete this user? This action cannot be undone.',
+  'delete_user_confirm':
+      'Are you sure you want to delete this user? This action cannot be undone.',
   'user_deleted': 'User deleted successfully',
   'users': 'Users',
 
@@ -2717,7 +2905,8 @@ const Map<String, String> _enStrings = {
   'issue_warning': 'Issue Reprimand',
   'warning_type': 'Reprimand Type',
   'deactivate_warning': 'Deactivate Reprimand',
-  'deactivate_warning_confirm': 'Are you sure you want to deactivate this reprimand?',
+  'deactivate_warning_confirm':
+      'Are you sure you want to deactivate this reprimand?',
   'warning_deactivated': 'Reprimand deactivated',
   'error_deactivating_warning': 'Error deactivating reprimand',
   'mark_excused': 'Mark Excused',
@@ -2844,7 +3033,8 @@ const Map<String, String> _enStrings = {
   'error_details': 'Error Details',
 
   // Share App
-  'share_app_message': 'Discover the CJE app - County Student Council! Connect with your school community and get involved in council activities. 🎓📱',
+  'share_app_message':
+      'Discover the CJE app - County Student Council! Connect with your school community and get involved in council activities. 🎓📱',
 
   // User Detail Screen
   'select_new_role': 'Select a new role',
@@ -2852,9 +3042,11 @@ const Map<String, String> _enStrings = {
   'user_information': 'User Information',
   'user_not_found': 'User not found',
   'confirm_remove_warning': 'Confirm Remove Reprimand',
-  'remove_warning_message': 'Are you sure you want to remove this reprimand? This action cannot be undone.',
+  'remove_warning_message':
+      'Are you sure you want to remove this reprimand? This action cannot be undone.',
   'confirm_remove_absence': 'Confirm Remove Absence',
-  'remove_absence_message': 'Are you sure you want to remove this absence? This action cannot be undone.',
+  'remove_absence_message':
+      'Are you sure you want to remove this absence? This action cannot be undone.',
   'warning_reason_hint': 'Enter reprimand reason...',
   'resolution_note_hint': 'Optional resolution note...',
   'excuse_reason_hint': 'Enter reason for absence...',
@@ -2875,7 +3067,8 @@ const Map<String, String> _enStrings = {
 
   // Search Screen
   'search_title': 'Search',
-  'search_description': 'Search announcements, meetings, initiatives, polls, and documents',
+  'search_description':
+      'Search announcements, meetings, initiatives, polls, and documents',
   'search_placeholder': 'Search...',
   'search_min_length': 'Enter at least 2 characters',
   'no_results': 'No results',
@@ -2889,7 +3082,8 @@ const Map<String, String> _enStrings = {
   'all_marked_read': 'All notifications marked as read',
   'error_marking_read': 'Error marking notifications',
   'clear_all_notifications': 'Clear all notifications',
-  'clear_all_notifications_desc': 'Are you sure you want to clear all notifications? This action cannot be undone.',
+  'clear_all_notifications_desc':
+      'Are you sure you want to clear all notifications? This action cannot be undone.',
   'notifications_cleared': 'Notifications cleared',
   'error_clearing_notifications': 'Error clearing notifications',
 
@@ -2901,7 +3095,8 @@ const Map<String, String> _enStrings = {
   'password_min_length': 'Password must be at least 6 characters',
   'passwords_not_match': 'Passwords do not match',
   'password_changed_success': 'Password changed successfully',
-  'google_password_message': 'You signed in with Google. To change your password, access your Google account settings.',
+  'google_password_message':
+      'You signed in with Google. To change your password, access your Google account settings.',
 
   // Help & Support (new keys only)
   'help_support': 'Help & Support',
@@ -2912,40 +3107,67 @@ const Map<String, String> _enStrings = {
   'website': 'Website',
   'faq': 'Frequently Asked Questions',
   'faq_q1': 'How can I change my password?',
-  'faq_a1': 'Go to Profile > Privacy & Security > Change Password. Enter your current password and new password to make the change.',
+  'faq_a1':
+      'Go to Profile > Privacy & Security > Change Password. Enter your current password and new password to make the change.',
   'faq_q2': 'How can I participate in polls?',
-  'faq_a2': 'Open the Polls section from the main menu. Select an active poll and vote for your preferred option.',
+  'faq_a2':
+      'Open the Polls section from the main menu. Select an active poll and vote for your preferred option.',
   'faq_q3': 'How do I propose an initiative?',
-  'faq_a3': 'Go to the Initiatives section and press the + button to create a new initiative. Fill in the details and submit for approval.',
+  'faq_a3':
+      'Go to the Initiatives section and press the + button to create a new initiative. Fill in the details and submit for approval.',
   'faq_q4': 'Who can see my data?',
-  'faq_a4': 'Your personal data is only visible to CJE administrators and your school representatives. We do not share data with third parties.',
+  'faq_a4':
+      'Access depends on role and county. Profiles and activity may be visible to authorised peers and administrators; technical providers process data to operate the app. See the Privacy Policy for details.',
   'faq_q5': 'How do I contact technical support?',
-  'faq_a5': 'You can send us an email at support@cje.ro or call us at the number displayed in the Contact Us section.',
+  'faq_a5':
+      'For app support, moderation and privacy: app.consiliulelevilor@gmail.com. For organisational matters, use your county contacts in Contact Us.',
 
   // Legal - Terms of Service
-  'last_updated': 'Last updated: December 2024',
+  'last_updated': 'Last updated: 30 September 2026',
   'terms_section_1_title': '1. Acceptance of Terms',
-  'terms_section_1_content': 'By accessing and using the County Student Council (CJE) application, you agree to be bound by these Terms and Conditions. If you do not agree with these terms, please do not use the application.',
+  'terms_section_1_content':
+      'By accessing and using the County Student Council (CJE) application, you agree to be bound by these Terms and Conditions. If you do not agree with these terms, please do not use the application.',
   'terms_section_2_title': '2. Use of the Application',
-  'terms_section_2_content': 'The CJE application is intended for students, school representatives, and administrators within county student councils. Users must provide accurate information during registration and maintain the confidentiality of their account.',
+  'terms_section_2_content':
+      'The CJE app is intended for students aged at least 13, school representatives and county student council administrators. This is a service eligibility rule, not a universal GDPR age threshold. Legal representation and approval rules for contracts with minors apply separately; turning 16 does not replace them. Operational use in a county requires documented legal activation of the partnership and a local privacy notice. Users must provide accurate information and protect account access.',
   'terms_section_3_title': '3. User Conduct',
-  'terms_section_3_content': 'Users agree to use the application responsibly, respect the rights of other users, and not distribute offensive, illegal, or harmful content. Violation of these rules may result in account suspension.',
+  'terms_section_3_content':
+      'Users agree to use the application responsibly, respect the rights of other users, and not distribute offensive, illegal, or harmful content. Violation of these rules may result in account suspension.',
   'terms_section_4_title': '4. Intellectual Property',
-  'terms_section_4_content': 'All application content, including design, text, and functionality, is the property of CJE. Users do not have the right to copy, modify, or distribute content without prior consent.',
+  'terms_section_4_content':
+      'Rights in the code, design and content remain with their respective holders. By uploading content, you confirm you may share it and allow its processing only to operate and moderate the service. This does not automatically transfer ownership to a council.',
   'terms_section_5_title': '5. Limitation of Liability',
-  'terms_section_5_content': 'CJE assumes no liability for any losses or damages resulting from the use of the application. The service is provided "as is" without warranties of any kind.',
+  'terms_section_5_content':
+      'To the maximum extent permitted by law, the application is provided without a guarantee of uninterrupted or error-free operation. CJE and the controller remain liable as required by applicable law and agreements. Nothing in these Terms excludes or limits any liability that cannot lawfully be excluded or limited.',
 
   // Legal - Privacy Policy
-  'privacy_section_1_title': '1. Data Collection',
-  'privacy_section_1_content': 'We collect personal data such as: name, email address, school, class, and role in the council. This information is necessary for the proper functioning of the application and user identification.',
-  'privacy_section_2_title': '2. Use of Data',
-  'privacy_section_2_content': 'The collected data is used for: authentication, communication between members, managing council activities, and improving services. We do not sell or share data with third parties for commercial purposes.',
-  'privacy_section_3_title': '3. Storage and Security',
-  'privacy_section_3_content': 'Data is stored securely using Firebase services (Google). We implement technical and organizational measures to protect information against unauthorized access.',
-  'privacy_section_4_title': '4. User Rights',
-  'privacy_section_4_content': 'You have the right to: access your data, request correction or deletion, object to processing, and request data portability. Contact us to exercise these rights.',
-  'privacy_section_5_title': '5. Contact',
-  'privacy_section_5_content': 'For questions regarding the privacy policy or to exercise GDPR rights, you can contact us at: privacy@cje.ro',
+  'privacy_section_1_title': '1. Data controller',
+  'privacy_section_1_content':
+      'In the current configuration, Gavrilă Andrei-Zian, provider of the CJE – Consiliul Elevilor app, is the controller for his own purposes of providing and administering the platform, including security. Contact: app.consiliulelevilor@gmail.com. In an activated county, the partner institution that actually determines the purposes and means of local activities may be a separate or joint controller for those operations. Its identity, contacts, legal bases and responsibilities must be communicated in a local notice before operational use. Signing an agreement does not automatically transfer all provider obligations or make the CJE president a personal guarantor. Controller status follows actual activities, not only names in agreements or stores.',
+  'privacy_section_2_title': '2. What we collect',
+  'privacy_section_2_content':
+      'Account and affiliation: display name, email (including Apple relay if chosen), optional phone, county, school, class, role, status and optional photo. We do not request birth dates: we record only the under/over-16 age band, versions/times of privacy acknowledgement and terms acceptance, parental authorisation declaration and the date/administrator of verification where needed.\n\nCouncil activity: attendance, warnings and absences with reasons. Do not enter health information or other sensitive data in reasons or comments.\n\nContent: announcements, initiatives, comments, votes, polls, documents and uploads. Moderation: content/user identifiers, report reason/time, county, resolution status and blocked-user list.\n\nTechnical data: account identifier, push token, language, sign-in times and Firebase security data such as IP addresses and logs. ML Kit collects technical diagnostics and usage metrics, including device/OS/app versions, latency, errors, events, configured languages and an installation identifier. We do not collect GPS, contacts or payment data, or use advertising or behavioural analytics.',
+  'privacy_section_3_title': '3. Why and on what basis we use it',
+  'privacy_section_3_content':
+      'For accounts and requested features, we use GDPR Art. 6(1)(b) only insofar as processing is objectively necessary for a valid contract with the user; an agreement with an institution does not by itself establish this basis for students. For secure service administration and abuse prevention, we use legitimate interests under Art. 6(1)(f), assessing necessity and users’ rights, particularly those of children. Optional elements requiring consent rely on Art. 6(1)(a); compliance with an identified applicable legal obligation relies on Art. 6(1)(c). Acknowledging the privacy notice and accepting terms are not automatically GDPR consent.\n\nLegal bases for local activities, such as attendance records, warnings and votes, must be documented and communicated before county activation. Art. 6(1)(e) applies only to a public-interest task or official authority grounded specifically in law, not merely because the app has an educational purpose. Until legal bases, conditions for minors and the local notice are validated, partnerships remain preparatory: students must not be invited, imported or activated for operational use. We do not sell data, use it for advertising, or make solely automated decisions with legal effects.',
+  'privacy_section_4_title': '4. Where it is stored',
+  'privacy_section_4_content':
+      'We use Google Firebase Authentication, Cloud Firestore, Cloud Storage, Cloud Functions and Cloud Messaging, and ML Kit for translation. Google generally acts as a processor for Firebase customer data. ML Kit processes translation text and results on the device and does not send them to Google, but Google receives the technical metrics described above and may download language models to the device. Google processes those metrics under the ML Kit terms and its own privacy policy. Firestore is configured in the US nam5 multi-region, Firebase Authentication operates from US data centres, and other services may process data globally. Applicable Google transfer safeguards, including Standard Contractual Clauses where appropriate, require assessment of their applicability and any additional measures for the actual use; they do not alone guarantee compliance.\n\nApp access is limited by role and county; the technical superadministrator may access data for administration and security. Some permanent download links may allow unauthenticated access to anyone holding the link. Do not redistribute links or upload documents containing confidential student personal data through that mechanism until the risk is remedied or a documented assessment justifies the actual use. Accepting a risk does not replace the controller’s security obligations.',
+  'privacy_section_5_title': '5. How long we keep it',
+  'privacy_section_5_content':
+      'Profile, acknowledgements and blocked-user list: until account deletion or when no longer needed. Notifications: normally 30 days.\n\nAnnouncements, polls and initiatives, including comments/votes: normally 90 days after creation. Meetings without attendance: at least 90 days after the meeting date. Meetings with attendance: until the following 1 September and at least 90 days after the meeting; future meetings are not expired.\n\nWarnings and absences: until the following 1 September. Reports: while unresolved, with periodic review; resolved reports are normally deleted after 90 days.\n\nDocuments: until withdrawn by an authorised administrator or the purpose/partnership ends. Cleanup is scheduled, not instantaneous. Backups and logs may remain temporarily under provider cycles or a legal obligation.',
+  'privacy_section_6_title': '6. Your rights',
+  'privacy_section_6_content':
+      'Subject to the GDPR, you may request access, correction, erasure, restriction and portability, and object to processing. You may withdraw consent without affecting earlier processing. Write to app.consiliulelevilor@gmail.com; we normally reply within one month. You may complain to the Romanian National Supervisory Authority for Personal Data Processing (ANSPDCP).',
+  'privacy_section_7_title': '7. What happens when you delete your account',
+  'privacy_section_7_content':
+      'You can start deletion from Profile → Privacy & security → Delete account or by email. Authentication, profile, photo, push token, notifications, comments, votes and associated disciplinary data are removed. In temporarily retained organisational content, the author identifier and name are replaced with “Deleted user” and the author photo is removed. This does not guarantee that free text or uploaded documents contain no other personal data: these are reviewed and deleted or redacted on request where there is no applicable basis for retention. Remaining content expires under the retention periods above. Interrupted erasures are retried automatically; if a legal retention duty applies, you will be informed.',
+  'privacy_section_8_title': '8. Users under 16',
+  'privacy_section_8_content':
+      'The app is also intended for students who are minors. Where GDPR Art. 8 applies to consent-based processing and the user is under 16, consent must be given or authorised by a parent or legal guardian and verified before account activation. A student’s declaration or a checked box alone is not sufficient proof. The partner institution verifies authorisation through a documented procedure; the app stores the verification status, time and administrator, without identity-document copies. For users aged 13–17, any representation or approval needed for a valid contract must be assessed separately when a contract is the basis used. A parent or guardian may request the exercise of the child’s rights at the contact address; their authority and its scope are verified proportionately under applicable law.',
+  'privacy_section_9_title': '9. Contact',
+  'privacy_section_9_content':
+      'For questions, security incidents or privacy rights, email app.consiliulelevilor@gmail.com. Do not send passwords, identity documents or data that is not needed for your request.',
 
   // Greetings
   'good_morning': 'Good Morning',
@@ -2962,7 +3184,8 @@ const Map<String, String> _enStrings = {
 
   // Cancel Registration Dialog
   'cancel_registration': 'Cancel registration?',
-  'cancel_registration_message': 'If you cancel, you will be logged out and will need to register again.',
+  'cancel_registration_message':
+      'If you cancel, you will be logged out and will need to register again.',
   'yes_cancel': 'Yes, cancel',
 
   // Login Screen
@@ -3017,7 +3240,8 @@ const Map<String, String> _enStrings = {
   'show_active_polls_only': 'Show only active polls',
 
   // Edit Initiative
-  'edit_initiative_info': 'Update your initiative details. Changes will be saved immediately.',
+  'edit_initiative_info':
+      'Update your initiative details. Changes will be saved immediately.',
   'update_initiative': 'Update Initiative',
   'initiative_updated': 'Initiative updated successfully',
   'error_updating_initiative': 'Error updating initiative',
@@ -3037,7 +3261,8 @@ const Map<String, String> _enStrings = {
   'initiative_submitted_for_review': 'Initiative submitted for review',
   'action_failed': 'Action failed',
   'failed': 'Failed',
-  'contact_support_delete_account': 'Please contact support to delete your account',
+  'contact_support_delete_account':
+      'Please contact support to delete your account',
   'error_importing': 'Error importing',
   'cannot_open_document': 'Cannot open document',
   'cannot_open_link': 'Cannot open link',
@@ -3064,13 +3289,16 @@ const Map<String, String> _enStrings = {
   'auth_error_wrong_password': 'The password is incorrect.',
   'auth_error_invalid_email': 'The email address is not valid.',
   'auth_error_user_disabled': 'This account has been disabled.',
-  'auth_error_email_already_in_use': 'An account already exists with this email address.',
-  'auth_error_weak_password': 'Password is too weak. Use at least 6 characters.',
+  'auth_error_email_already_in_use':
+      'An account already exists with this email address.',
+  'auth_error_weak_password':
+      'Password is too weak. Use at least 6 characters.',
   'auth_error_operation_not_allowed': 'This operation is not allowed.',
   'auth_error_too_many_requests': 'Too many attempts. Please try again later.',
   'auth_error_network_request_failed': 'Connection error. Check your internet.',
   'auth_error_invalid_credential': 'Invalid email or password.',
-  'auth_error_requires_recent_login': 'Please sign in again to perform this operation.',
+  'auth_error_requires_recent_login':
+      'Please sign in again to perform this operation.',
   'auth_error_default': 'An error occurred. Please try again.',
 
   // Not Found Messages
@@ -3085,16 +3313,20 @@ const Map<String, String> _enStrings = {
   'you_have_voted': 'You have already voted',
   'vote_recorded': 'Your vote has been recorded',
   'voting_permissions': 'Voting Permissions',
-  'select_voting_role': 'Select the minimum role required to vote on this initiative:',
+  'select_voting_role':
+      'Select the minimum role required to vote on this initiative:',
   'and_above': 'and above',
-  'voting_role_hint': 'Only users with this role or higher will be able to vote.',
+  'voting_role_hint':
+      'Only users with this role or higher will be able to vote.',
   'start_voting': 'Start Voting',
   'eligible_voters': 'Eligible voters',
-  'insufficient_role_to_vote': 'Your role does not allow you to vote on this initiative.',
+  'insufficient_role_to_vote':
+      'Your role does not allow you to vote on this initiative.',
 
   // Participant Messages
   'no_available_users': 'No available users',
-  'all_users_already_added': 'All users from your county have already been added',
+  'all_users_already_added':
+      'All users from your county have already been added',
   'available_participants': 'Available participants',
   'error_loading_users': 'Error loading users',
 

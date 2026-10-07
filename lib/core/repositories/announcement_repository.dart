@@ -3,17 +3,21 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/models.dart';
 import '../constants/enums.dart';
+import 'content_access.dart';
 
 /// Repository for announcement-related Firestore operations
 class AnnouncementRepository {
   final FirebaseFirestore _firestore;
 
   AnnouncementRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Collection reference
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection('announcements');
+
+  Future<Query<Map<String, dynamic>>> _queryForCounty(String? countyId) =>
+      ContentAccess(_firestore).query(_collection, countyId: countyId);
 
   /// Get all announcements (published only)
   Future<List<AnnouncementModel>> getAnnouncements({
@@ -24,7 +28,7 @@ class AnnouncementRepository {
   }) async {
     try {
       // Simple query without orderBy to avoid index requirement
-      final snapshot = await _collection.get();
+      final snapshot = await (await _queryForCounty(countyId)).get();
 
       List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))
@@ -34,19 +38,25 @@ class AnnouncementRepository {
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
             // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
-            if (countyId != null && countyId.isNotEmpty && a.countyId != null && a.countyId!.isNotEmpty) {
+            if (countyId != null &&
+                countyId.isNotEmpty &&
+                a.countyId != null &&
+                a.countyId!.isNotEmpty) {
               final userCounty = countyId.toLowerCase();
               final announcementCounty = a.countyId!.toLowerCase();
               // Flexible match: one contains the other (handles "Cluj" vs "Cluj-Napoca")
-              final isMatch = userCounty.contains(announcementCounty) ||
-                              announcementCounty.contains(userCounty);
+              final isMatch =
+                  userCounty.contains(announcementCounty) ||
+                  announcementCounty.contains(userCounty);
               if (!isMatch) return false;
             }
             // Type filtering
             if (type != null && a.type != type) return false;
             // School filtering - for school announcements, only show user's school
             // This applies both when type==school AND when type==null (All tab)
-            if (a.type == AnnouncementType.school && schoolId != null && a.schoolId != schoolId) {
+            if (a.type == AnnouncementType.school &&
+                schoolId != null &&
+                a.schoolId != schoolId) {
               return false;
             }
             return true;
@@ -59,8 +69,9 @@ class AnnouncementRepository {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
         // Then sort by publishedAt (newest first)
-        return (b.publishedAt ?? b.createdAt)
-            .compareTo(a.publishedAt ?? a.createdAt);
+        return (b.publishedAt ?? b.createdAt).compareTo(
+          a.publishedAt ?? a.createdAt,
+        );
       });
       return results.take(limit).toList();
     } catch (e) {
@@ -77,7 +88,9 @@ class AnnouncementRepository {
     int limit = 20,
   }) {
     // Simple stream without composite queries
-    return _collection.snapshots().map((snapshot) {
+    return ContentAccess(
+      _firestore,
+    ).snapshots(_collection, countyId: countyId).map((snapshot) {
       List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))
           .where((a) => a.isPublished)
@@ -86,18 +99,24 @@ class AnnouncementRepository {
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
             // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
-            if (countyId != null && countyId.isNotEmpty && a.countyId != null && a.countyId!.isNotEmpty) {
+            if (countyId != null &&
+                countyId.isNotEmpty &&
+                a.countyId != null &&
+                a.countyId!.isNotEmpty) {
               final userCounty = countyId.toLowerCase();
               final announcementCounty = a.countyId!.toLowerCase();
-              final isMatch = userCounty.contains(announcementCounty) ||
-                              announcementCounty.contains(userCounty);
+              final isMatch =
+                  userCounty.contains(announcementCounty) ||
+                  announcementCounty.contains(userCounty);
               if (!isMatch) return false;
             }
             // Type filtering
             if (type != null && a.type != type) return false;
             // School filtering - for school announcements, only show user's school
             // This applies both when type==school AND when type==null (All tab)
-            if (a.type == AnnouncementType.school && schoolId != null && a.schoolId != schoolId) {
+            if (a.type == AnnouncementType.school &&
+                schoolId != null &&
+                a.schoolId != schoolId) {
               return false;
             }
             return true;
@@ -110,8 +129,9 @@ class AnnouncementRepository {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
         // Then sort by publishedAt (newest first)
-        return (b.publishedAt ?? b.createdAt)
-            .compareTo(a.publishedAt ?? a.createdAt);
+        return (b.publishedAt ?? b.createdAt).compareTo(
+          a.publishedAt ?? a.createdAt,
+        );
       });
       return results.take(limit).toList();
     });
@@ -120,13 +140,16 @@ class AnnouncementRepository {
   /// Get announcement by ID
   Future<AnnouncementModel?> getAnnouncementById(String id) async {
     try {
-      final doc = await _collection.doc(id).get().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('Timeout getting announcement by ID: $id');
-          throw Exception('Request timed out');
-        },
-      );
+      final doc = await _collection
+          .doc(id)
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout getting announcement by ID: $id');
+              throw Exception('Request timed out');
+            },
+          );
       if (doc.exists) {
         return AnnouncementModel.fromFirestore(doc);
       }
@@ -235,9 +258,16 @@ class AnnouncementRepository {
   }
 
   /// Get user's draft announcements (unpublished)
-  Future<List<AnnouncementModel>> getUserDrafts(String authorId) async {
+  Future<List<AnnouncementModel>> getUserDrafts(
+    String authorId, {
+    String? countyId,
+  }) async {
     try {
-      final snapshot = await _collection.get();
+      final snapshot = await (await ContentAccess(_firestore).query(
+        _collection,
+        countyId: countyId,
+        draftsOnly: true,
+      )).where('authorId', isEqualTo: authorId).get();
 
       List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))
@@ -256,9 +286,7 @@ class AnnouncementRepository {
   /// Increment view count
   Future<void> incrementViewCount(String id) async {
     try {
-      await _collection.doc(id).update({
-        'viewCount': FieldValue.increment(1),
-      });
+      await _collection.doc(id).update({'viewCount': FieldValue.increment(1)});
     } catch (e) {
       debugPrint('Error incrementing view count: $e');
     }
@@ -272,7 +300,7 @@ class AnnouncementRepository {
   }) async {
     try {
       // Get all announcements and filter in memory to avoid composite index requirement
-      final snapshot = await _collection.get();
+      final snapshot = await (await _queryForCounty(countyId)).get();
 
       List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))
@@ -282,16 +310,21 @@ class AnnouncementRepository {
             // - Content with NULL countyId is visible to everyone (legacy/global content)
             // - Content with countyId is only visible to users from that county
             // - Uses flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
-            if (countyId != null && countyId.isNotEmpty && announcement.countyId != null && announcement.countyId!.isNotEmpty) {
+            if (countyId != null &&
+                countyId.isNotEmpty &&
+                announcement.countyId != null &&
+                announcement.countyId!.isNotEmpty) {
               final userCounty = countyId.toLowerCase();
               final announcementCounty = announcement.countyId!.toLowerCase();
-              final isMatch = userCounty.contains(announcementCounty) ||
-                              announcementCounty.contains(userCounty);
+              final isMatch =
+                  userCounty.contains(announcementCounty) ||
+                  announcementCounty.contains(userCounty);
               if (!isMatch) return false;
             }
             // Include county announcements or school announcements matching user's school
             if (announcement.type == AnnouncementType.county) return true;
-            if (announcement.type == AnnouncementType.school && schoolId != null) {
+            if (announcement.type == AnnouncementType.school &&
+                schoolId != null) {
               return announcement.schoolId == schoolId;
             }
             return false;
@@ -304,8 +337,9 @@ class AnnouncementRepository {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
         // Then sort by publishedAt (newest first)
-        return (b.publishedAt ?? b.createdAt)
-            .compareTo(a.publishedAt ?? a.createdAt);
+        return (b.publishedAt ?? b.createdAt).compareTo(
+          a.publishedAt ?? a.createdAt,
+        );
       });
       return results.take(limit).toList();
     } catch (e) {
@@ -320,22 +354,29 @@ class AnnouncementRepository {
     String? countyId,
     int limit = 5,
   }) {
-    return _collection.snapshots().map((snapshot) {
+    return ContentAccess(
+      _firestore,
+    ).snapshots(_collection, countyId: countyId).map((snapshot) {
       List<AnnouncementModel> results = snapshot.docs
           .map((doc) => AnnouncementModel.fromFirestore(doc))
           .where((announcement) => announcement.isPublished)
           .where((announcement) {
             // County filtering
-            if (countyId != null && countyId.isNotEmpty && announcement.countyId != null && announcement.countyId!.isNotEmpty) {
+            if (countyId != null &&
+                countyId.isNotEmpty &&
+                announcement.countyId != null &&
+                announcement.countyId!.isNotEmpty) {
               final userCounty = countyId.toLowerCase();
               final announcementCounty = announcement.countyId!.toLowerCase();
-              final isMatch = userCounty.contains(announcementCounty) ||
-                              announcementCounty.contains(userCounty);
+              final isMatch =
+                  userCounty.contains(announcementCounty) ||
+                  announcementCounty.contains(userCounty);
               if (!isMatch) return false;
             }
             // Include county announcements or school announcements matching user's school
             if (announcement.type == AnnouncementType.county) return true;
-            if (announcement.type == AnnouncementType.school && schoolId != null) {
+            if (announcement.type == AnnouncementType.school &&
+                schoolId != null) {
               return announcement.schoolId == schoolId;
             }
             return false;
@@ -346,8 +387,9 @@ class AnnouncementRepository {
       results.sort((a, b) {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
-        return (b.publishedAt ?? b.createdAt)
-            .compareTo(a.publishedAt ?? a.createdAt);
+        return (b.publishedAt ?? b.createdAt).compareTo(
+          a.publishedAt ?? a.createdAt,
+        );
       });
       return results.take(limit).toList();
     });

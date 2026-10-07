@@ -6,6 +6,7 @@ import '../../../../controllers/admin/admin_controller.dart';
 import '../../../../controllers/auth/auth_controller.dart';
 import '../../../../core/core.dart';
 import '../../../../models/models.dart';
+import '../parental_authorization_dialog.dart';
 
 /// Status action buttons for user management
 class UserStatusActions extends ConsumerStatefulWidget {
@@ -88,11 +89,20 @@ class _UserStatusActionsState extends ConsumerState<UserStatusActions> {
   Future<void> _approveUser() async {
     final l10n = AppLocalizations.of(context);
 
+    final verified = await confirmParentalAuthorizationIfRequired(
+      context,
+      widget.user,
+    );
+    if (!verified || !mounted) return;
+
     setState(() => _isLoading = true);
 
     final success = await ref
         .read(adminControllerProvider.notifier)
-        .approveUser(widget.user.id);
+        .approveUser(
+          widget.user.id,
+          parentalAuthorizationVerified: widget.user.isUnder16 == true,
+        );
 
     setState(() => _isLoading = false);
 
@@ -103,9 +113,11 @@ class _UserStatusActionsState extends ConsumerState<UserStatusActions> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success
-              ? l10n.translate('user_approved')
-              : l10n.translate('error_approving_user')),
+          content: Text(
+            success
+                ? l10n.translate('user_approved')
+                : l10n.translate('error_approving_user'),
+          ),
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
@@ -154,9 +166,11 @@ class _UserStatusActionsState extends ConsumerState<UserStatusActions> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success
-              ? l10n.translate('user_suspended')
-              : l10n.translate('error_suspending_user')),
+          content: Text(
+            success
+                ? l10n.translate('user_suspended')
+                : l10n.translate('error_suspending_user'),
+          ),
           backgroundColor: success ? Colors.orange : Colors.red,
         ),
       );
@@ -181,9 +195,11 @@ class _UserStatusActionsState extends ConsumerState<UserStatusActions> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success
-              ? l10n.translate('user_reactivated')
-              : l10n.translate('error_reactivating_user')),
+          content: Text(
+            success
+                ? l10n.translate('user_reactivated')
+                : l10n.translate('error_reactivating_user'),
+          ),
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );

@@ -1,19 +1,24 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../../models/models.dart';
 import '../constants/enums.dart';
+import 'content_access.dart';
 
 /// Repository for poll-related Firestore operations
 class PollRepository {
   final FirebaseFirestore _firestore;
 
   PollRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Collection reference
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection('polls');
+
+  Future<Query<Map<String, dynamic>>> _queryForCounty(String? countyId) =>
+      ContentAccess(_firestore).query(_collection, countyId: countyId);
 
   CollectionReference<Map<String, dynamic>> get _votesCollection =>
       _firestore.collection('poll_votes');
@@ -28,7 +33,7 @@ class PollRepository {
   }) async {
     try {
       // Get all polls and filter in memory to avoid composite index requirement
-      final snapshot = await _collection.get();
+      final snapshot = await (await _queryForCounty(countyId)).get();
 
       List<PollModel> polls = snapshot.docs
           .map((doc) => PollModel.fromFirestore(doc))
@@ -43,7 +48,8 @@ class PollRepository {
         polls = polls.where((p) {
           if (p.countyId == null || p.countyId!.isEmpty) return true;
           final pollCounty = p.countyId!.toLowerCase();
-          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+          return userCounty.contains(pollCounty) ||
+              pollCounty.contains(userCounty);
         }).toList();
       }
 
@@ -60,9 +66,13 @@ class PollRepository {
       // Filter by school if needed
       // Show: county polls + school polls with matching schoolId only
       if (schoolId != null) {
-        polls = polls.where((p) =>
-            p.type == PollType.county ||
-            (p.type == PollType.school && p.schoolId == schoolId)).toList();
+        polls = polls
+            .where(
+              (p) =>
+                  p.type == PollType.county ||
+                  (p.type == PollType.school && p.schoolId == schoolId),
+            )
+            .toList();
       }
 
       // Sort by createdAt descending
@@ -83,7 +93,9 @@ class PollRepository {
     int limit = 20,
   }) {
     // Simple stream without composite queries
-    return _collection.snapshots().map((snapshot) {
+    return ContentAccess(
+      _firestore,
+    ).snapshots(_collection, countyId: countyId).map((snapshot) {
       List<PollModel> polls = snapshot.docs
           .map((doc) => PollModel.fromFirestore(doc))
           .toList();
@@ -97,7 +109,8 @@ class PollRepository {
         polls = polls.where((p) {
           if (p.countyId == null || p.countyId!.isEmpty) return true;
           final pollCounty = p.countyId!.toLowerCase();
-          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+          return userCounty.contains(pollCounty) ||
+              pollCounty.contains(userCounty);
         }).toList();
       }
 
@@ -109,9 +122,13 @@ class PollRepository {
       // Filter by school if needed
       // Show: county polls + school polls with matching schoolId only
       if (schoolId != null) {
-        polls = polls.where((p) =>
-            p.type == PollType.county ||
-            (p.type == PollType.school && p.schoolId == schoolId)).toList();
+        polls = polls
+            .where(
+              (p) =>
+                  p.type == PollType.county ||
+                  (p.type == PollType.school && p.schoolId == schoolId),
+            )
+            .toList();
       }
 
       // Sort by createdAt descending
@@ -124,13 +141,16 @@ class PollRepository {
   /// Get poll by ID
   Future<PollModel?> getPollById(String id) async {
     try {
-      final doc = await _collection.doc(id).get().timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('Timeout getting poll by ID: $id');
-          throw Exception('Request timed out');
-        },
-      );
+      final doc = await _collection
+          .doc(id)
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              debugPrint('Timeout getting poll by ID: $id');
+              throw Exception('Request timed out');
+            },
+          );
       if (doc.exists) {
         return PollModel.fromFirestore(doc);
       }
@@ -144,16 +164,22 @@ class PollRepository {
   /// Create poll
   Future<String?> createPoll(PollModel poll) async {
     try {
-      debugPrint('createPoll: Starting - question="${poll.question}", createdById=${poll.createdById}');
+      debugPrint(
+        'createPoll: Starting - question="${poll.question}", createdById=${poll.createdById}',
+      );
       final data = poll.toFirestore();
       debugPrint('createPoll: Data prepared, adding to Firestore...');
-      final docRef = await _collection.add(data).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          debugPrint('createPoll: TIMEOUT - Firestore write took too long');
-          throw Exception('Timeout creating poll - Firestore may be unavailable');
-        },
-      );
+      final docRef = await _collection
+          .add(data)
+          .timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              debugPrint('createPoll: TIMEOUT - Firestore write took too long');
+              throw Exception(
+                'Timeout creating poll - Firestore may be unavailable',
+              );
+            },
+          );
       debugPrint('createPoll: SUCCESS - docId=${docRef.id}');
       return docRef.id;
     } catch (e, stackTrace) {
@@ -166,9 +192,9 @@ class PollRepository {
   /// Update poll
   Future<bool> updatePoll(PollModel poll) async {
     try {
-      await _collection.doc(poll.id).update(
-        poll.copyWith(updatedAt: DateTime.now()).toFirestore(),
-      );
+      await _collection
+          .doc(poll.id)
+          .update(poll.copyWith(updatedAt: DateTime.now()).toFirestore());
       return true;
     } catch (e) {
       debugPrint('Error updating poll: $e');
@@ -225,80 +251,10 @@ class PollRepository {
     if (optionIds.isEmpty) return false;
 
     try {
-      return await _firestore.runTransaction((transaction) async {
-        final docRef = _collection.doc(pollId);
-        final snapshot = await transaction.get(docRef);
-
-        if (!snapshot.exists) return false;
-
-        final poll = PollModel.fromFirestore(snapshot);
-
-        // Check if user already voted
-        if (poll.voterIds.contains(oderId)) {
-          debugPrint('User already voted');
-          return false;
-        }
-
-        // Check if poll is active
-        if (!poll.isActive) {
-          debugPrint('Poll is not active');
-          return false;
-        }
-
-        // Validate: if multiple options but poll doesn't allow multiple votes
-        if (optionIds.length > 1 && !poll.allowMultipleVotes) {
-          debugPrint('Poll does not allow multiple votes');
-          return false;
-        }
-
-        // Update option vote counts for all selected options
-        final updatedOptions = poll.options.map((option) {
-          if (optionIds.contains(option.id)) {
-            return option.copyWith(voteCount: option.voteCount + 1);
-          }
-          return option;
-        }).toList();
-
-        // Calculate total votes added
-        final votesAdded = optionIds.length;
-
-        // Update poll
-        transaction.update(docRef, {
-          'options': updatedOptions.map((o) => o.toMap()).toList(),
-          'totalVotes': poll.totalVotes + votesAdded,
-          'voterIds': [...poll.voterIds, oderId],
-          'updatedAt': Timestamp.now(),
-        });
-
-        return true;
-      }).then((success) async {
-        // If vote succeeded and poll is NOT anonymous, store voter details
-        if (success) {
-          final poll = await getPollById(pollId);
-          if (poll != null && !poll.isAnonymous) {
-            // Get option texts for the voted options
-            final optionTexts = poll.options
-                .where((o) => optionIds.contains(o.id))
-                .map((o) => o.text)
-                .toList();
-
-            final pollVote = PollVote(
-              id: '',
-              pollId: pollId,
-              voterId: oderId,
-              voterName: voterName,
-              voterSchoolId: voterSchoolId,
-              voterSchoolName: voterSchoolName,
-              optionIds: optionIds,
-              optionTexts: optionTexts,
-              createdAt: DateTime.now(),
-            );
-
-            await _votesCollection.add(pollVote.toFirestore());
-          }
-        }
-        return success;
-      });
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('castCouncilVote')
+          .call({'kind': 'poll', 'id': pollId, 'optionIds': optionIds});
+      return result.data['success'] == true;
     } catch (e) {
       debugPrint('Error voting: $e');
       return false;
@@ -310,6 +266,7 @@ class PollRepository {
     try {
       final snapshot = await _votesCollection
           .where('pollId', isEqualTo: pollId)
+          .where('isAnonymous', isEqualTo: false)
           .get();
 
       final votes = snapshot.docs
@@ -329,14 +286,15 @@ class PollRepository {
   Stream<List<PollVote>> getVotesStream(String pollId) {
     return _votesCollection
         .where('pollId', isEqualTo: pollId)
+        .where('isAnonymous', isEqualTo: false)
         .snapshots()
         .map((snapshot) {
-      final votes = snapshot.docs
-          .map((doc) => PollVote.fromFirestore(doc))
-          .toList();
-      votes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return votes;
-    });
+          final votes = snapshot.docs
+              .map((doc) => PollVote.fromFirestore(doc))
+              .toList();
+          votes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return votes;
+        });
   }
 
   /// Check if user has voted
@@ -377,7 +335,7 @@ class PollRepository {
   }) async {
     try {
       // Get all polls and filter in memory to avoid composite index requirement
-      final snapshot = await _collection.get();
+      final snapshot = await (await _queryForCounty(countyId)).get();
       debugPrint('getActivePolls: Total polls in DB: ${snapshot.docs.length}');
 
       List<PollModel> polls = snapshot.docs
@@ -386,7 +344,9 @@ class PollRepository {
 
       // Debug: show all polls before filtering
       for (var p in polls) {
-        debugPrint('getActivePolls: Poll "${p.question}" - isActive=${p.isActive}, countyId=${p.countyId}, schoolId=${p.schoolId}, type=${p.type}');
+        debugPrint(
+          'getActivePolls: Poll "${p.question}" - isActive=${p.isActive}, countyId=${p.countyId}, schoolId=${p.schoolId}, type=${p.type}',
+        );
       }
 
       polls = polls.where((p) => p.isActive).toList();
@@ -401,20 +361,31 @@ class PollRepository {
         polls = polls.where((p) {
           if (p.countyId == null || p.countyId!.isEmpty) return true;
           final pollCounty = p.countyId!.toLowerCase();
-          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+          return userCounty.contains(pollCounty) ||
+              pollCounty.contains(userCounty);
         }).toList();
-        debugPrint('getActivePolls: After county filter (user county: $countyId): ${polls.length}');
+        debugPrint(
+          'getActivePolls: After county filter (user county: $countyId): ${polls.length}',
+        );
       } else {
-        debugPrint('getActivePolls: Skipping county filter (countyId is null/empty)');
+        debugPrint(
+          'getActivePolls: Skipping county filter (countyId is null/empty)',
+        );
       }
 
       // Filter by school if needed
       // Show: county polls + school polls with matching schoolId only
       if (schoolId != null) {
-        polls = polls.where((p) =>
-            p.type == PollType.county ||
-            (p.type == PollType.school && p.schoolId == schoolId)).toList();
-        debugPrint('getActivePolls: After school filter (schoolId: $schoolId): ${polls.length}');
+        polls = polls
+            .where(
+              (p) =>
+                  p.type == PollType.county ||
+                  (p.type == PollType.school && p.schoolId == schoolId),
+            )
+            .toList();
+        debugPrint(
+          'getActivePolls: After school filter (schoolId: $schoolId): ${polls.length}',
+        );
       } else {
         debugPrint('getActivePolls: Skipping school filter (schoolId is null)');
       }
@@ -436,7 +407,9 @@ class PollRepository {
     String? countyId,
     int limit = 5,
   }) {
-    return _collection.snapshots().map((snapshot) {
+    return ContentAccess(
+      _firestore,
+    ).snapshots(_collection, countyId: countyId).map((snapshot) {
       List<PollModel> polls = snapshot.docs
           .map((doc) => PollModel.fromFirestore(doc))
           .where((p) => p.isActive)
@@ -448,15 +421,20 @@ class PollRepository {
         polls = polls.where((p) {
           if (p.countyId == null || p.countyId!.isEmpty) return true;
           final pollCounty = p.countyId!.toLowerCase();
-          return userCounty.contains(pollCounty) || pollCounty.contains(userCounty);
+          return userCounty.contains(pollCounty) ||
+              pollCounty.contains(userCounty);
         }).toList();
       }
 
       // Filter by school if needed
       if (schoolId != null) {
-        polls = polls.where((p) =>
-            p.type == PollType.county ||
-            (p.type == PollType.school && p.schoolId == schoolId)).toList();
+        polls = polls
+            .where(
+              (p) =>
+                  p.type == PollType.county ||
+                  (p.type == PollType.school && p.schoolId == schoolId),
+            )
+            .toList();
       }
 
       // Sort by endDate ascending

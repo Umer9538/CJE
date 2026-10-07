@@ -49,9 +49,15 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.meeting.title);
-    _descriptionController = TextEditingController(text: widget.meeting.description ?? '');
-    _locationController = TextEditingController(text: widget.meeting.location ?? '');
-    _onlineLinkController = TextEditingController(text: widget.meeting.onlineLink ?? '');
+    _descriptionController = TextEditingController(
+      text: widget.meeting.description ?? '',
+    );
+    _locationController = TextEditingController(
+      text: widget.meeting.location ?? '',
+    );
+    _onlineLinkController = TextEditingController(
+      text: widget.meeting.onlineLink ?? '',
+    );
     _selectedType = widget.meeting.type;
     _selectedDate = widget.meeting.dateTime;
     _selectedTime = TimeOfDay.fromDateTime(widget.meeting.dateTime);
@@ -79,7 +85,8 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
     final dateFormat = DateFormat('EEEE, MMMM d, yyyy');
     final timeFormat = DateFormat('h:mm a');
 
-    final canEditPlenary = user != null &&
+    final canEditPlenary =
+        user != null &&
         (user.role == UserRole.bex || user.role == UserRole.superadmin);
 
     return Scaffold(
@@ -87,27 +94,33 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Builder(builder: (context) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.navy : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: context.shadowColor,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+        leading: Builder(
+          builder: (context) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.navy : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: context.shadowColor,
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.close,
+                  color: isDark ? AppColors.gold : AppColors.navy,
+                  size: 20,
+                ),
               ),
-              child: Icon(Icons.close, color: isDark ? AppColors.gold : AppColors.navy, size: 20),
-            ),
-            onPressed: () => Navigator.pop(context),
-          );
-        }),
+              onPressed: () => Navigator.pop(context),
+            );
+          },
+        ),
         title: Text(
           l10n.translate('edit_meeting'),
           style: TextStyle(
@@ -148,31 +161,33 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Builder(builder: (context) {
-              final typeColor = _getTypeColor(_selectedType);
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: typeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: typeColor),
-                ),
-                child: Row(
-                  children: [
-                    Icon(_getTypeIcon(_selectedType), color: typeColor),
-                    const SizedBox(width: 12),
-                    Text(
-                      _selectedType.displayName,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: typeColor,
+            Builder(
+              builder: (context) {
+                final typeColor = _getTypeColor(_selectedType);
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: typeColor),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(_getTypeIcon(_selectedType), color: typeColor),
+                      const SizedBox(width: 12),
+                      Text(
+                        _selectedType.displayName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: typeColor,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                    ],
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 24),
 
             // Title
@@ -206,7 +221,15 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                 Expanded(
                   child: _buildDateTimeButton(
                     icon: Icons.access_time_rounded,
-                    label: timeFormat.format(DateTime(2024, 1, 1, _selectedTime.hour, _selectedTime.minute)),
+                    label: timeFormat.format(
+                      DateTime(
+                        2024,
+                        1,
+                        1,
+                        _selectedTime.hour,
+                        _selectedTime.minute,
+                      ),
+                    ),
                     onTap: _selectTime,
                   ),
                 ),
@@ -217,71 +240,77 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
             // Duration
             _buildSectionTitle(l10n.translate('duration')),
             const SizedBox(height: 12),
-            Builder(builder: (context) {
-              final isDark = Theme.of(context).brightness == Brightness.dark;
-              return Wrap(
-                spacing: 8,
-                children: [30, 45, 60, 90, 120].map((d) {
-                  final isSelected = _duration == d;
-                  return ChoiceChip(
-                    label: Text('$d ${l10n.translate('min')}'),
-                    selected: isSelected,
-                    onSelected: (_) => setState(() => _duration = d),
-                    selectedColor: AppColors.gold,
-                    backgroundColor: isDark ? AppColors.navy : null,
-                    labelStyle: TextStyle(
-                      color: isSelected
-                          ? AppColors.navy
-                          : (isDark ? Colors.grey[400] : Colors.grey[600]),
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  );
-                }).toList(),
-              );
-            }),
+            Builder(
+              builder: (context) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                return Wrap(
+                  spacing: 8,
+                  children: [30, 45, 60, 90, 120].map((d) {
+                    final isSelected = _duration == d;
+                    return ChoiceChip(
+                      label: Text('$d ${l10n.translate('min')}'),
+                      selected: isSelected,
+                      onSelected: (_) => setState(() => _duration = d),
+                      selectedColor: AppColors.gold,
+                      backgroundColor: isDark ? AppColors.navy : null,
+                      labelStyle: TextStyle(
+                        color: isSelected
+                            ? AppColors.navy
+                            : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
             const SizedBox(height: 24),
 
             // Online toggle
-            Builder(builder: (context) {
-              final isDark = Theme.of(context).brightness == Brightness.dark;
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.navy : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.videocam_rounded,
-                      color: _isOnline ? Colors.green : Colors.grey,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        l10n.translate('online_meeting'),
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.gold : AppColors.navy,
+            Builder(
+              builder: (context) {
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.navy : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.videocam_rounded,
+                        color: _isOnline ? Colors.green : Colors.grey,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          l10n.translate('online_meeting'),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppColors.gold : AppColors.navy,
+                          ),
                         ),
                       ),
-                    ),
-                    Switch(
-                      value: _isOnline,
-                      onChanged: (v) => setState(() => _isOnline = v),
-                      activeTrackColor: Colors.green.withValues(alpha: 0.5),
-                      thumbColor: WidgetStateProperty.resolveWith((states) {
-                        if (states.contains(WidgetState.selected)) {
-                          return Colors.green;
-                        }
-                        return null;
-                      }),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                      Switch(
+                        value: _isOnline,
+                        onChanged: (v) => setState(() => _isOnline = v),
+                        activeTrackColor: Colors.green.withValues(alpha: 0.5),
+                        thumbColor: WidgetStateProperty.resolveWith((states) {
+                          if (states.contains(WidgetState.selected)) {
+                            return Colors.green;
+                          }
+                          return null;
+                        }),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 16),
 
             // Location or Online Link
@@ -315,7 +344,9 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
             // Agenda
             _buildSectionTitle(l10n.translate('agenda')),
             const SizedBox(height: 12),
-            ..._agendaItems.asMap().entries.map((e) => _buildAgendaItem(e.key, e.value)),
+            ..._agendaItems.asMap().entries.map(
+              (e) => _buildAgendaItem(e.key, e.value),
+            ),
             Row(
               children: [
                 Expanded(
@@ -333,7 +364,11 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                       color: AppColors.gold,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.add, color: AppColors.navy, size: 20),
+                    child: const Icon(
+                      Icons.add,
+                      color: AppColors.navy,
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
@@ -489,10 +524,7 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              item,
-              style: TextStyle(color: context.textPrimary),
-            ),
+            child: Text(item, style: TextStyle(color: context.textPrimary)),
           ),
           IconButton(
             icon: const Icon(Icons.close, size: 18, color: Colors.red),
@@ -522,7 +554,9 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
     switch (type) {
       case MeetingType.countyAG:
         // Navy is invisible in dark mode, use gold accent instead
-        return isDark ? AppColors.meetingCountyAGAccent : AppColors.meetingCountyAG;
+        return isDark
+            ? AppColors.meetingCountyAGAccent
+            : AppColors.meetingCountyAG;
       case MeetingType.bex:
         return AppColors.meetingBEX;
       case MeetingType.department:
@@ -562,7 +596,11 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.check_circle, color: Colors.green, size: 24),
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -607,7 +645,11 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                     color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.picture_as_pdf, color: Colors.red, size: 24),
+                  child: const Icon(
+                    Icons.picture_as_pdf,
+                    color: Colors.red,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -626,7 +668,10 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                       const SizedBox(height: 2),
                       Text(
                         _formatFileSize(_selectedMinutesFile!.size),
-                        style: TextStyle(fontSize: 12, color: context.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -683,10 +728,7 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'PDF',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[400],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[400]),
                     ),
                   ],
                 ),
@@ -714,18 +756,13 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
             children: [
               Text(
                 '${_attendeeIds.length} ${l10n.translate('invited')}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: context.textSecondary,
-                ),
+                style: TextStyle(fontSize: 14, color: context.textSecondary),
               ),
               TextButton.icon(
                 onPressed: _showAddAttendeeDialog,
                 icon: const Icon(Icons.person_add_rounded, size: 18),
                 label: Text(l10n.translate('add')),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.gold,
-                ),
+                style: TextButton.styleFrom(foregroundColor: AppColors.gold),
               ),
             ],
           ),
@@ -736,7 +773,11 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.people_outline, size: 48, color: Colors.grey[300]),
+                    Icon(
+                      Icons.people_outline,
+                      size: 48,
+                      color: Colors.grey[300],
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       l10n.translate('no_attendees'),
@@ -774,7 +815,9 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_picking_file')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_picking_file')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -793,15 +836,26 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
     });
 
     try {
+      final user = ref.read(currentUserProvider);
+      final countyId = widget.meeting.countyId;
+      if (user == null || countyId == null || countyId.isEmpty) return null;
+
       final file = File(_selectedMinutesFile!.path!);
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_minutes_${widget.meeting.id}.pdf';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_minutes_${widget.meeting.id}.pdf';
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('meetings')
+          .child(countyId)
           .child('minutes')
           .child(fileName);
 
-      final uploadTask = storageRef.putFile(file);
+      final uploadTask = storageRef.putFile(
+        file,
+        SettableMetadata(
+          customMetadata: {'countyId': countyId, 'ownerId': user.id},
+        ),
+      );
 
       uploadTask.snapshotEvents.listen((event) {
         setState(() {
@@ -823,7 +877,9 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_uploading_file')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_uploading_file')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -845,7 +901,8 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (sheetContext) {
-        final sheetIsDark = Theme.of(sheetContext).brightness == Brightness.dark;
+        final sheetIsDark =
+            Theme.of(sheetContext).brightness == Brightness.dark;
         return DraggableScrollableSheet(
           initialChildSize: 0.7,
           minChildSize: 0.5,
@@ -909,21 +966,27 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                                     : '?',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: sheetIsDark ? AppColors.gold : AppColors.navy,
+                                  color: sheetIsDark
+                                      ? AppColors.gold
+                                      : AppColors.navy,
                                 ),
                               ),
                             ),
                             title: Text(
                               user.fullName,
                               style: TextStyle(
-                                color: sheetIsDark ? Colors.white : AppColors.navy,
+                                color: sheetIsDark
+                                    ? Colors.white
+                                    : AppColors.navy,
                               ),
                             ),
                             subtitle: Text(
                               '${user.role.displayName}${user.schoolName != null ? ' • ${user.schoolName}' : ''}',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: sheetIsDark ? Colors.grey[400] : Colors.grey[500],
+                                color: sheetIsDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[500],
                               ),
                             ),
                             trailing: IconButton(
@@ -948,10 +1011,10 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
                         },
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (_, __) => Center(
-                      child: Text(l10n.translate('error_loading')),
-                    ),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (_, __) =>
+                        Center(child: Text(l10n.translate('error_loading'))),
                   ),
                 ),
               ],
@@ -1039,14 +1102,18 @@ class _EditMeetingScreenState extends ConsumerState<EditMeetingScreen> {
       Navigator.pop(context, updatedMeeting);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('meeting_updated')),
+          content: Text(
+            AppLocalizations.of(context).translate('meeting_updated'),
+          ),
           backgroundColor: Colors.green,
         ),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('error_updating_meeting')),
+          content: Text(
+            AppLocalizations.of(context).translate('error_updating_meeting'),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -1059,10 +1126,7 @@ class _AttendeeItem extends ConsumerWidget {
   final String userId;
   final VoidCallback onRemove;
 
-  const _AttendeeItem({
-    required this.userId,
-    required this.onRemove,
-  });
+  const _AttendeeItem({required this.userId, required this.onRemove});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1086,7 +1150,11 @@ class _AttendeeItem extends ConsumerWidget {
                 CircleAvatar(
                   radius: 18,
                   backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
-                  child: const Icon(Icons.person, size: 18, color: Colors.white),
+                  child: const Icon(
+                    Icons.person,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1125,7 +1193,9 @@ class _AttendeeItem extends ConsumerWidget {
                     ? AppColors.gold.withValues(alpha: 0.2)
                     : AppColors.navy.withValues(alpha: 0.1),
                 child: Text(
-                  user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+                  user.fullName.isNotEmpty
+                      ? user.fullName[0].toUpperCase()
+                      : '?',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: isDark ? AppColors.gold : AppColors.navy,
@@ -1186,9 +1256,7 @@ class _AttendeeItem extends ConsumerWidget {
         padding: const EdgeInsets.all(12),
         child: Text(
           'Error loading user',
-          style: TextStyle(
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
-          ),
+          style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
         ),
       ),
     );

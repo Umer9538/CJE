@@ -57,13 +57,19 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
                     );
                   },
                   loading: () => const Center(
-                    child: CircularProgressIndicator(color: AppColors.badgeDepartmentText),
+                    child: CircularProgressIndicator(
+                      color: AppColors.badgeDepartmentText,
+                    ),
                   ),
                   error: (e, _) => Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.error_outline, size: 48, color: context.textSecondary),
+                        Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: context.textSecondary,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           l10n.translate('error_loading'),
@@ -71,7 +77,8 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         TextButton(
-                          onPressed: () => ref.invalidate(departmentDocumentsProvider),
+                          onPressed: () =>
+                              ref.invalidate(departmentDocumentsProvider),
                           child: Text(l10n.translate('retry')),
                         ),
                       ],
@@ -86,9 +93,8 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const UploadDocumentScreen(
-                isDepartmentDocument: true,
-              ),
+              builder: (_) =>
+                  const UploadDocumentScreen(isDepartmentDocument: true),
             ),
           ),
           backgroundColor: const Color(0xFF92400E),
@@ -102,7 +108,11 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, AppLocalizations l10n, UserModel? user) {
+  Widget _buildHeader(
+    BuildContext context,
+    AppLocalizations l10n,
+    UserModel? user,
+  ) {
     return Container(
       width: double.infinity,
       color: const Color(0xFF92400E),
@@ -143,36 +153,32 @@ class DepartmentDocumentsScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.folder_open_rounded,
-            size: 64,
-            color: context.borderColor,
-          ),
+          Icon(Icons.folder_open_rounded, size: 64, color: context.borderColor),
           const SizedBox(height: 16),
           Text(
             l10n.translate('no_documents'),
-            style: TextStyle(
-              fontSize: 16,
-              color: context.textSecondary,
-            ),
+            style: TextStyle(fontSize: 16, color: context.textSecondary),
           ),
           const SizedBox(height: 8),
           Text(
             l10n.translate('upload_first_document'),
-            style: TextStyle(
-              fontSize: 14,
-              color: context.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: context.textSecondary),
           ),
         ],
       ),
     );
   }
 
-  void _openDocument(BuildContext context, DocumentModel document, WidgetRef ref) {
+  void _openDocument(
+    BuildContext context,
+    DocumentModel document,
+    WidgetRef ref,
+  ) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => DocumentDetailScreen(document: document)),
+      MaterialPageRoute(
+        builder: (_) => DocumentDetailScreen(document: document),
+      ),
     );
   }
 }
@@ -181,10 +187,7 @@ class _DocumentListItem extends StatelessWidget {
   final DocumentModel document;
   final VoidCallback onTap;
 
-  const _DocumentListItem({
-    required this.document,
-    required this.onTap,
-  });
+  const _DocumentListItem({required this.document, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +214,9 @@ class _DocumentListItem extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: _getFileTypeColor(document.fileType).withValues(alpha: 0.1),
+                color: _getFileTypeColor(
+                  document.fileType,
+                ).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -247,14 +252,24 @@ class _DocumentListItem extends StatelessWidget {
                     children: [
                       Text(
                         document.fileSizeFormatted,
-                        style: TextStyle(fontSize: 12, color: context.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.textSecondary,
+                        ),
                       ),
                       const SizedBox(width: 12),
-                      Icon(Icons.calendar_today, size: 12, color: context.textSecondary),
+                      Icon(
+                        Icons.calendar_today,
+                        size: 12,
+                        color: context.textSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         DateFormat('dd MMM yyyy').format(document.createdAt),
-                        style: TextStyle(fontSize: 12, color: context.textSecondary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: context.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -262,11 +277,18 @@ class _DocumentListItem extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(Icons.download, size: 12, color: context.textSecondary),
+                        Icon(
+                          Icons.download,
+                          size: 12,
+                          color: context.textSecondary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${document.downloadCount} downloads',
-                          style: TextStyle(fontSize: 11, color: context.textSecondary),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: context.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -297,7 +319,9 @@ class _DocumentListItem extends StatelessWidget {
 }
 
 /// Provider for department documents
-final departmentDocumentsProvider = FutureProvider<List<DocumentModel>>((ref) async {
+final departmentDocumentsProvider = FutureProvider<List<DocumentModel>>((
+  ref,
+) async {
   final user = ref.read(currentUserProvider);
   if (user == null || user.department == null) {
     return <DocumentModel>[];
@@ -305,10 +329,12 @@ final departmentDocumentsProvider = FutureProvider<List<DocumentModel>>((ref) as
 
   final repository = ref.read(documentRepositoryProvider);
   try {
-    return await repository.getDocumentsByDepartment(user.department!).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => <DocumentModel>[],
-    );
+    return await repository
+        .getDocumentsByDepartment(user.department!, countyId: user.city)
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => <DocumentModel>[],
+        );
   } catch (e) {
     return <DocumentModel>[];
   }

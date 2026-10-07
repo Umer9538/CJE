@@ -20,6 +20,16 @@ class MeetingModel extends Equatable {
   final bool isOnline;
   final String? onlineLink; // Zoom/Meet link
   final String? countyId; // County this meeting belongs to
+  final MeetingStatus status; // scheduled sau cancelled
+  /// Cate inregistrari de prezenta are sedinta.
+  ///
+  /// Intretinut EXCLUSIV de trigger-ul onAttendanceWritten din Cloud
+  /// Functions, prin FieldValue.increment, ca sa fie atomic. Clientul nu il
+  /// scrie niciodata. Regula de stergere pe meetings il citeste ca sa refuze
+  /// stergerea unei sedinte cu prezenta inregistrata -- garda din
+  /// MeetingController nu poate fi impusa server-side, fiindca regulile nu pot
+  /// interoga meeting_attendance.
+  final int attendanceCount;
   final String? schoolId; // Only for school meetings
   final String? schoolName;
   final DepartmentType? department; // Only for department meetings
@@ -47,6 +57,8 @@ class MeetingModel extends Equatable {
     this.isOnline = false,
     this.onlineLink,
     this.countyId,
+    this.status = MeetingStatus.scheduled,
+    this.attendanceCount = 0,
     this.schoolId,
     this.schoolName,
     this.department,
@@ -135,6 +147,9 @@ class MeetingModel extends Equatable {
       isOnline: data['isOnline'] as bool? ?? false,
       onlineLink: data['onlineLink'] as String?,
       countyId: data['countyId'] as String?,
+      status: MeetingStatus.fromFirestore(
+          data['status'] as String? ?? 'scheduled'),
+      attendanceCount: (data['attendanceCount'] as num?)?.toInt() ?? 0,
       schoolId: data['schoolId'] as String?,
       schoolName: data['schoolName'] as String?,
       department: data['department'] != null
@@ -171,6 +186,11 @@ class MeetingModel extends Equatable {
       'isOnline': isOnline,
       'onlineLink': onlineLink,
       'countyId': countyId,
+      'status': status.toFirestore(),
+      // attendanceCount NU se scrie de aici: e intretinut doar de trigger-ul din
+      // Cloud Functions, prin FieldValue.increment. Daca l-am include, orice
+      // salvare a sedintei din aplicatie ar suprascrie contorul cu o valoare
+      // invechita, iar garda de stergere ar deveni nesigura.
       'schoolId': schoolId,
       'schoolName': schoolName,
       'department': department?.toFirestore(),
@@ -201,6 +221,8 @@ class MeetingModel extends Equatable {
     bool? isOnline,
     String? onlineLink,
     String? countyId,
+    MeetingStatus? status,
+    int? attendanceCount,
     String? schoolId,
     String? schoolName,
     DepartmentType? department,
@@ -228,6 +250,8 @@ class MeetingModel extends Equatable {
       isOnline: isOnline ?? this.isOnline,
       onlineLink: onlineLink ?? this.onlineLink,
       countyId: countyId ?? this.countyId,
+      status: status ?? this.status,
+      attendanceCount: attendanceCount ?? this.attendanceCount,
       schoolId: schoolId ?? this.schoolId,
       schoolName: schoolName ?? this.schoolName,
       department: department ?? this.department,
@@ -258,6 +282,8 @@ class MeetingModel extends Equatable {
         isOnline,
         onlineLink,
         countyId,
+        status,
+        attendanceCount,
         schoolId,
         schoolName,
         department,

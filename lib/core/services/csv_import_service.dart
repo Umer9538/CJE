@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
@@ -45,10 +44,9 @@ class CSVImportError {
 /// Service for importing users from CSV files
 class CSVImportService {
   /// Expected CSV headers (case-insensitive)
-  static const List<String> requiredHeaders = ['email', 'fullname'];
+  static const List<String> requiredHeaders = ['email', 'fullname', 'city'];
   static const List<String> optionalHeaders = [
     'phonenumber',
-    'city',
     'role',
     'schoolid',
     'schoolname',
@@ -62,7 +60,9 @@ class CSVImportService {
   /// email,fullName,phoneNumber,city,role,schoolId,schoolName,className,department
   /// john@example.com,John Doe,0712345678,Cluj,student,school123,High School #1,12A,
   ///
-  /// Role values: student, classRep, schoolRep, department, bex (superadmin cannot be imported)
+  /// Role values: student, classRep, schoolRep, department.
+  /// Leadership roles (bex and superadmin) are assigned separately by an
+  /// authorised administrator and cannot be created through bulk import.
   /// Department values: secondaryEducation, iptcv, vulnerableGroups, specialEducation, volunteering, prCommunications
   CSVImportResult parseCSV(String csvContent) {
     final List<UserModel> successfulUsers = [];
@@ -72,10 +72,7 @@ class CSVImportService {
       final lines = const LineSplitter().convert(csvContent.trim());
 
       if (lines.isEmpty) {
-        errors.add(CSVImportError(
-          rowNumber: 0,
-          message: 'CSV file is empty',
-        ));
+        errors.add(CSVImportError(rowNumber: 0, message: 'CSV file is empty'));
         return CSVImportResult(
           successfulUsers: successfulUsers,
           errors: errors,
@@ -84,17 +81,19 @@ class CSVImportService {
       }
 
       // Parse headers
-      final headers = _parseCSVLine(lines[0])
-          .map((h) => h.toLowerCase().trim())
-          .toList();
+      final headers = _parseCSVLine(
+        lines[0],
+      ).map((h) => h.toLowerCase().trim()).toList();
 
       // Validate required headers
       for (final required in requiredHeaders) {
         if (!headers.contains(required)) {
-          errors.add(CSVImportError(
-            rowNumber: 1,
-            message: 'Missing required header: $required',
-          ));
+          errors.add(
+            CSVImportError(
+              rowNumber: 1,
+              message: 'Missing required header: $required',
+            ),
+          );
         }
       }
 
@@ -132,10 +131,12 @@ class CSVImportService {
             successfulUsers.add(user);
           }
         } catch (e) {
-          errors.add(CSVImportError(
-            rowNumber: i + 1,
-            message: 'Failed to parse row: $e',
-          ));
+          errors.add(
+            CSVImportError(
+              rowNumber: i + 1,
+              message: 'Failed to parse row: $e',
+            ),
+          );
         }
       }
 
@@ -146,10 +147,9 @@ class CSVImportService {
       );
     } catch (e) {
       debugPrint('CSV parsing error: $e');
-      errors.add(CSVImportError(
-        rowNumber: 0,
-        message: 'Failed to parse CSV: $e',
-      ));
+      errors.add(
+        CSVImportError(rowNumber: 0, message: 'Failed to parse CSV: $e'),
+      );
       return CSVImportResult(
         successfulUsers: successfulUsers,
         errors: errors,
@@ -203,35 +203,69 @@ class CSVImportService {
 
     // Validate required fields
     if (email.isEmpty) {
-      errors.add(CSVImportError(
-        rowNumber: rowNumber,
-        message: 'Email is required',
-        rowData: rowData,
-      ));
+      errors.add(
+        CSVImportError(
+          rowNumber: rowNumber,
+          message: 'Email is required',
+          rowData: rowData,
+        ),
+      );
       return null;
     }
 
     if (!_isValidEmail(email)) {
-      errors.add(CSVImportError(
-        rowNumber: rowNumber,
-        message: 'Invalid email format: $email',
-        rowData: rowData,
-      ));
+      errors.add(
+        CSVImportError(
+          rowNumber: rowNumber,
+          message: 'Invalid email format: $email',
+          rowData: rowData,
+        ),
+      );
       return null;
     }
 
     if (fullName.isEmpty) {
-      errors.add(CSVImportError(
-        rowNumber: rowNumber,
-        message: 'Full name is required',
-        rowData: rowData,
-      ));
+      errors.add(
+        CSVImportError(
+          rowNumber: rowNumber,
+          message: 'Full name is required',
+          rowData: rowData,
+        ),
+      );
       return null;
     }
 
     // Parse optional fields
     final phoneNumber = rowData['phonenumber']?.trim();
+
+    // Validate county: must match the fixed list exactly. No guessing, no
+    // auto-correction -- a wrong value here silently partitions the user out
+    // of their county for every rule that compares city/countyId.
     final city = rowData['city']?.trim();
+    if (city == null || city.isEmpty) {
+      errors.add(
+        CSVImportError(
+          rowNumber: rowNumber,
+          message: 'County is required',
+          rowData: rowData,
+        ),
+      );
+      return null;
+    }
+    if (!romanianCounties.contains(city)) {
+      errors.add(
+        CSVImportError(
+          rowNumber: rowNumber,
+          message:
+              'Invalid county: "$city". '
+              'Accepted values (exact match, case-sensitive): '
+              '${romanianCounties.join(', ')}',
+          rowData: rowData,
+        ),
+      );
+      return null;
+    }
+
     final schoolId = rowData['schoolid']?.trim();
     final schoolName = rowData['schoolname']?.trim();
     final className = rowData['classname']?.trim();
@@ -242,20 +276,27 @@ class CSVImportService {
     if (roleStr != null && roleStr.isNotEmpty) {
       final parsedRole = _parseRole(roleStr);
       if (parsedRole == null) {
-        errors.add(CSVImportError(
-          rowNumber: rowNumber,
-          message: 'Invalid role: $roleStr. Valid values: student, classRep, schoolRep, department, bex',
-          rowData: rowData,
-        ));
+        errors.add(
+          CSVImportError(
+            rowNumber: rowNumber,
+            message:
+                'Invalid role: $roleStr. Valid values: student, classRep, schoolRep, department, bex',
+            rowData: rowData,
+          ),
+        );
         return null;
       }
-      // Prevent importing superadmin users - only one superadmin allowed
-      if (parsedRole == UserRole.superadmin) {
-        errors.add(CSVImportError(
-          rowNumber: rowNumber,
-          message: 'Cannot import superadmin users. Only one superadmin is allowed in the system.',
-          rowData: rowData,
-        ));
+      // Keep the client validation aligned with the server-side allowlist.
+      // BEX and superadmin privileges must never be granted through a CSV.
+      if (parsedRole == UserRole.bex || parsedRole == UserRole.superadmin) {
+        errors.add(
+          CSVImportError(
+            rowNumber: rowNumber,
+            message:
+                'Cannot import BEX or superadmin users. Assign leadership roles separately from the admin panel.',
+            rowData: rowData,
+          ),
+        );
         return null;
       }
       role = parsedRole;
@@ -267,11 +308,14 @@ class CSVImportService {
     if (departmentStr != null && departmentStr.isNotEmpty) {
       department = _parseDepartment(departmentStr);
       if (department == null) {
-        errors.add(CSVImportError(
-          rowNumber: rowNumber,
-          message: 'Invalid department: $departmentStr. Valid values: secondaryEducation, iptcv, vulnerableGroups, specialEducation, volunteering, prCommunications',
-          rowData: rowData,
-        ));
+        errors.add(
+          CSVImportError(
+            rowNumber: rowNumber,
+            message:
+                'Invalid department: $departmentStr. Valid values: secondaryEducation, iptcv, vulnerableGroups, specialEducation, volunteering, prCommunications',
+            rowData: rowData,
+          ),
+        );
         return null;
       }
     }
@@ -283,7 +327,7 @@ class CSVImportService {
       email: email,
       fullName: fullName,
       phoneNumber: phoneNumber?.isNotEmpty == true ? phoneNumber : null,
-      city: city?.isNotEmpty == true ? city : null,
+      city: city,
       role: role,
       status: UserStatus.pending, // New imports are pending approval
       schoolId: schoolId?.isNotEmpty == true ? schoolId : null,
@@ -303,7 +347,10 @@ class CSVImportService {
 
   /// Parse role string to UserRole enum
   UserRole? _parseRole(String roleStr) {
-    final normalized = roleStr.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+    final normalized = roleStr
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('_', '');
     switch (normalized) {
       case 'student':
         return UserRole.student;
@@ -330,7 +377,10 @@ class CSVImportService {
 
   /// Parse department string to DepartmentType enum
   DepartmentType? _parseDepartment(String departmentStr) {
-    final normalized = departmentStr.toLowerCase().replaceAll(' ', '').replaceAll('_', '');
+    final normalized = departmentStr
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('_', '');
     switch (normalized) {
       case 'secondaryeducation':
       case 'gimnazial':
@@ -369,10 +419,9 @@ class CSVImportService {
       final excel = Excel.decodeBytes(bytes);
 
       if (excel.tables.isEmpty) {
-        errors.add(CSVImportError(
-          rowNumber: 0,
-          message: 'Excel file has no sheets',
-        ));
+        errors.add(
+          CSVImportError(rowNumber: 0, message: 'Excel file has no sheets'),
+        );
         return CSVImportResult(
           successfulUsers: successfulUsers,
           errors: errors,
@@ -385,10 +434,9 @@ class CSVImportService {
       final sheet = excel.tables[sheetName]!;
 
       if (sheet.rows.isEmpty) {
-        errors.add(CSVImportError(
-          rowNumber: 0,
-          message: 'Excel sheet is empty',
-        ));
+        errors.add(
+          CSVImportError(rowNumber: 0, message: 'Excel sheet is empty'),
+        );
         return CSVImportResult(
           successfulUsers: successfulUsers,
           errors: errors,
@@ -405,10 +453,12 @@ class CSVImportService {
       // Validate required headers
       for (final required in requiredHeaders) {
         if (!headers.contains(required)) {
-          errors.add(CSVImportError(
-            rowNumber: 1,
-            message: 'Missing required header: $required',
-          ));
+          errors.add(
+            CSVImportError(
+              rowNumber: 1,
+              message: 'Missing required header: $required',
+            ),
+          );
         }
       }
 
@@ -433,7 +483,10 @@ class CSVImportService {
         final row = sheet.rows[i];
 
         // Skip empty rows
-        if (row.every((cell) => cell?.value == null || cell!.value.toString().trim().isEmpty)) {
+        if (row.every(
+          (cell) =>
+              cell?.value == null || cell!.value.toString().trim().isEmpty,
+        )) {
           continue;
         }
 
@@ -454,10 +507,12 @@ class CSVImportService {
             successfulUsers.add(user);
           }
         } catch (e) {
-          errors.add(CSVImportError(
-            rowNumber: i + 1,
-            message: 'Failed to parse row: $e',
-          ));
+          errors.add(
+            CSVImportError(
+              rowNumber: i + 1,
+              message: 'Failed to parse row: $e',
+            ),
+          );
         }
       }
 
@@ -468,10 +523,9 @@ class CSVImportService {
       );
     } catch (e) {
       debugPrint('Excel parsing error: $e');
-      errors.add(CSVImportError(
-        rowNumber: 0,
-        message: 'Failed to parse Excel file: $e',
-      ));
+      errors.add(
+        CSVImportError(rowNumber: 0, message: 'Failed to parse Excel file: $e'),
+      );
       return CSVImportResult(
         successfulUsers: successfulUsers,
         errors: errors,
@@ -497,7 +551,8 @@ class CSVImportService {
         errors: [
           CSVImportError(
             rowNumber: 0,
-            message: 'Unsupported file format: .$extension. Please use .csv, .xls, or .xlsx',
+            message:
+                'Unsupported file format: .$extension. Please use .csv, .xls, or .xlsx',
           ),
         ],
         totalRows: 0,
@@ -507,10 +562,14 @@ class CSVImportService {
 
   /// Generate a sample CSV template
   static String generateTemplate() {
-    const headers = 'email,fullName,phoneNumber,city,role,schoolId,schoolName,className,department';
-    const example1 = 'student1@school.ro,Ion Popescu,0712345678,Cluj-Napoca,student,school1,Colegiul National Example,12A,';
-    const example2 = 'rep@school.ro,Maria Ionescu,0798765432,Cluj-Napoca,classRep,school1,Colegiul National Example,11B,';
-    const example3 = 'dept@school.ro,Alexandru Marin,0756123456,Cluj-Napoca,department,school1,Colegiul National Example,10C,prCommunications';
+    const headers =
+        'email,fullName,phoneNumber,city,role,schoolId,schoolName,className,department';
+    const example1 =
+        'student1@school.ro,Ion Popescu,,Cluj,student,school1,Colegiul National Example,12A,';
+    const example2 =
+        'rep@school.ro,Maria Ionescu,,Cluj,classRep,school1,Colegiul National Example,11B,';
+    const example3 =
+        'dept@school.ro,Alexandru Marin,,Cluj,department,school1,Colegiul National Example,10C,prCommunications';
 
     return '$headers\n$example1\n$example2\n$example3';
   }
@@ -523,11 +582,11 @@ Supported formats: CSV, XLS, XLSX
 Required columns:
 - email: User's email address
 - fullName: User's full name
+- city: Romanian county name (for example: Cluj, Sibiu, București)
 
 Optional columns:
 - phoneNumber: Phone number
-- city: City name
-- role: student, classRep, schoolRep, department, bex (default: student)
+- role: student, classRep, schoolRep, department (default: student)
 - schoolId: School document ID
 - schoolName: School name (display)
 - className: Class name (e.g., 12A, 11B)
@@ -536,6 +595,7 @@ Optional columns:
 Notes:
 - First row must contain headers
 - Imported users will have 'pending' status
+- At first sign-in, every imported user must personally acknowledge the Privacy Policy and declare the required age band before approval
 - Email addresses must be unique
 - Use UTF-8 encoding for CSV files
 ''';

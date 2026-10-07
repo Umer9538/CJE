@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import '../../widgets/common/content_report_button.dart';
 import 'create_initiative_screen.dart';
 import 'tabs/tabs.dart';
 import 'widgets/widgets.dart';
@@ -70,7 +71,10 @@ class _InitiativeDetailScreenState extends ConsumerState<InitiativeDetailScreen>
               indicatorWeight: 3,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
-              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              labelStyle: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
               labelPadding: const EdgeInsets.symmetric(horizontal: 16),
               tabs: [
                 Tab(text: l10n.translate('description')),
@@ -144,7 +148,11 @@ class _InitiativeDetailScreenState extends ConsumerState<InitiativeDetailScreen>
     if (success && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('initiative_submitted_for_review')),
+          content: Text(
+            AppLocalizations.of(
+              context,
+            ).translate('initiative_submitted_for_review'),
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -206,10 +214,7 @@ class _InitiativeHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.navy,
-            AppColors.navy.withValues(alpha: 0.8),
-          ],
+          colors: [AppColors.navy, AppColors.navy.withValues(alpha: 0.8)],
         ),
       ),
       child: SafeArea(
@@ -224,6 +229,14 @@ class _InitiativeHeader extends StatelessWidget {
                 children: [
                   _buildBackButton(context),
                   const Spacer(),
+                  ContentReportButton(
+                    type: 'initiative',
+                    contentId: initiative.id,
+                    authorId: initiative.authorId,
+                    countyId: initiative.countyId,
+                    color: Colors.white,
+                    onBlocked: () => Navigator.pop(context),
+                  ),
                   if (canManage) _buildMenuButton(context, l10n),
                 ],
               ),
@@ -326,8 +339,10 @@ class _InitiativeHeader extends StatelessWidget {
             children: [
               const Icon(Icons.delete_outline, size: 20, color: Colors.red),
               const SizedBox(width: 12),
-              Text(l10n.translate('delete'),
-                  style: const TextStyle(color: Colors.red)),
+              Text(
+                l10n.translate('delete'),
+                style: const TextStyle(color: Colors.red),
+              ),
             ],
           ),
         ),

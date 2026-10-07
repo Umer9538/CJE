@@ -10,6 +10,7 @@ import '../admin/admin_schools_screen.dart';
 import '../admin/admin_gds_screen.dart' show AdminGDSScreen;
 import '../admin/bex_analytics_screen.dart';
 import '../admin/county_settings_screen.dart';
+import '../admin/moderation_reports_screen.dart';
 import '../bex/activity_report_screen.dart';
 import '../calendar/calendar_screen.dart';
 import '../documents/documents_screen.dart';
@@ -438,6 +439,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                     MaterialPageRoute(builder: (_) => const ActivityReportScreen()),
                   ),
                 ),
+                if (ref.watch(currentUserProvider)?.isBEXOrHigher == true)
+                  _MenuTile(
+                    icon: Icons.flag_outlined,
+                    iconColor: AppColors.gold,
+                    title: l10n.translate('moderation_reports'),
+                    subtitle: l10n.translate('report_content'),
+                    onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const ModerationReportsScreen())),
+                  ),
               ],
             ),
           ),

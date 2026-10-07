@@ -16,7 +16,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  static const String _keyTermsAccepted = 'terms_accepted';
+  static const String _keyTermsAccepted = 'terms_accepted_${AppStrings.termsVersion}';
 
   @override
   void initState() {

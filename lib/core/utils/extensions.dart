@@ -33,9 +33,9 @@ extension StringExtensions on String {
     return phoneRegex.hasMatch(this);
   }
 
-  /// Check if string is a valid password (min 8 chars, 1 uppercase, 1 number)
+  /// Check if string is a valid password (min 10 chars, 1 uppercase, 1 number)
   bool get isValidPassword {
-    if (length < 8) return false;
+    if (length < 10) return false;
     final hasUppercase = contains(RegExp(r'[A-Z]'));
     final hasNumber = contains(RegExp(r'[0-9]'));
     return hasUppercase && hasNumber;

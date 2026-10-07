@@ -30,7 +30,10 @@ bool _canViewPoll(UserRole? userRole, UserRole? minVisibilityRole) {
 }
 
 /// Polls list provider
-final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, filter) async {
+final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((
+  ref,
+  filter,
+) async {
   // Use ref.watch for reactive dependencies so provider rebuilds when user changes
   final user = ref.watch(currentUserProvider);
   if (user == null) {
@@ -42,28 +45,34 @@ final pollsProvider = FutureProvider.family<List<PollModel>, PollFilter>((ref, f
 
   // For superadmin and bex, show all polls without schoolId filter
   // For regular users, filter by their schoolId (county polls are always visible)
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
 
   try {
-    final polls = await repository.getPolls(
-      type: filter.type,
-      schoolId: shouldFilterBySchool ? user.schoolId : null,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      activeOnly: filter.activeOnly,
-      limit: filter.limit,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => <PollModel>[],
-    );
+    final polls = await repository
+        .getPolls(
+          type: filter.type,
+          schoolId: shouldFilterBySchool ? user.schoolId : null,
+          countyId:
+              effectiveCounty, // Uses selected county for Superadmin, user's county for others
+          activeOnly: filter.activeOnly,
+          limit: filter.limit,
+        )
+        .timeout(const Duration(seconds: 10), onTimeout: () => <PollModel>[]);
     // Filter by visibility role
-    return polls.where((p) => _canViewPoll(user.role, p.minVisibilityRole)).toList();
+    return polls
+        .where((p) => _canViewPoll(user.role, p.minVisibilityRole))
+        .toList();
   } catch (e) {
     return <PollModel>[];
   }
 });
 
 /// Polls stream provider
-final pollsStreamProvider = StreamProvider.family<List<PollModel>, PollFilter>((ref, filter) {
+final pollsStreamProvider = StreamProvider.family<List<PollModel>, PollFilter>((
+  ref,
+  filter,
+) {
   final repository = ref.watch(pollRepositoryProvider);
   // Use ref.watch for reactive dependencies
   final user = ref.watch(currentUserProvider);
@@ -71,22 +80,28 @@ final pollsStreamProvider = StreamProvider.family<List<PollModel>, PollFilter>((
 
   // For superadmin and bex, show all polls without schoolId filter
   // For regular users, filter by their schoolId (county polls are always visible)
-  final shouldFilterBySchool = user?.role != UserRole.superadmin && user?.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user?.role != UserRole.superadmin && user?.role != UserRole.bex;
 
-  return repository.getPollsStream(
-    type: filter.type,
-    schoolId: shouldFilterBySchool ? user?.schoolId : null,
-    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-    limit: filter.limit,
-  ).map((polls) {
-    // Filter by visibility role
-    var filtered = polls.where((p) => _canViewPoll(user?.role, p.minVisibilityRole)).toList();
-    // Apply activeOnly filter if enabled
-    if (filter.activeOnly) {
-      filtered = filtered.where((poll) => poll.isActive).toList();
-    }
-    return filtered;
-  });
+  return repository
+      .getPollsStream(
+        type: filter.type,
+        schoolId: shouldFilterBySchool ? user?.schoolId : null,
+        countyId:
+            effectiveCounty, // Uses selected county for Superadmin, user's county for others
+        limit: filter.limit,
+      )
+      .map((polls) {
+        // Filter by visibility role
+        var filtered = polls
+            .where((p) => _canViewPoll(user?.role, p.minVisibilityRole))
+            .toList();
+        // Apply activeOnly filter if enabled
+        if (filter.activeOnly) {
+          filtered = filtered.where((poll) => poll.isActive).toList();
+        }
+        return filtered;
+      });
 });
 
 /// Single poll provider
@@ -109,26 +124,36 @@ final activePollsProvider = FutureProvider<List<PollModel>>((ref) async {
 
   // For superadmin and bex, show all active polls without schoolId filter
   // For regular users, filter by their schoolId (county polls are always visible)
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
-  debugPrint('activePollsProvider: user=${user.fullName}, role=${user.role}, county=$effectiveCounty, schoolId=$effectiveSchoolId');
+  debugPrint(
+    'activePollsProvider: role=${user.role}, county=$effectiveCounty, schoolId=$effectiveSchoolId',
+  );
 
   try {
-    final polls = await repository.getActivePolls(
-      schoolId: effectiveSchoolId,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      limit: 5,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        debugPrint('activePollsProvider: timeout, returning empty list');
-        return <PollModel>[];
-      },
-    );
+    final polls = await repository
+        .getActivePolls(
+          schoolId: effectiveSchoolId,
+          countyId:
+              effectiveCounty, // Uses selected county for Superadmin, user's county for others
+          limit: 5,
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('activePollsProvider: timeout, returning empty list');
+            return <PollModel>[];
+          },
+        );
     // Filter by visibility role
-    final filtered = polls.where((p) => _canViewPoll(user.role, p.minVisibilityRole)).toList();
-    debugPrint('activePollsProvider: returned ${filtered.length} polls (after visibility filter)');
+    final filtered = polls
+        .where((p) => _canViewPoll(user.role, p.minVisibilityRole))
+        .toList();
+    debugPrint(
+      'activePollsProvider: returned ${filtered.length} polls (after visibility filter)',
+    );
     return filtered;
   } catch (e) {
     debugPrint('activePollsProvider: error $e');
@@ -147,21 +172,29 @@ final activePollsStreamProvider = StreamProvider<List<PollModel>>((ref) {
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For superadmin and bex, show all active polls without schoolId filter
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
-  return repository.getActivePollsStream(
-    schoolId: effectiveSchoolId,
-    countyId: effectiveCounty,
-    limit: 5,
-  ).map((polls) {
-    // Filter by visibility role
-    return polls.where((p) => _canViewPoll(user.role, p.minVisibilityRole)).toList();
-  });
+  return repository
+      .getActivePollsStream(
+        schoolId: effectiveSchoolId,
+        countyId: effectiveCounty,
+        limit: 5,
+      )
+      .map((polls) {
+        // Filter by visibility role
+        return polls
+            .where((p) => _canViewPoll(user.role, p.minVisibilityRole))
+            .toList();
+      });
 });
 
 /// Check if user has voted on a poll
-final hasVotedProvider = FutureProvider.family<bool, String>((ref, pollId) async {
+final hasVotedProvider = FutureProvider.family<bool, String>((
+  ref,
+  pollId,
+) async {
   final repository = ref.read(pollRepositoryProvider);
   final user = ref.read(currentUserProvider);
   if (user == null) return false;
@@ -169,13 +202,19 @@ final hasVotedProvider = FutureProvider.family<bool, String>((ref, pollId) async
 });
 
 /// Get all votes for a poll (for admin visibility on non-anonymous polls)
-final pollVotesProvider = FutureProvider.family<List<PollVote>, String>((ref, pollId) async {
+final pollVotesProvider = FutureProvider.family<List<PollVote>, String>((
+  ref,
+  pollId,
+) async {
   final repository = ref.watch(pollRepositoryProvider);
   return repository.getVotes(pollId);
 });
 
 /// Poll votes stream for real-time updates
-final pollVotesStreamProvider = StreamProvider.family<List<PollVote>, String>((ref, pollId) {
+final pollVotesStreamProvider = StreamProvider.family<List<PollVote>, String>((
+  ref,
+  pollId,
+) {
   final repository = ref.watch(pollRepositoryProvider);
   return repository.getVotesStream(pollId);
 });
@@ -186,11 +225,7 @@ class PollFilter {
   final bool activeOnly;
   final int limit;
 
-  const PollFilter({
-    this.type,
-    this.activeOnly = false,
-    this.limit = 20,
-  });
+  const PollFilter({this.type, this.activeOnly = false, this.limit = 20});
 
   @override
   bool operator ==(Object other) =>
@@ -210,7 +245,8 @@ class PollController extends StateNotifier<AsyncValue<void>> {
   final PollRepository _repository;
   final Ref _ref;
 
-  PollController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  PollController(this._repository, this._ref)
+    : super(const AsyncValue.data(null));
 
   /// Create new poll (only schoolRep, bex, superadmin can create)
   /// - schoolId/schoolName: Optional overrides for BEX/Superadmin to create polls for specific schools
@@ -236,6 +272,15 @@ class PollController extends StateNotifier<AsyncValue<void>> {
       return null;
     }
 
+    final effectiveCounty = _ref.read(effectiveCountyProvider);
+    if (effectiveCounty == null || effectiveCounty.isEmpty) {
+      state = AsyncValue.error(
+        'Selecteaza judetul inainte de a crea sondajul',
+        StackTrace.current,
+      );
+      return null;
+    }
+
     // Permission check - schoolRep, department, bex, superadmin can create polls
     if (user.role != UserRole.schoolRep &&
         user.role != UserRole.department &&
@@ -249,7 +294,10 @@ class PollController extends StateNotifier<AsyncValue<void>> {
     if (type == PollType.county &&
         user.role != UserRole.bex &&
         user.role != UserRole.superadmin) {
-      state = AsyncValue.error('Permission denied for county polls', StackTrace.current);
+      state = AsyncValue.error(
+        'Permission denied for county polls',
+        StackTrace.current,
+      );
       return null;
     }
 
@@ -273,25 +321,42 @@ class PollController extends StateNotifier<AsyncValue<void>> {
       // Add 10 second timeout to entire translation process
       await Future<void>(() async {
         final translatedQuestion = await TranslatableContent.fromText(question);
-        questionTranslations = {'en': translatedQuestion.en, 'ro': translatedQuestion.ro};
+        questionTranslations = {
+          'en': translatedQuestion.en,
+          'ro': translatedQuestion.ro,
+        };
 
         if (description != null && description.isNotEmpty) {
-          final translatedDescription = await TranslatableContent.fromText(description);
-          descriptionTranslations = {'en': translatedDescription.en, 'ro': translatedDescription.ro};
+          final translatedDescription = await TranslatableContent.fromText(
+            description,
+          );
+          descriptionTranslations = {
+            'en': translatedDescription.en,
+            'ro': translatedDescription.ro,
+          };
         }
 
         // Translate each option
-        translatedOptions = await Future.wait(options.map((option) async {
-          final translatedText = await TranslatableContent.fromText(option.text);
-          return option.copyWith(
-            textTranslations: {'en': translatedText.en, 'ro': translatedText.ro},
-          );
-        }));
+        translatedOptions = await Future.wait(
+          options.map((option) async {
+            final translatedText = await TranslatableContent.fromText(
+              option.text,
+            );
+            return option.copyWith(
+              textTranslations: {
+                'en': translatedText.en,
+                'ro': translatedText.ro,
+              },
+            );
+          }),
+        );
       }).timeout(const Duration(seconds: 10));
 
       debugPrint('PollController: Content translated successfully');
     } catch (e) {
-      debugPrint('PollController: Translation failed/timeout - $e, continuing without translations');
+      debugPrint(
+        'PollController: Translation failed/timeout - $e, continuing without translations',
+      );
       // Continue without translations if translation fails or times out
     }
 
@@ -305,7 +370,7 @@ class PollController extends StateNotifier<AsyncValue<void>> {
       options: translatedOptions,
       createdById: user.id,
       createdByName: user.fullName,
-      countyId: user.city, // Save the county for data partitioning (city is the county name)
+      countyId: effectiveCounty,
       schoolId: effectiveSchoolId,
       schoolName: effectiveSchoolName,
       isAnonymous: isAnonymous,
@@ -425,7 +490,9 @@ class PollController extends StateNotifier<AsyncValue<void>> {
           ? '${endDate.day}/${endDate.month}/${endDate.year}'
           : null;
 
-      debugPrint('PollNotification: Sending with minVisibilityRole=$minVisibilityRole, schoolId=$schoolId, type=$type, countyId=${user?.city}');
+      debugPrint(
+        'PollNotification: Sending with minVisibilityRole=$minVisibilityRole, schoolId=$schoolId, type=$type, countyId=${user?.city}',
+      );
 
       await notificationRepo.sendCountyWideNotification(
         title: 'New Poll: Vote Now!',
@@ -438,10 +505,16 @@ class PollController extends StateNotifier<AsyncValue<void>> {
         senderName: user?.fullName ?? 'System',
         additionalData: {'pollId': pollId},
         titleBuilder: (lang) {
-          final base = AppLocalizations.translateForLocale(lang, 'notif_new_poll');
+          final base = AppLocalizations.translateForLocale(
+            lang,
+            'notif_new_poll',
+          );
           if (endDateFormatted == null) return base;
           final suffix = AppLocalizations.translateForLocaleWithParams(
-              lang, 'notif_poll_ends', {'date': endDateFormatted});
+            lang,
+            'notif_poll_ends',
+            {'date': endDateFormatted},
+          );
           return '$base$suffix';
         },
       );
@@ -456,11 +529,8 @@ class PollController extends StateNotifier<AsyncValue<void>> {
 /// Poll controller provider
 final pollControllerProvider =
     StateNotifierProvider<PollController, AsyncValue<void>>((ref) {
-  return PollController(
-    ref.watch(pollRepositoryProvider),
-    ref,
-  );
-});
+      return PollController(ref.watch(pollRepositoryProvider), ref);
+    });
 
 /// Check if current user can create polls
 /// SchoolRep can create school polls, Department can create department polls, BEX/Superadmin can create any
@@ -468,9 +538,9 @@ final canCreatePollsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.schoolRep ||
-         user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.department ||
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can create county-level polls (BEX only)
@@ -485,8 +555,8 @@ final canCreateDepartmentPollsProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can vote on polls (all authenticated users can vote)

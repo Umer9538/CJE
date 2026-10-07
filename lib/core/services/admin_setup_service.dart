@@ -20,7 +20,7 @@ class AdminSetupService {
           .get();
 
       if (query.docs.isEmpty) {
-        debugPrint('User with email $email not found');
+        debugPrint('User not found for the requested email');
         return false;
       }
 
@@ -31,7 +31,7 @@ class AdminSetupService {
         'updatedAt': Timestamp.now(),
       });
 
-      debugPrint('Successfully set $email as super admin');
+      debugPrint('Super admin role assigned');
       return true;
     } catch (e) {
       debugPrint('Error setting super admin: $e');

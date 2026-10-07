@@ -15,6 +15,7 @@ class GDSModel extends Equatable {
   final bool isActive;
   final String createdById;
   final String createdByName;
+  final String? countyId; // Judetul, preluat din city-ul creatorului
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -30,6 +31,7 @@ class GDSModel extends Equatable {
     this.isActive = true,
     required this.createdById,
     required this.createdByName,
+    this.countyId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -63,6 +65,7 @@ class GDSModel extends Equatable {
       isActive: data['isActive'] as bool? ?? true,
       createdById: data['createdById'] as String? ?? '',
       createdByName: data['createdByName'] as String? ?? '',
+      countyId: data['countyId'] as String?,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
     );
@@ -80,6 +83,7 @@ class GDSModel extends Equatable {
       'isActive': isActive,
       'createdById': createdById,
       'createdByName': createdByName,
+      'countyId': countyId,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -97,6 +101,7 @@ class GDSModel extends Equatable {
     bool? isActive,
     String? createdById,
     String? createdByName,
+    String? countyId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -112,6 +117,7 @@ class GDSModel extends Equatable {
       isActive: isActive ?? this.isActive,
       createdById: createdById ?? this.createdById,
       createdByName: createdByName ?? this.createdByName,
+      countyId: countyId ?? this.countyId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -130,6 +136,7 @@ class GDSModel extends Equatable {
         isActive,
         createdById,
         createdByName,
+        countyId,
         createdAt,
         updatedAt,
       ];

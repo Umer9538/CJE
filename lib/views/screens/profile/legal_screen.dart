@@ -143,6 +143,30 @@ class PrivacyPolicyScreen extends StatelessWidget {
               l10n.translate('privacy_section_5_title'),
               l10n.translate('privacy_section_5_content'),
             ),
+            const SizedBox(height: 24),
+            _buildSection(
+              context,
+              l10n.translate('privacy_section_6_title'),
+              l10n.translate('privacy_section_6_content'),
+            ),
+            const SizedBox(height: 24),
+            _buildSection(
+              context,
+              l10n.translate('privacy_section_7_title'),
+              l10n.translate('privacy_section_7_content'),
+            ),
+            const SizedBox(height: 24),
+            _buildSection(
+              context,
+              l10n.translate('privacy_section_8_title'),
+              l10n.translate('privacy_section_8_content'),
+            ),
+            const SizedBox(height: 24),
+            _buildSection(
+              context,
+              l10n.translate('privacy_section_9_title'),
+              l10n.translate('privacy_section_9_content'),
+            ),
             const SizedBox(height: 32),
             Text(
               l10n.translate('last_updated'),

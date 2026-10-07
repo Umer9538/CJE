@@ -3,17 +3,21 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/models.dart';
 import '../constants/enums.dart';
+import 'content_access.dart';
 
 /// Repository for document-related Firestore operations
 class DocumentRepository {
   final FirebaseFirestore _firestore;
 
   DocumentRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Collection reference
   CollectionReference<Map<String, dynamic>> get _collection =>
       _firestore.collection('documents');
+
+  Future<Query<Map<String, dynamic>>> _queryForCounty(String? countyId) =>
+      ContentAccess(_firestore).query(_collection, countyId: countyId);
 
   /// Get all documents
   /// - If schoolId is provided, returns documents from that school
@@ -22,23 +26,23 @@ class DocumentRepository {
   Future<List<DocumentModel>> getDocuments({
     DocumentCategory? category,
     String? schoolId,
+    String? countyId,
     bool includeCountyDocs = true,
     bool publicOnly = true,
     int limit = 50,
   }) async {
     try {
-      Query<Map<String, dynamic>> query = _collection
-          .orderBy('createdAt', descending: true);
-
-      if (category != null) {
-        query = query.where('category', isEqualTo: category.toFirestore());
-      }
-
-      final snapshot = await query.limit(limit * 2).get(); // Fetch more to account for filtering
+      // The county condition must be part of the Firestore query so security
+      // rules can prove that no document from another county is returned.
+      final snapshot = await (await _queryForCounty(countyId)).get();
 
       List<DocumentModel> documents = snapshot.docs
           .map((doc) => DocumentModel.fromFirestore(doc))
           .toList();
+
+      if (category != null) {
+        documents = documents.where((d) => d.category == category).toList();
+      }
 
       // Filter by school
       // - County-level docs (schoolId == null) are visible if includeCountyDocs is true
@@ -59,6 +63,8 @@ class DocumentRepository {
         documents = documents.where((d) => d.isPublic).toList();
       }
 
+      documents.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
       return documents.take(limit).toList();
     } catch (e) {
       debugPrint('Error getting documents: $e');
@@ -69,17 +75,19 @@ class DocumentRepository {
   /// Get documents stream
   Stream<List<DocumentModel>> getDocumentsStream({
     DocumentCategory? category,
+    String? countyId,
     int limit = 50,
   }) {
-    Query<Map<String, dynamic>> query = _collection
-        .orderBy('createdAt', descending: true);
-
-    if (category != null) {
-      query = query.where('category', isEqualTo: category.toFirestore());
-    }
-
-    return query.limit(limit).snapshots().map((snapshot) =>
-        snapshot.docs.map((doc) => DocumentModel.fromFirestore(doc)).toList());
+    return ContentAccess(
+      _firestore,
+    ).snapshots(_collection, countyId: countyId).map((snapshot) {
+      var documents = snapshot.docs
+          .map((doc) => DocumentModel.fromFirestore(doc))
+          .where((d) => category == null || d.category == category)
+          .toList();
+      documents.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return documents.take(limit).toList();
+    });
   }
 
   /// Get document by ID
@@ -110,9 +118,9 @@ class DocumentRepository {
   /// Update document
   Future<bool> updateDocument(DocumentModel document) async {
     try {
-      await _collection.doc(document.id).update(
-        document.copyWith(updatedAt: DateTime.now()).toFirestore(),
-      );
+      await _collection
+          .doc(document.id)
+          .update(document.copyWith(updatedAt: DateTime.now()).toFirestore());
       return true;
     } catch (e) {
       debugPrint('Error updating document: $e');
@@ -143,18 +151,20 @@ class DocumentRepository {
   }
 
   /// Search documents by title
-  Future<List<DocumentModel>> searchDocuments(String query) async {
+  Future<List<DocumentModel>> searchDocuments(
+    String query, {
+    String? countyId,
+  }) async {
     try {
-      // Simple search - in production, use Algolia or similar
-      final snapshot = await _collection
-          .orderBy('title')
-          .startAt([query])
-          .endAt(['$query\uf8ff'])
-          .limit(20)
-          .get();
-
+      final snapshot = await (await _queryForCounty(countyId)).get();
+      final normalizedQuery = query.toLowerCase();
       return snapshot.docs
           .map((doc) => DocumentModel.fromFirestore(doc))
+          .where(
+            (document) =>
+                document.title.toLowerCase().contains(normalizedQuery),
+          )
+          .take(20)
           .toList();
     } catch (e) {
       debugPrint('Error searching documents: $e');
@@ -163,13 +173,17 @@ class DocumentRepository {
   }
 
   /// Get documents by department (filtered by tag)
-  Future<List<DocumentModel>> getDocumentsByDepartment(DepartmentType department, {int limit = 50}) async {
+  Future<List<DocumentModel>> getDocumentsByDepartment(
+    DepartmentType department, {
+    String? countyId,
+    int limit = 50,
+  }) async {
     try {
       final departmentTag = 'department:${department.name}';
 
       // Get all documents and filter by tag in memory
       // Firestore array-contains with orderBy requires composite index
-      final snapshot = await _collection.get();
+      final snapshot = await (await _queryForCounty(countyId)).get();
 
       List<DocumentModel> documents = snapshot.docs
           .map((doc) => DocumentModel.fromFirestore(doc))

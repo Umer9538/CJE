@@ -24,7 +24,7 @@ class Validators {
     if (value == null || value.isEmpty) {
       return AppStrings.passwordRequired;
     }
-    if (value.length < 8) {
+    if (value.length < 10) {
       return AppStrings.passwordTooShort;
     }
     // Check for at least one uppercase letter

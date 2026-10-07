@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'dart:convert';
 import 'dart:math';
 
@@ -35,15 +36,14 @@ class AuthService {
   final FirebaseAuth _auth;
   final GoogleSignIn _googleSignIn;
 
-  AuthService({
-    FirebaseAuth? auth,
-    GoogleSignIn? googleSignIn,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ??
-            GoogleSignIn(
-              serverClientId:
-                  '317912008960-3gp92dvqr869gmgo0tr9rdhlifdseta2.apps.googleusercontent.com',
-            ) {
+  AuthService({FirebaseAuth? auth, GoogleSignIn? googleSignIn})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _googleSignIn =
+          googleSignIn ??
+          GoogleSignIn(
+            serverClientId:
+                '317912008960-3gp92dvqr869gmgo0tr9rdhlifdseta2.apps.googleusercontent.com',
+          ) {
     // Set persistence to LOCAL to keep the user logged in
     // Note: setPersistence is only supported on web platforms
     // On mobile (Android/iOS), persistence is LOCAL by default
@@ -140,7 +140,9 @@ class AuthService {
       return AuthResult.failure(_getErrorMessage(e.code), e.code);
     } catch (e) {
       debugPrint('Google sign in error: $e');
-      return AuthResult.failure('Autentificare cu Google a eșuat. Încearcă din nou.');
+      return AuthResult.failure(
+        'Autentificare cu Google a eșuat. Încearcă din nou.',
+      );
     }
   }
 
@@ -148,8 +150,10 @@ class AuthService {
     const charset =
         '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
     final random = Random.secure();
-    return List.generate(length, (_) => charset[random.nextInt(charset.length)])
-        .join();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
   }
 
   String _sha256ofString(String input) {
@@ -196,12 +200,56 @@ class AuthService {
       if (e.code == AuthorizationErrorCode.canceled) {
         return AuthResult.failure('Autentificare anulată');
       }
-      return AuthResult.failure('Autentificare cu Apple a eșuat. Încearcă din nou.');
+      return AuthResult.failure(
+        'Autentificare cu Apple a eșuat. Încearcă din nou.',
+      );
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_getErrorMessage(e.code), e.code);
     } catch (e) {
       debugPrint('Apple sign in error: $e');
-      return AuthResult.failure('Autentificare cu Apple a eșuat. Încearcă din nou.');
+      return AuthResult.failure(
+        'Autentificare cu Apple a eșuat. Încearcă din nou.',
+      );
+    }
+  }
+
+  /// Reauthenticate the same Apple account and revoke its Apple authorization
+  /// before the backend erases Firebase Auth and application data.
+  Future<AuthResult> prepareAppleAccountDeletion() async {
+    final user = currentUser;
+    if (user == null) {
+      return AuthResult.failure('Nu există utilizator autentificat.');
+    }
+    if (!user.providerData.any(
+      (provider) => provider.providerId == 'apple.com',
+    )) {
+      return const AuthResult(success: true);
+    }
+    try {
+      final rawNonce = _generateNonce();
+      final apple = await SignInWithApple.getAppleIDCredential(
+        scopes: [],
+        nonce: _sha256ofString(rawNonce),
+      );
+      final credential = OAuthProvider(
+        'apple.com',
+      ).credential(idToken: apple.identityToken, rawNonce: rawNonce);
+      await user.reauthenticateWithCredential(credential);
+      await user.getIdToken(true);
+      await _auth.revokeTokenWithAuthorizationCode(apple.authorizationCode);
+      return const AuthResult(success: true);
+    } on SignInWithAppleAuthorizationException catch (error) {
+      return AuthResult.failure(
+        error.code == AuthorizationErrorCode.canceled
+            ? 'Ștergerea a fost anulată.'
+            : 'Autorizarea Apple nu a putut fi revocată.',
+      );
+    } on FirebaseAuthException catch (error) {
+      return AuthResult.failure(_getErrorMessage(error.code), error.code);
+    } catch (_) {
+      return AuthResult.failure(
+        'Autorizarea Apple nu a putut fi revocată. Încearcă din nou.',
+      );
     }
   }
 
@@ -295,10 +343,7 @@ class AuthService {
   /// Sign out
   Future<void> signOut() async {
     try {
-      await Future.wait([
-        _auth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
+      await Future.wait([_auth.signOut(), _googleSignIn.signOut()]);
     } catch (e) {
       debugPrint('Sign out error: $e');
     }
@@ -307,7 +352,12 @@ class AuthService {
   /// Delete account
   Future<AuthResult> deleteAccount() async {
     try {
-      await currentUser?.delete();
+      await FirebaseFunctions.instance
+          .httpsCallable(
+            'deleteAccount',
+            options: HttpsCallableOptions(timeout: const Duration(minutes: 9)),
+          )
+          .call();
       return const AuthResult(success: true);
     } on FirebaseAuthException catch (e) {
       return AuthResult.failure(_getErrorMessage(e.code), e.code);

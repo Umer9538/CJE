@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/enums.dart';
 import '../../core/repositories/gds_repository.dart';
 import '../../models/models.dart';
 import '../auth/auth_controller.dart';
@@ -17,8 +18,10 @@ final allGDSProvider = FutureProvider<List<GDSModel>>((ref) async {
   }
 
   final repository = ref.read(gdsRepositoryProvider);
+  final countyId =
+      user.role == UserRole.superadmin ? null : user.city;
   try {
-    return await repository.getAllGDS().timeout(
+    return await repository.getAllGDS(countyId: countyId).timeout(
       const Duration(seconds: 15),
       onTimeout: () => <GDSModel>[],
     );
@@ -35,8 +38,10 @@ final activeGDSProvider = FutureProvider<List<GDSModel>>((ref) async {
   }
 
   final repository = ref.read(gdsRepositoryProvider);
+  final countyId =
+      user.role == UserRole.superadmin ? null : user.city;
   try {
-    return await repository.getActiveGDS().timeout(
+    return await repository.getActiveGDS(countyId: countyId).timeout(
       const Duration(seconds: 15),
       onTimeout: () => <GDSModel>[],
     );
@@ -48,7 +53,11 @@ final activeGDSProvider = FutureProvider<List<GDSModel>>((ref) async {
 /// GDS stream provider for real-time updates
 final gdsStreamProvider = StreamProvider<List<GDSModel>>((ref) {
   final repository = ref.watch(gdsRepositoryProvider);
-  return repository.getGDSStream();
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value(<GDSModel>[]);
+  final countyId =
+      user.role == UserRole.superadmin ? null : user.city;
+  return repository.getGDSStream(countyId: countyId);
 });
 
 /// Single GDS provider
@@ -67,8 +76,15 @@ final gdsProvider = FutureProvider.family<GDSModel?, String>((ref, gdsId) async 
 /// User's GDS groups provider
 final userGDSProvider = FutureProvider.family<List<GDSModel>, String>((ref, userId) async {
   final repository = ref.watch(gdsRepositoryProvider);
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return <GDSModel>[];
+  final countyId =
+      user.role == UserRole.superadmin ? null : user.city;
   try {
-    return await repository.getGDSForUser(userId).timeout(
+    return await repository.getGDSForUser(
+      userId,
+      countyId: countyId,
+    ).timeout(
       const Duration(seconds: 15),
       onTimeout: () => <GDSModel>[],
     );
@@ -124,6 +140,7 @@ class GDSController extends StateNotifier<AsyncValue<void>> {
       ],
       createdById: currentUser.id,
       createdByName: currentUser.fullName,
+      countyId: currentUser.city, // Judetul creatorului; regulile cer potrivirea
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );

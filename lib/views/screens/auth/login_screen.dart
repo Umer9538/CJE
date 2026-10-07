@@ -25,16 +25,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
+  static const String _keyTermsAccepted =
+      'terms_accepted_${AppStrings.termsVersion}';
+  bool _hasAcceptedTerms = false;
   bool _rememberMe = false;
   bool _obscurePassword = true;
   String? _errorMessage;
-  int _titleTapCount = 0;
 
   // SharedPreferences keys for remember me (email only — never store passwords)
   static const String _keyRememberMe = 'remember_me';
   static const String _keySavedEmail = 'saved_email';
-
-  static const String _keyTermsAccepted = 'terms_accepted';
 
   @override
   void initState() {
@@ -46,6 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _checkTermsAccepted() async {
     final prefs = await SharedPreferences.getInstance();
     final accepted = prefs.getBool(_keyTermsAccepted) ?? false;
+    if (mounted) setState(() => _hasAcceptedTerms = accepted);
     if (!accepted && mounted) {
       _showTermsDialog();
     }
@@ -110,6 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.setBool(_keyTermsAccepted, true);
+              if (mounted) setState(() => _hasAcceptedTerms = true);
               if (ctx.mounted) Navigator.pop(ctx);
             },
             child: Text(l10n.translate('accept_terms')),
@@ -180,6 +182,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleEmailLogin() async {
+    if (!_hasAcceptedTerms) {
+      await _checkTermsAccepted();
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -187,7 +193,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _errorMessage = null;
     });
 
-    final result = await ref.read(authControllerProvider.notifier).signInWithEmail(
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .signInWithEmail(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
@@ -199,41 +207,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // Save credentials if remember me is checked
         await _saveCredentials();
       } else {
-        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+        setState(
+          () => _errorMessage = _getLocalizedAuthError(result.errorCode),
+        );
       }
     }
   }
 
   Future<void> _handleGoogleLogin() async {
+    if (!_hasAcceptedTerms) {
+      await _checkTermsAccepted();
+      return;
+    }
     setState(() {
       _isGoogleLoading = true;
       _errorMessage = null;
     });
 
-    final result = await ref.read(authControllerProvider.notifier).signInWithGoogle();
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .signInWithGoogle();
 
     if (mounted) {
       setState(() => _isGoogleLoading = false);
 
       if (!result.success) {
-        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+        setState(
+          () => _errorMessage = _getLocalizedAuthError(result.errorCode),
+        );
       }
     }
   }
 
   Future<void> _handleAppleLogin() async {
+    if (!_hasAcceptedTerms) {
+      await _checkTermsAccepted();
+      return;
+    }
     setState(() {
       _isAppleLoading = true;
       _errorMessage = null;
     });
 
-    final result = await ref.read(authControllerProvider.notifier).signInWithApple();
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .signInWithApple();
 
     if (mounted) {
       setState(() => _isAppleLoading = false);
 
       if (!result.success) {
-        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+        setState(
+          () => _errorMessage = _getLocalizedAuthError(result.errorCode),
+        );
       }
     }
   }
@@ -260,7 +286,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: SingleChildScrollView(
           child: ResponsiveContainer(
             maxWidth: 480,
-            padding: EdgeInsets.all(context.responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0)),
+            padding: EdgeInsets.all(
+              context.responsive.value(
+                mobile: 24.0,
+                tablet: 32.0,
+                desktop: 48.0,
+              ),
+            ),
             child: Form(
               key: _formKey,
               child: Column(
@@ -268,31 +300,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   const SizedBox(height: 40),
 
-                  // Title with wave emoji - tap 5 times for admin setup
-                  GestureDetector(
-                    onTap: () {
-                      _titleTapCount++;
-                      if (_titleTapCount >= 5) {
-                        _titleTapCount = 0;
-                        context.push(RouteNames.adminSetup);
-                      } else if (_titleTapCount >= 3) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l10n.translate('admin_setup_taps').replaceAll('{count}', '${5 - _titleTapCount}')),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      }
-                    },
-                    child: Text(
-                      '${l10n.translate('welcome_back')} 👋',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: context.textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
+                  Text(
+                    '${l10n.translate('welcome_back')} 👋',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: context.textPrimary,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
 
@@ -319,12 +334,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: Colors.red[700], size: 20),
+                          Icon(
+                            Icons.error_outline,
+                            color: Colors.red[700],
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: TextStyle(color: Colors.red[700], fontSize: 13),
+                              style: TextStyle(
+                                color: Colors.red[700],
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ],
@@ -353,7 +375,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.next,
                     style: TextStyle(color: context.textPrimary),
                     onFieldSubmitted: (_) => _passwordFocusNode.requestFocus(),
-                    decoration: _inputDecoration(context, l10n.translate('email_hint')),
+                    decoration: _inputDecoration(
+                      context,
+                      l10n.translate('email_hint'),
+                    ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return l10n.translate('field_required');
@@ -386,16 +411,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.done,
                     style: TextStyle(color: context.textPrimary),
                     onFieldSubmitted: (_) => _handleEmailLogin(),
-                    decoration: _inputDecoration(context, l10n.translate('password_hint')).copyWith(
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                          color: context.textSecondary,
-                          size: 20,
+                    decoration:
+                        _inputDecoration(
+                          context,
+                          l10n.translate('password_hint'),
+                        ).copyWith(
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: context.textSecondary,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
+                          ),
                         ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return l10n.translate('field_required');
@@ -459,11 +492,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isLoading || _isGoogleLoading ? null : _handleEmailLogin,
+                      onPressed: _isLoading || _isGoogleLoading
+                          ? null
+                          : _handleEmailLogin,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.gold,
                         foregroundColor: AppColors.navy,
-                        disabledBackgroundColor: AppColors.gold.withValues(alpha: 0.6),
+                        disabledBackgroundColor: AppColors.gold.withValues(
+                          alpha: 0.6,
+                        ),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -541,19 +578,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     iconColor: Colors.red,
                     label: l10n.translate('continue_with_google'),
                     isLoading: _isGoogleLoading,
-                    onPressed: _isLoading || _isAppleLoading ? null : _handleGoogleLogin,
+                    onPressed: _isLoading || _isAppleLoading
+                        ? null
+                        : _handleGoogleLogin,
                   ),
-                  const SizedBox(height: 12),
+                  // Sign in with Apple is offered on iOS only; it is not
+                  // configured for Android
+                  if (Theme.of(context).platform == TargetPlatform.iOS) ...[
+                    const SizedBox(height: 12),
 
-                  // Apple Sign In Button
-                  _SocialButton(
-                    icon: '',
-                    iconColor: Colors.white,
-                    label: 'Continue with Apple',
-                    isLoading: _isAppleLoading,
-                    onPressed: _isLoading || _isGoogleLoading ? null : _handleAppleLogin,
-                    isApple: true,
-                  ),
+                    // Apple Sign In Button
+                    _SocialButton(
+                      icon: '',
+                      iconColor: Colors.white,
+                      label: 'Continue with Apple',
+                      isLoading: _isAppleLoading,
+                      onPressed: _isLoading || _isGoogleLoading
+                          ? null
+                          : _handleAppleLogin,
+                      isApple: true,
+                    ),
+                  ],
                   const SizedBox(height: 24),
                 ],
               ),
@@ -568,10 +613,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: context.textSecondary,
-        fontSize: 14,
-      ),
+      hintStyle: TextStyle(color: context.textSecondary, fontSize: 14),
       filled: true,
       fillColor: isDark ? Colors.grey[900] : Colors.grey[50],
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

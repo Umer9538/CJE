@@ -243,7 +243,7 @@ class FCMService {
   Future<String?> getToken() async {
     try {
       final token = await _messaging.getToken();
-      debugPrint('FCM Token: $token');
+      debugPrint('FCM Token obtained');
       return token;
     } catch (e) {
       debugPrint('Error getting FCM token: $e');

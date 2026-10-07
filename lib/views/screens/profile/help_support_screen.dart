@@ -91,13 +91,27 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
       child: Column(
         children: [
           _ContactTile(
+            icon: Icons.shield_outlined,
+            iconColor: const Color(0xFF3B82F6),
+            title: l10n.translate('platform_support'),
+            subtitle: 'app.consiliulelevilor@gmail.com',
+            onTap: () => _launchEmail('app.consiliulelevilor@gmail.com'),
+          ),
+          Divider(
+            height: 24,
+            color: context.textSecondary.withValues(alpha: 0.2),
+          ),
+          _ContactTile(
             icon: Icons.email_rounded,
             iconColor: const Color(0xFF3B82F6),
             title: l10n.translate('email_us'),
             subtitle: countyInfo.email,
             onTap: () => _launchEmail(countyInfo.email),
           ),
-          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
+          Divider(
+            height: 24,
+            color: context.textSecondary.withValues(alpha: 0.2),
+          ),
           _ContactTile(
             icon: Icons.phone_rounded,
             iconColor: const Color(0xFF10B981),
@@ -105,15 +119,23 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
             subtitle: countyInfo.phone,
             onTap: () => _launchPhone(countyInfo.phone.replaceAll(' ', '')),
           ),
-          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
+          Divider(
+            height: 24,
+            color: context.textSecondary.withValues(alpha: 0.2),
+          ),
           _ContactTile(
             icon: Icons.language_rounded,
             iconColor: const Color(0xFF8B5CF6),
             title: l10n.translate('website'),
-            subtitle: countyInfo.website.replaceFirst('https://', '').replaceFirst('http://', ''),
+            subtitle: countyInfo.website
+                .replaceFirst('https://', '')
+                .replaceFirst('http://', ''),
             onTap: () => _launchUrl(countyInfo.website),
           ),
-          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
+          Divider(
+            height: 24,
+            color: context.textSecondary.withValues(alpha: 0.2),
+          ),
           _ContactTile(
             icon: Icons.facebook_rounded,
             iconColor: const Color(0xFF1877F2),
@@ -121,7 +143,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
             subtitle: 'CJE ${user?.city ?? "Romania"}',
             onTap: () => _launchUrl(countyInfo.facebook),
           ),
-          Divider(height: 24, color: context.textSecondary.withValues(alpha: 0.2)),
+          Divider(
+            height: 24,
+            color: context.textSecondary.withValues(alpha: 0.2),
+          ),
           _ContactTile(
             icon: Icons.camera_alt_rounded,
             iconColor: const Color(0xFFE1306C),
@@ -160,7 +185,10 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
             return Column(
               children: [
                 if (index > 0)
-                  Divider(height: 1, color: context.textSecondary.withValues(alpha: 0.1)),
+                  Divider(
+                    height: 1,
+                    color: context.textSecondary.withValues(alpha: 0.1),
+                  ),
                 InkWell(
                   onTap: () {
                     setState(() {
@@ -280,7 +308,9 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                   label: l10n.translate('terms_of_service'),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const TermsOfServiceScreen(),
+                    ),
                   ),
                 ),
               ),
@@ -291,7 +321,9 @@ class _HelpSupportScreenState extends ConsumerState<HelpSupportScreen> {
                   label: l10n.translate('privacy_policy'),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const PrivacyPolicyScreen(),
+                    ),
                   ),
                 ),
               ),
@@ -395,10 +427,7 @@ class _ContactTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
                 ),
               ],
             ),

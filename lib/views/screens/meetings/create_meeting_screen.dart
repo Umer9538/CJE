@@ -14,10 +14,7 @@ import '../../../models/models.dart';
 class CreateMeetingScreen extends ConsumerStatefulWidget {
   final MeetingType? preselectedType;
 
-  const CreateMeetingScreen({
-    super.key,
-    this.preselectedType,
-  });
+  const CreateMeetingScreen({super.key, this.preselectedType});
 
   @override
   ConsumerState<CreateMeetingScreen> createState() =>
@@ -74,13 +71,15 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
     final user = ref.watch(currentUserProvider);
 
     // Check which types user can create
-    final canCreatePlenary = user != null &&
+    final canCreatePlenary =
+        user != null &&
         (user.role == UserRole.bex || user.role == UserRole.superadmin);
     // Department meetings can only be created by department, BEX, or superadmin
-    final canCreateDepartment = user != null &&
+    final canCreateDepartment =
+        user != null &&
         (user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin);
+            user.role == UserRole.bex ||
+            user.role == UserRole.superadmin);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -117,432 +116,468 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: context.responsive.maxContentWidth),
+            constraints: BoxConstraints(
+              maxWidth: context.responsive.maxContentWidth,
+            ),
             child: Form(
               key: _formKey,
               child: ListView(
                 padding: EdgeInsets.fromLTRB(
-                  context.responsive.value(mobile: 20.0, tablet: 32.0, desktop: 48.0),
-                  context.responsive.value(mobile: 16.0, tablet: 24.0, desktop: 32.0),
-                  context.responsive.value(mobile: 20.0, tablet: 32.0, desktop: 48.0),
-                  MediaQuery.of(context).padding.bottom + context.responsive.value(mobile: 100.0, tablet: 120.0, desktop: 80.0),
+                  context.responsive.value(
+                    mobile: 20.0,
+                    tablet: 32.0,
+                    desktop: 48.0,
+                  ),
+                  context.responsive.value(
+                    mobile: 16.0,
+                    tablet: 24.0,
+                    desktop: 32.0,
+                  ),
+                  context.responsive.value(
+                    mobile: 20.0,
+                    tablet: 32.0,
+                    desktop: 48.0,
+                  ),
+                  MediaQuery.of(context).padding.bottom +
+                      context.responsive.value(
+                        mobile: 100.0,
+                        tablet: 120.0,
+                        desktop: 80.0,
+                      ),
                 ),
                 children: [
-            // Meeting Type
-            Text(
-              l10n.translate('meeting_type'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _TypeChip(
-                  label: l10n.translate('school'),
-                  icon: Icons.school_rounded,
-                  isSelected: _selectedType == MeetingType.school,
-                  onTap: () => setState(() => _selectedType = MeetingType.school),
-                ),
-                _TypeChip(
-                  label: l10n.translate('department'),
-                  icon: Icons.groups_rounded,
-                  isSelected: _selectedType == MeetingType.department,
-                  isDisabled: !canCreateDepartment,
-                  onTap: canCreateDepartment
-                      ? () => setState(() => _selectedType = MeetingType.department)
-                      : null,
-                ),
-                _TypeChip(
-                  label: l10n.translate('meeting_type_county_ag'),
-                  icon: Icons.account_balance_rounded,
-                  isSelected: _selectedType == MeetingType.countyAG,
-                  isDisabled: !canCreatePlenary,
-                  onTap: canCreatePlenary
-                      ? () => setState(() => _selectedType = MeetingType.countyAG)
-                      : null,
-                ),
-                _TypeChip(
-                  label: l10n.translate('meeting_type_bex'),
-                  icon: Icons.admin_panel_settings_rounded,
-                  isSelected: _selectedType == MeetingType.bex,
-                  isDisabled: !canCreatePlenary,
-                  onTap: canCreatePlenary
-                      ? () => setState(() => _selectedType = MeetingType.bex)
-                      : null,
-                ),
-              ],
-            ),
-
-            // School Dropdown (when School type is selected)
-            // Show for Department/BEX/Superadmin who can create meetings for any school
-            // School Reps can only create meetings for their own school (enforced in controller)
-            if (_selectedType == MeetingType.school &&
-                user != null &&
-                (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin)) ...[
-              const SizedBox(height: 16),
-              _buildSchoolSelector(l10n),
-            ],
-
-            // Department Dropdown (when Department type is selected)
-            if (_selectedType == MeetingType.department) ...[
-              const SizedBox(height: 16),
-              _buildDepartmentSelector(l10n),
-            ],
-
-            const SizedBox(height: 24),
-
-            // Visibility Role Selector
-            Text(
-              l10n.translate('visibility'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: context.cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.borderColor),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<UserRole?>(
-                  value: _minVisibilityRole,
-                  hint: Text(
-                    l10n.translate('visible_to_all'),
-                    style: TextStyle(color: context.textPrimary),
-                  ),
-                  isExpanded: true,
-                  icon: Icon(Icons.keyboard_arrow_down, color: context.iconColor),
-                  dropdownColor: context.cardColor,
-                  items: [
-                    DropdownMenuItem<UserRole?>(
-                      value: null,
-                      child: Text(
-                        l10n.translate('visible_to_all'),
-                        style: TextStyle(color: context.textPrimary),
-                      ),
+                  // Meeting Type
+                  Text(
+                    l10n.translate('meeting_type'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
                     ),
-                    ...UserRole.values.where((role) => role != UserRole.superadmin).map((role) {
-                      return DropdownMenuItem<UserRole?>(
-                        value: role,
-                        child: Text(
-                          '${l10n.translate(role.translationKey)} ${l10n.translate('and_above')}',
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _TypeChip(
+                        label: l10n.translate('school'),
+                        icon: Icons.school_rounded,
+                        isSelected: _selectedType == MeetingType.school,
+                        onTap: () =>
+                            setState(() => _selectedType = MeetingType.school),
+                      ),
+                      _TypeChip(
+                        label: l10n.translate('department'),
+                        icon: Icons.groups_rounded,
+                        isSelected: _selectedType == MeetingType.department,
+                        isDisabled: !canCreateDepartment,
+                        onTap: canCreateDepartment
+                            ? () => setState(
+                                () => _selectedType = MeetingType.department,
+                              )
+                            : null,
+                      ),
+                      _TypeChip(
+                        label: l10n.translate('meeting_type_county_ag'),
+                        icon: Icons.account_balance_rounded,
+                        isSelected: _selectedType == MeetingType.countyAG,
+                        isDisabled: !canCreatePlenary,
+                        onTap: canCreatePlenary
+                            ? () => setState(
+                                () => _selectedType = MeetingType.countyAG,
+                              )
+                            : null,
+                      ),
+                      _TypeChip(
+                        label: l10n.translate('meeting_type_bex'),
+                        icon: Icons.admin_panel_settings_rounded,
+                        isSelected: _selectedType == MeetingType.bex,
+                        isDisabled: !canCreatePlenary,
+                        onTap: canCreatePlenary
+                            ? () => setState(
+                                () => _selectedType = MeetingType.bex,
+                              )
+                            : null,
+                      ),
+                    ],
+                  ),
+
+                  // School Dropdown (when School type is selected)
+                  // Show for Department/BEX/Superadmin who can create meetings for any school
+                  // School Reps can only create meetings for their own school (enforced in controller)
+                  if (_selectedType == MeetingType.school &&
+                      user != null &&
+                      (user.role == UserRole.department ||
+                          user.role == UserRole.bex ||
+                          user.role == UserRole.superadmin)) ...[
+                    const SizedBox(height: 16),
+                    _buildSchoolSelector(l10n),
+                  ],
+
+                  // Department Dropdown (when Department type is selected)
+                  if (_selectedType == MeetingType.department) ...[
+                    const SizedBox(height: 16),
+                    _buildDepartmentSelector(l10n),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  // Visibility Role Selector
+                  Text(
+                    l10n.translate('visibility'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: context.cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: context.borderColor),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<UserRole?>(
+                        value: _minVisibilityRole,
+                        hint: Text(
+                          l10n.translate('visible_to_all'),
                           style: TextStyle(color: context.textPrimary),
                         ),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _minVisibilityRole = value);
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.translate('visibility_hint'),
-              style: TextStyle(
-                fontSize: 12,
-                color: context.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 24),
+                        isExpanded: true,
+                        icon: Icon(
+                          Icons.keyboard_arrow_down,
+                          color: context.iconColor,
+                        ),
+                        dropdownColor: context.cardColor,
+                        items: [
+                          DropdownMenuItem<UserRole?>(
+                            value: null,
+                            child: Text(
+                              l10n.translate('visible_to_all'),
+                              style: TextStyle(color: context.textPrimary),
+                            ),
+                          ),
+                          ...UserRole.values
+                              .where((role) => role != UserRole.superadmin)
+                              .map((role) {
+                                return DropdownMenuItem<UserRole?>(
+                                  value: role,
+                                  child: Text(
+                                    '${l10n.translate(role.translationKey)} ${l10n.translate('and_above')}',
+                                    style: TextStyle(
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                );
+                              }),
+                        ],
+                        onChanged: (value) {
+                          setState(() => _minVisibilityRole = value);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.translate('visibility_hint'),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
 
-            // Title
-            Text(
-              l10n.translate('meeting_title'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _titleController,
-              decoration: _buildInputDecoration(
-                l10n.translate('meeting_title_hint'),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return l10n.translate('title_required');
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
+                  // Title
+                  Text(
+                    l10n.translate('meeting_title'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _titleController,
+                    decoration: _buildInputDecoration(
+                      l10n.translate('meeting_title_hint'),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return l10n.translate('title_required');
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
 
-            // Date & Time
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Date & Time
+                  Row(
                     children: [
-                      Text(
-                        l10n.translate('date'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: context.textPrimary,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.translate('date'),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildDateSelector(context, l10n),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildDateSelector(context, l10n),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.translate('time'),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: context.textPrimary,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.translate('time'),
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: context.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildTimeSelector(context, l10n),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _buildTimeSelector(context, l10n),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-            // Duration
-            Text(
-              l10n.translate('duration'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildDurationSelector(),
-            const SizedBox(height: 24),
+                  // Duration
+                  Text(
+                    l10n.translate('duration'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDurationSelector(),
+                  const SizedBox(height: 24),
 
-            // Online toggle
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.cardColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
+                  // Online toggle
                   Container(
-                    width: 44,
-                    height: 44,
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _isOnline
-                          ? Colors.green.withValues(alpha: 0.15)
-                          : Colors.grey.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color: context.cardColor,
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(
-                      Icons.videocam_rounded,
-                      color: _isOnline ? Colors.green : Colors.grey,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          l10n.translate('online'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary,
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: _isOnline
+                                ? Colors.green.withValues(alpha: 0.15)
+                                : Colors.grey.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.videocam_rounded,
+                            color: _isOnline ? Colors.green : Colors.grey,
+                            size: 22,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          l10n.translate('this_is_online_meeting'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: context.textSecondary,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.translate('online'),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: context.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                l10n.translate('this_is_online_meeting'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: context.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                        Switch(
+                          value: _isOnline,
+                          onChanged: (value) =>
+                              setState(() => _isOnline = value),
+                          activeTrackColor: Colors.green.withValues(alpha: 0.5),
+                          thumbColor: WidgetStateProperty.resolveWith((states) {
+                            if (states.contains(WidgetState.selected)) {
+                              return Colors.green;
+                            }
+                            return null;
+                          }),
                         ),
                       ],
                     ),
                   ),
-                  Switch(
-                    value: _isOnline,
-                    onChanged: (value) => setState(() => _isOnline = value),
-                    activeTrackColor: Colors.green.withValues(alpha: 0.5),
-                    thumbColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return Colors.green;
-                      }
-                      return null;
-                    }),
+                  const SizedBox(height: 16),
+
+                  // Location or Online Link
+                  if (_isOnline) ...[
+                    Text(
+                      l10n.translate('meeting_link'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _onlineLinkController,
+                      decoration: _buildInputDecoration(
+                        'https://meet.google.com/...',
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                  ] else ...[
+                    Text(
+                      l10n.translate('meeting_location'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _locationController,
+                      decoration: _buildInputDecoration(
+                        l10n.translate('location_hint'),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+
+                  // Description
+                  Text(
+                    l10n.translate('meeting_description'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: context.textPrimary,
+                    ),
                   ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _descriptionController,
+                    maxLines: 4,
+                    decoration: _buildInputDecoration(
+                      l10n.translate('meeting_description_hint'),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Agenda
+                  Row(
+                    children: [
+                      Text(
+                        l10n.translate('agenda'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${_agendaItems.length} items',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildAgendaSection(l10n),
+                  const SizedBox(height: 24),
+
+                  // Documents Section
+                  Row(
+                    children: [
+                      Text(
+                        l10n.translate('documents'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: context.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '${_pendingFiles.length} ${l10n.translate('files')}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildDocumentsSection(l10n),
+                  const SizedBox(height: 32),
+
+                  // Create button
+                  SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleCreate,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.gold,
+                        foregroundColor: AppColors.navy,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: context.textPrimary,
+                              ),
+                            )
+                          : Text(
+                              l10n.translate('schedule_meeting'),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  // Extra padding to ensure button doesn't overlap with bottom navigation
+                  const SizedBox(height: 120),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Location or Online Link
-            if (_isOnline) ...[
-              Text(
-                l10n.translate('meeting_link'),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _onlineLinkController,
-                decoration: _buildInputDecoration(
-                  'https://meet.google.com/...',
-                ),
-                keyboardType: TextInputType.url,
-              ),
-            ] else ...[
-              Text(
-                l10n.translate('meeting_location'),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: context.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _locationController,
-                decoration: _buildInputDecoration(
-                  l10n.translate('location_hint'),
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-
-            // Description
-            Text(
-              l10n.translate('meeting_description'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 4,
-              decoration: _buildInputDecoration(
-                l10n.translate('meeting_description_hint'),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Agenda
-            Row(
-              children: [
-                Text(
-                  l10n.translate('agenda'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: context.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${_agendaItems.length} items',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: context.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildAgendaSection(l10n),
-            const SizedBox(height: 24),
-
-            // Documents Section
-            Row(
-              children: [
-                Text(
-                  l10n.translate('documents'),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: context.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '${_pendingFiles.length} ${l10n.translate('files')}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: context.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            _buildDocumentsSection(l10n),
-            const SizedBox(height: 32),
-
-            // Create button
-            SizedBox(
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handleCreate,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.gold,
-                  foregroundColor: AppColors.navy,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: _isLoading
-                    ? SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: context.textPrimary,
-                        ),
-                      )
-                    : Text(
-                        l10n.translate('schedule_meeting'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-            ),
-            // Extra padding to ensure button doesn't overlap with bottom navigation
-            const SizedBox(height: 120),
-              ],
-            ),
           ),
-        ),
         ),
       ),
     );
@@ -608,7 +643,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_rounded, color: context.textSecondary, size: 20),
+            Icon(
+              Icons.calendar_today_rounded,
+              color: context.textSecondary,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Text(
               dateFormat.format(_selectedDate),
@@ -627,7 +666,9 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
   Widget _buildTimeSelector(BuildContext context, AppLocalizations l10n) {
     final timeFormat = DateFormat('h:mm a');
     final dateTime = DateTime(
-      2024, 1, 1,
+      2024,
+      1,
+      1,
       _selectedTime.hour,
       _selectedTime.minute,
     );
@@ -661,7 +702,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
         ),
         child: Row(
           children: [
-            Icon(Icons.schedule_rounded, color: context.textSecondary, size: 20),
+            Icon(
+              Icons.schedule_rounded,
+              color: context.textSecondary,
+              size: 20,
+            ),
             const SizedBox(width: 12),
             Text(
               timeFormat.format(dateTime),
@@ -752,12 +797,12 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                     style: TextStyle(color: context.textSecondary),
                   ),
                   isExpanded: true,
-                  icon: Icon(Icons.keyboard_arrow_down, color: context.iconColor),
-                  dropdownColor: context.cardColor,
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: context.textPrimary,
+                  icon: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: context.iconColor,
                   ),
+                  dropdownColor: context.cardColor,
+                  style: TextStyle(fontSize: 15, color: context.textPrimary),
                   items: schools.map((school) {
                     return DropdownMenuItem<String>(
                       value: school.id,
@@ -840,10 +885,7 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
               isExpanded: true,
               icon: Icon(Icons.keyboard_arrow_down, color: context.iconColor),
               dropdownColor: context.cardColor,
-              style: TextStyle(
-                fontSize: 15,
-                color: context.textPrimary,
-              ),
+              style: TextStyle(fontSize: 15, color: context.textPrimary),
               items: DepartmentType.values.map((dept) {
                 return DropdownMenuItem<DepartmentType>(
                   value: dept,
@@ -911,7 +953,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close, size: 18, color: context.textSecondary),
+                    icon: Icon(
+                      Icons.close,
+                      size: 18,
+                      color: context.textSecondary,
+                    ),
                     onPressed: () {
                       setState(() => _agendaItems.removeAt(index));
                     },
@@ -937,7 +983,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.add_circle_outline, color: AppColors.gold),
+                icon: const Icon(
+                  Icons.add_circle_outline,
+                  color: AppColors.gold,
+                ),
                 onPressed: _addAgendaItem,
               ),
             ],
@@ -978,7 +1027,9 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: _getFileColor(file.extension).withValues(alpha: 0.15),
+                      color: _getFileColor(
+                        file.extension,
+                      ).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -1013,7 +1064,11 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(Icons.close, size: 18, color: context.textSecondary),
+                    icon: Icon(
+                      Icons.close,
+                      size: 18,
+                      color: context.textSecondary,
+                    ),
                     onPressed: () {
                       setState(() => _pendingFiles.removeAt(index));
                     },
@@ -1065,7 +1120,19 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'],
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+          'ppt',
+          'pptx',
+          'txt',
+          'jpg',
+          'jpeg',
+          'png',
+        ],
         allowMultiple: true,
       );
 
@@ -1078,7 +1145,9 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_picking_files')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_picking_files')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -1089,29 +1158,43 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
   Future<List<MeetingDocument>> _uploadDocuments() async {
     final List<MeetingDocument> uploadedDocs = [];
     final uuid = const Uuid();
+    final user = ref.read(currentUserProvider);
+    final countyId = ref.read(effectiveCountyProvider);
+    if (user == null || countyId == null || countyId.isEmpty) {
+      return uploadedDocs;
+    }
 
     for (final file in _pendingFiles) {
       if (file.path == null) continue;
 
       try {
         final fileObj = File(file.path!);
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+        final fileName =
+            '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('meetings')
+            .child(countyId)
             .child('documents')
             .child(fileName);
 
-        final uploadTask = await storageRef.putFile(fileObj);
+        final uploadTask = await storageRef.putFile(
+          fileObj,
+          SettableMetadata(
+            customMetadata: {'countyId': countyId, 'ownerId': user.id},
+          ),
+        );
         final downloadUrl = await uploadTask.ref.getDownloadURL();
 
-        uploadedDocs.add(MeetingDocument(
-          id: uuid.v4(),
-          name: file.name,
-          url: downloadUrl,
-          fileType: file.extension,
-          uploadedAt: DateTime.now(),
-        ));
+        uploadedDocs.add(
+          MeetingDocument(
+            id: uuid.v4(),
+            name: file.name,
+            url: downloadUrl,
+            fileType: file.extension,
+            uploadedAt: DateTime.now(),
+          ),
+        );
       } catch (e) {
         debugPrint('Error uploading document: $e');
       }
@@ -1220,7 +1303,9 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('meeting_created')),
+          content: Text(
+            AppLocalizations.of(context).translate('meeting_created'),
+          ),
           backgroundColor: Colors.green,
         ),
       );
@@ -1255,7 +1340,10 @@ class _CreateMeetingScreenState extends ConsumerState<CreateMeetingScreen> {
                   ),
                   child: SelectableText(
                     errorMessage ?? 'Unknown error - check network connection',
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1308,8 +1396,8 @@ class _TypeChip extends StatelessWidget {
             color: isSelected
                 ? AppColors.gold
                 : isDisabled
-                    ? context.borderColor.withValues(alpha: 0.5)
-                    : context.borderColor,
+                ? context.borderColor.withValues(alpha: 0.5)
+                : context.borderColor,
           ),
         ),
         child: Row(
@@ -1321,8 +1409,8 @@ class _TypeChip extends StatelessWidget {
               color: isDisabled
                   ? context.textSecondary.withValues(alpha: 0.5)
                   : isSelected
-                      ? AppColors.navy
-                      : context.textSecondary,
+                  ? AppColors.navy
+                  : context.textSecondary,
             ),
             const SizedBox(width: 8),
             Text(
@@ -1333,8 +1421,8 @@ class _TypeChip extends StatelessWidget {
                 color: isDisabled
                     ? context.textSecondary.withValues(alpha: 0.5)
                     : isSelected
-                        ? AppColors.navy
-                        : context.textSecondary,
+                    ? AppColors.navy
+                    : context.textSecondary,
               ),
             ),
           ],

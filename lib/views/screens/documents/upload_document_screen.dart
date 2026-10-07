@@ -19,7 +19,8 @@ class UploadDocumentScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<UploadDocumentScreen> createState() => _UploadDocumentScreenState();
+  ConsumerState<UploadDocumentScreen> createState() =>
+      _UploadDocumentScreenState();
 }
 
 class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
@@ -64,7 +65,19 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'],
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+          'ppt',
+          'pptx',
+          'txt',
+          'jpg',
+          'jpeg',
+          'png',
+        ],
       );
 
       if (result != null && result.files.isNotEmpty) {
@@ -74,7 +87,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
           if (_titleController.text.isEmpty) {
             final fileName = _selectedFile!.name;
             final lastDot = fileName.lastIndexOf('.');
-            _titleController.text = lastDot != -1 ? fileName.substring(0, lastDot) : fileName;
+            _titleController.text = lastDot != -1
+                ? fileName.substring(0, lastDot)
+                : fileName;
           }
         });
       }
@@ -82,7 +97,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_picking_file')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_picking_file')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -99,15 +116,26 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
     });
 
     try {
+      final user = ref.read(currentUserProvider);
+      final countyId = ref.read(effectiveCountyProvider);
+      if (user == null || countyId == null || countyId.isEmpty) return null;
+
       final file = File(_selectedFile!.path!);
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_selectedFile!.name}';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${_selectedFile!.name}';
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('documents')
+          .child(countyId)
           .child(_selectedCategory.name)
           .child(fileName);
 
-      final uploadTask = storageRef.putFile(file);
+      final uploadTask = storageRef.putFile(
+        file,
+        SettableMetadata(
+          customMetadata: {'countyId': countyId, 'ownerId': user.id},
+        ),
+      );
 
       uploadTask.snapshotEvents.listen((event) {
         setState(() {
@@ -129,7 +157,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_uploading_file')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_uploading_file')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -268,7 +298,8 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                             ),
                           ),
                           IconButton(
-                            onPressed: () => setState(() => _selectedFile = null),
+                            onPressed: () =>
+                                setState(() => _selectedFile = null),
                             icon: const Icon(Icons.close, color: Colors.grey),
                           ),
                         ],
@@ -322,10 +353,7 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
               const SizedBox(height: 8),
               Text(
                 '${(_uploadProgress * 100).toStringAsFixed(0)}% uploaded',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: context.textSecondary,
-                ),
+                style: TextStyle(fontSize: 12, color: context.textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -350,12 +378,17 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 return GestureDetector(
                   onTap: () => setState(() => _selectedCategory = category),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected ? AppColors.gold : context.cardColor,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? AppColors.gold : context.borderColor,
+                        color: isSelected
+                            ? AppColors.gold
+                            : context.borderColor,
                       ),
                     ),
                     child: Text(
@@ -363,7 +396,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? AppColors.navy : context.textSecondary,
+                        color: isSelected
+                            ? AppColors.navy
+                            : context.textSecondary,
                       ),
                     ),
                   ),
@@ -462,7 +497,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                       ),
                       filled: true,
                       fillColor: context.cardColor,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     onSubmitted: (_) => _addTag(),
                   ),
@@ -486,7 +524,11 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 children: _tags.map((tag) {
                   return Chip(
                     label: Text(tag),
-                    deleteIcon: Icon(Icons.close, size: 16, color: context.textPrimary),
+                    deleteIcon: Icon(
+                      Icons.close,
+                      size: 16,
+                      color: context.textPrimary,
+                    ),
                     onDeleted: () => _removeTag(tag),
                     backgroundColor: AppColors.gold.withValues(alpha: 0.15),
                     labelStyle: TextStyle(
@@ -513,7 +555,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                     title: Text(l10n.translate('public_document')),
                     subtitle: Text(
                       l10n.translate('public_document_desc'),
-                      style: TextStyle(fontSize: 12, color: context.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.textSecondary,
+                      ),
                     ),
                     value: _isPublic,
                     onChanged: (value) => setState(() {
@@ -555,22 +600,26 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                             style: TextStyle(color: context.textSecondary),
                           ),
                           dropdownColor: context.cardColor,
-                          items: [
-                            UserRole.student,
-                            UserRole.classRep,
-                            UserRole.schoolRep,
-                            UserRole.department,
-                            UserRole.bex,
-                          ].map((role) {
-                            return DropdownMenuItem<UserRole>(
-                              value: role,
-                              child: Text(
-                                _getLocalizedRoleName(role, l10n),
-                                style: TextStyle(color: context.textPrimary),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) => setState(() => _minimumRole = value),
+                          items:
+                              [
+                                UserRole.student,
+                                UserRole.classRep,
+                                UserRole.schoolRep,
+                                UserRole.department,
+                                UserRole.bex,
+                              ].map((role) {
+                                return DropdownMenuItem<UserRole>(
+                                  value: role,
+                                  child: Text(
+                                    _getLocalizedRoleName(role, l10n),
+                                    style: TextStyle(
+                                      color: context.textPrimary,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                          onChanged: (value) =>
+                              setState(() => _minimumRole = value),
                         ),
                       ),
                     ),
@@ -595,7 +644,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 final user = ref.watch(currentUserProvider);
                 final isSchoolRep = user?.role == UserRole.schoolRep;
                 final isDepartment = user?.role == UserRole.department;
-                final canUploadCounty = ref.watch(canUploadCountyDocumentsProvider);
+                final canUploadCounty = ref.watch(
+                  canUploadCountyDocumentsProvider,
+                );
 
                 // If schoolRep, always mark as school document
                 if (isSchoolRep && !_isSchoolDocument) {
@@ -621,7 +672,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                           color: const Color(0xFF92400E).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: const Color(0xFF92400E).withValues(alpha: 0.3),
+                            color: const Color(
+                              0xFF92400E,
+                            ).withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -630,7 +683,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: const Color(0xFF92400E).withValues(alpha: 0.15),
+                                color: const Color(
+                                  0xFF92400E,
+                                ).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
@@ -682,7 +737,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                             isSchoolRep
                                 ? l10n.translate('school_document_required')
                                 : l10n.translate('school_document_desc'),
-                            style: TextStyle(fontSize: 12, color: context.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: context.textSecondary,
+                            ),
                           ),
                           value: _isSchoolDocument,
                           onChanged: isSchoolRep
@@ -872,7 +930,10 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                     ),
                     dropdownColor: context.cardColor,
                     style: TextStyle(color: context.textPrimary),
-                    icon: Icon(Icons.arrow_drop_down, color: context.textSecondary),
+                    icon: Icon(
+                      Icons.arrow_drop_down,
+                      color: context.textSecondary,
+                    ),
                     items: schools.map((school) {
                       return DropdownMenuItem<String>(
                         value: school.id,
@@ -884,7 +945,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                     }).toList(),
                     onChanged: (value) {
                       if (value != null) {
-                        final selectedSchool = schools.firstWhere((s) => s.id == value);
+                        final selectedSchool = schools.firstWhere(
+                          (s) => s.id == value,
+                        );
                         setState(() {
                           _selectedSchoolId = value;
                           _selectedSchoolName = selectedSchool.name;
@@ -895,9 +958,8 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
                 ),
               );
             },
-            loading: () => const Center(
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
+            loading: () =>
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)),
             error: (_, __) => Text(
               l10n.translate('error_loading_schools'),
               style: TextStyle(color: context.textSecondary),
@@ -917,7 +979,9 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
     if (_isSchoolDocument && canUploadCounty && _selectedSchoolId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('please_select_school')),
+          content: Text(
+            AppLocalizations.of(context).translate('please_select_school'),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -960,14 +1024,20 @@ class _UploadDocumentScreenState extends ConsumerState<UploadDocumentScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('document_uploaded')),
+            content: Text(
+              AppLocalizations.of(context).translate('document_uploaded'),
+            ),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('error_uploading_document')),
+            content: Text(
+              AppLocalizations.of(
+                context,
+              ).translate('error_uploading_document'),
+            ),
             backgroundColor: Colors.red,
           ),
         );

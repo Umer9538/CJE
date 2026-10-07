@@ -1,4 +1,3 @@
-import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../controllers/admin/admin_controller.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
+import 'parental_authorization_dialog.dart';
 import 'user_detail_screen.dart';
 import 'widgets/add_user_dialog.dart';
 
@@ -58,10 +58,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
   }
 
   UserFilter get _currentFilter => UserFilter(
-        role: _selectedRole,
-        status: _selectedStatus,
-        searchQuery: _searchController.text.isEmpty ? null : _searchController.text,
-      );
+    role: _selectedRole,
+    status: _selectedStatus,
+    searchQuery: _searchController.text.isEmpty ? null : _searchController.text,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -72,9 +72,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
     if (!hasAccess) {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.translate('admin'))),
-        body: Center(
-          child: Text(l10n.translate('permission_denied')),
-        ),
+        body: Center(child: Text(l10n.translate('permission_denied'))),
       );
     }
 
@@ -112,8 +110,13 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: l10n.translate('search_users'),
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-                prefixIcon: Icon(Icons.search, color: Colors.white.withValues(alpha: 0.6)),
+                hintStyle: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: Colors.white.withValues(alpha: 0.6),
+                ),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
                         icon: const Icon(Icons.clear, color: Colors.white),
@@ -129,7 +132,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
@@ -245,7 +251,10 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
         children: [
           Icon(Icons.error_outline, size: 48, color: context.errorColor),
           const SizedBox(height: 16),
-          Text(l10n.translate('error_loading'), style: TextStyle(color: context.textSecondary)),
+          Text(
+            l10n.translate('error_loading'),
+            style: TextStyle(color: context.textSecondary),
+          ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => ref.invalidate(filteredUsersProvider),
@@ -282,15 +291,28 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
   }
 
   Future<void> _approveUser(UserModel user) async {
+    final verified = await confirmParentalAuthorizationIfRequired(
+      context,
+      user,
+    );
+    if (!verified || !mounted) return;
+
     final controller = ref.read(adminControllerProvider.notifier);
-    final success = await controller.approveUser(user.id);
+    final success = await controller.approveUser(
+      user.id,
+      parentalAuthorizationVerified: user.isUnder16 == true,
+    );
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success
-              ? AppLocalizations.of(context).translate('user_approved')
-              : AppLocalizations.of(context).translate('error_approving_user')),
+          content: Text(
+            success
+                ? AppLocalizations.of(context).translate('user_approved')
+                : AppLocalizations.of(
+                    context,
+                  ).translate('error_approving_user'),
+          ),
           backgroundColor: success ? Colors.green : Colors.red,
         ),
       );
@@ -335,9 +357,11 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen>
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success
-              ? l10n.translate('user_rejected')
-              : l10n.translate('error_rejecting_user')),
+          content: Text(
+            success
+                ? l10n.translate('user_rejected')
+                : l10n.translate('error_rejecting_user'),
+          ),
           backgroundColor: success ? Colors.orange : Colors.red,
         ),
       );
@@ -468,7 +492,9 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_picking_file')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_picking_file')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -498,7 +524,9 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_importing')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_importing')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -582,14 +610,20 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                   decoration: BoxDecoration(
                     color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Colors.blue.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                          const Icon(
+                            Icons.info_outline,
+                            color: Colors.blue,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             l10n.translate('csv_format'),
@@ -718,7 +752,9 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                         _buildResultRow(
                           l10n.translate('errors'),
                           _importResult!.errorCount.toString(),
-                          color: _importResult!.hasErrors ? Colors.red : Colors.grey,
+                          color: _importResult!.hasErrors
+                              ? Colors.red
+                              : Colors.grey,
                         ),
                       ],
                     ),
@@ -744,16 +780,20 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          ..._importResult!.errors.take(10).map((error) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Text(
-                                  error.toString(),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: context.textSecondary,
+                          ..._importResult!.errors
+                              .take(10)
+                              .map(
+                                (error) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Text(
+                                    error.toString(),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.textSecondary,
+                                    ),
                                   ),
                                 ),
-                              )),
+                              ),
                           if (_importResult!.errors.length > 10)
                             Text(
                               '... and ${_importResult!.errors.length - 10} more errors',
@@ -844,10 +884,7 @@ class _CSVImportSheetState extends ConsumerState<_CSVImportSheet> {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 13,
-                color: context.textSecondary,
-              ),
+              style: TextStyle(fontSize: 13, color: context.textSecondary),
             ),
             Text(
               value,
@@ -890,7 +927,10 @@ class _UserCard extends StatelessWidget {
           color: context.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: user.status == UserStatus.pending
-              ? Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 2)
+              ? Border.all(
+                  color: Colors.orange.withValues(alpha: 0.5),
+                  width: 2,
+                )
               : null,
           boxShadow: [
             BoxShadow(
@@ -906,10 +946,14 @@ class _UserCard extends StatelessWidget {
             CircleAvatar(
               radius: 24,
               backgroundColor: user.role.badgeBackgroundColor,
-              backgroundImage: user.photoUrl != null ? NetworkImage(user.photoUrl!) : null,
+              backgroundImage: user.photoUrl != null
+                  ? NetworkImage(user.photoUrl!)
+                  : null,
               child: user.photoUrl == null
                   ? Text(
-                      user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : '?',
+                      user.fullName.isNotEmpty
+                          ? user.fullName[0].toUpperCase()
+                          : '?',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -946,7 +990,10 @@ class _UserCard extends StatelessWidget {
                     children: [
                       // Role badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: user.role.badgeBackgroundColor,
                           borderRadius: BorderRadius.circular(6),
@@ -963,7 +1010,10 @@ class _UserCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       // Status badge
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: user.status.color.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(6),
@@ -1023,10 +1073,7 @@ class _UserCard extends StatelessWidget {
                 ],
               )
             else
-              Icon(
-                Icons.chevron_right,
-                color: context.textSecondary,
-              ),
+              Icon(Icons.chevron_right, color: context.textSecondary),
           ],
         ),
       ),

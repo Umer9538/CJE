@@ -1,33 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 
-/// Tests for county filtering logic used across repositories
-/// The filtering should use flexible matching: "Cluj" matches "Cluj-Napoca" and vice versa
+/// Tests for the canonical county matching enforced by Firestore queries/rules.
 void main() {
   group('County Filtering Logic', () {
-    // Helper function that mirrors repository filtering logic
+    // Both values must exist and match the canonical county name exactly.
     bool countyMatches(String? userCounty, String? contentCounty) {
-      // If content has no county, it's visible to everyone (legacy/global)
-      if (contentCounty == null || contentCounty.isEmpty) return true;
-      // If user has no county, they can't see county-specific content
+      if (contentCounty == null || contentCounty.isEmpty) return false;
       if (userCounty == null || userCounty.isEmpty) return false;
-
-      final userCountyLower = userCounty.toLowerCase();
-      final contentCountyLower = contentCounty.toLowerCase();
-
-      // Flexible match: one contains the other
-      return userCountyLower.contains(contentCountyLower) ||
-          contentCountyLower.contains(userCountyLower);
+      return userCounty == contentCounty;
     }
 
-    test('content with null countyId is visible to everyone', () {
-      expect(countyMatches('Cluj', null), isTrue);
-      expect(countyMatches('Sibiu', null), isTrue);
-      expect(countyMatches(null, null), isTrue);
+    test('content with null countyId is blocked until migration', () {
+      expect(countyMatches('Cluj', null), isFalse);
+      expect(countyMatches('Sibiu', null), isFalse);
+      expect(countyMatches(null, null), isFalse);
     });
 
-    test('content with empty countyId is visible to everyone', () {
-      expect(countyMatches('Cluj', ''), isTrue);
-      expect(countyMatches('Sibiu', ''), isTrue);
+    test('content with empty countyId is blocked until migration', () {
+      expect(countyMatches('Cluj', ''), isFalse);
+      expect(countyMatches('Sibiu', ''), isFalse);
     });
 
     test('exact match works', () {
@@ -35,20 +26,20 @@ void main() {
       expect(countyMatches('Sibiu', 'Sibiu'), isTrue);
     });
 
-    test('flexible match - user county contains content county', () {
-      expect(countyMatches('Cluj-Napoca', 'Cluj'), isTrue);
-      expect(countyMatches('Bistrița-Năsăud', 'Bistrița'), isTrue);
+    test('a city name is not accepted as a county alias', () {
+      expect(countyMatches('Cluj-Napoca', 'Cluj'), isFalse);
+      expect(countyMatches('Bistrița-Năsăud', 'Bistrița'), isFalse);
     });
 
-    test('flexible match - content county contains user county', () {
-      expect(countyMatches('Cluj', 'Cluj-Napoca'), isTrue);
-      expect(countyMatches('Bistrița', 'Bistrița-Năsăud'), isTrue);
+    test('partial county names do not match', () {
+      expect(countyMatches('Cluj', 'Cluj-Napoca'), isFalse);
+      expect(countyMatches('Bistrița', 'Bistrița-Năsăud'), isFalse);
     });
 
-    test('case insensitive matching', () {
-      expect(countyMatches('CLUJ', 'cluj'), isTrue);
-      expect(countyMatches('cluj', 'CLUJ'), isTrue);
-      expect(countyMatches('Cluj-Napoca', 'CLUJ'), isTrue);
+    test('non-canonical casing does not match', () {
+      expect(countyMatches('CLUJ', 'cluj'), isFalse);
+      expect(countyMatches('cluj', 'CLUJ'), isFalse);
+      expect(countyMatches('Cluj-Napoca', 'CLUJ'), isFalse);
     });
 
     test('non-matching counties return false', () {

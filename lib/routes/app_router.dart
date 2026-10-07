@@ -8,6 +8,7 @@ import '../views/screens/auth/email_verification_screen.dart';
 import '../views/screens/auth/forgot_password_screen.dart';
 import '../views/screens/auth/login_screen.dart';
 import '../views/screens/auth/pending_approval_screen.dart';
+import '../views/screens/auth/privacy_onboarding_screen.dart';
 import '../views/screens/auth/profile_setup_screen.dart';
 import '../views/screens/auth/register_screen.dart';
 import '../views/screens/auth/suspended_account_screen.dart';
@@ -63,17 +64,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final currentPath = state.matchedLocation;
 
       // Auth-related paths
-      final isAuthPath = currentPath == RouteNames.login ||
+      final isAuthPath =
+          currentPath == RouteNames.login ||
           currentPath == RouteNames.register ||
           currentPath == RouteNames.forgotPassword ||
           currentPath == RouteNames.onboarding;
       final isSplash = currentPath == RouteNames.splash;
-      final isSpecialAuthPath = currentPath == RouteNames.verifyEmail ||
+      final isSpecialAuthPath =
+          currentPath == RouteNames.verifyEmail ||
           currentPath == RouteNames.profileSetup ||
+          currentPath == RouteNames.privacyOnboarding ||
           currentPath == RouteNames.pendingApproval ||
           currentPath == RouteNames.suspended;
       // Global routes accessible by ALL authenticated users (any role)
-      final isGlobalPath = currentPath == RouteNames.notifications ||
+      final isGlobalPath =
+          currentPath == RouteNames.notifications ||
           currentPath == RouteNames.calendar ||
           currentPath == RouteNames.search ||
           currentPath == RouteNames.help ||
@@ -89,7 +94,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           currentPath.startsWith('/documents/');
 
       // Main app paths for regular students only
-      final isMainAppPath = currentPath == RouteNames.home ||
+      final isMainAppPath =
+          currentPath == RouteNames.home ||
           currentPath == RouteNames.announcements ||
           currentPath == RouteNames.meetings ||
           currentPath == RouteNames.initiatives ||
@@ -128,6 +134,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return RouteNames.profileSetup;
       }
 
+      // Imported/legacy profiles must personally acknowledge the current
+      // notice and declare the under-16 age band before any app access.
+      if (authState.state == AuthState.needsPrivacyOnboarding) {
+        if (currentPath == RouteNames.privacyOnboarding) return null;
+        return RouteNames.privacyOnboarding;
+      }
+
       // If account is pending approval
       if (authState.state == AuthState.pendingApproval) {
         if (currentPath == RouteNames.pendingApproval) return null;
@@ -145,15 +158,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isSuperadmin = userRole == UserRole.superadmin;
       final isBexUser = userRole == UserRole.bex;
       final isDepartmentUser = userRole == UserRole.department;
-      final isAdminPath = currentPath == RouteNames.adminDashboard ||
+      final isAdminPath =
+          currentPath == RouteNames.adminDashboard ||
           currentPath.startsWith('/admin');
-      final isBexPath = currentPath == RouteNames.bexDashboard ||
+      final isBexPath =
+          currentPath == RouteNames.bexDashboard ||
           currentPath.startsWith('/bex');
-      final isDepartmentPath = currentPath == RouteNames.departmentDashboard ||
+      final isDepartmentPath =
+          currentPath == RouteNames.departmentDashboard ||
           currentPath.startsWith('/department');
 
       // If authenticated and on auth/splash pages, redirect based on role
-      if (authState.isAuthenticated && (isAuthPath || isSplash || isSpecialAuthPath)) {
+      if (authState.isAuthenticated &&
+          (isAuthPath || isSplash || isSpecialAuthPath)) {
         // Superadmin goes to admin dashboard
         if (isSuperadmin) {
           return RouteNames.adminDashboard;
@@ -175,23 +192,35 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       // If superadmin trying to access regular user home, redirect to admin
-      if (authState.isAuthenticated && isSuperadmin && isMainAppPath && !isAdminPath) {
+      if (authState.isAuthenticated &&
+          isSuperadmin &&
+          isMainAppPath &&
+          !isAdminPath) {
         return RouteNames.adminDashboard;
       }
 
       // If BEX user trying to access regular user home or admin, redirect to BEX
-      if (authState.isAuthenticated && isBexUser && (isMainAppPath || isAdminPath) && !isBexPath) {
-        debugPrint('AppRouter: BEX user on mainAppPath/adminPath, redirecting to bexDashboard from $currentPath');
+      if (authState.isAuthenticated &&
+          isBexUser &&
+          (isMainAppPath || isAdminPath) &&
+          !isBexPath) {
+        debugPrint(
+          'AppRouter: BEX user on mainAppPath/adminPath, redirecting to bexDashboard from $currentPath',
+        );
         return RouteNames.bexDashboard;
       }
 
       // If Department user trying to access regular user home, admin, or BEX, redirect to Department
-      if (authState.isAuthenticated && isDepartmentUser && (isMainAppPath || isAdminPath || isBexPath) && !isDepartmentPath) {
+      if (authState.isAuthenticated &&
+          isDepartmentUser &&
+          (isMainAppPath || isAdminPath || isBexPath) &&
+          !isDepartmentPath) {
         return RouteNames.departmentDashboard;
       }
 
       // If authenticated and already on appropriate path, don't redirect
-      if (authState.isAuthenticated && (isMainAppPath || isAdminPath || isBexPath || isDepartmentPath)) {
+      if (authState.isAuthenticated &&
+          (isMainAppPath || isAdminPath || isBexPath || isDepartmentPath)) {
         return null;
       }
 
@@ -245,6 +274,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProfileSetupScreen(),
       ),
       GoRoute(
+        path: RouteNames.privacyOnboarding,
+        name: 'privacyOnboarding',
+        builder: (context, state) => const PrivacyOnboardingScreen(),
+      ),
+      GoRoute(
         path: RouteNames.pendingApproval,
         name: 'pendingApproval',
         builder: (context, state) => const PendingApprovalScreen(),
@@ -264,58 +298,50 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.home,
             name: 'home',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: HomeScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: HomeScreen()),
           ),
           GoRoute(
             path: RouteNames.announcements,
             name: 'announcements',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: AnnouncementsScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: AnnouncementsScreen()),
           ),
           GoRoute(
             path: RouteNames.meetings,
             name: 'meetings',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: MeetingsScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: MeetingsScreen()),
           ),
           GoRoute(
             path: RouteNames.initiatives,
             name: 'initiatives',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: IdeasScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: IdeasScreen()),
           ),
           GoRoute(
             path: RouteNames.documents,
             name: 'documents',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: DocumentsScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: DocumentsScreen()),
           ),
           GoRoute(
             path: RouteNames.polls,
             name: 'polls',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PollsScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: PollsScreen()),
           ),
           GoRoute(
             path: RouteNames.profile,
             name: 'profile',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: ProfileScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ProfileScreen()),
           ),
           GoRoute(
             path: RouteNames.menu,
             name: 'menu',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: MenuScreen(),
-            ),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: MenuScreen()),
           ),
           // Detail routes inside shell (keeps bottom nav visible)
           GoRoute(
@@ -506,11 +532,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red,
-              ),
+              const Icon(Icons.error_outline, size: 64, color: Colors.red),
               const SizedBox(height: 16),
               Text(
                 l10n.translate('page_not_found'),
@@ -542,7 +564,8 @@ class _AuthStateNotifier extends ChangeNotifier {
       // This prevents multiple rebuilds during loading transitions
       if (previous?.state != next.state) {
         // Don't trigger refresh for loading or initial state to prevent jitter
-        if (next.state != AuthState.loading && next.state != AuthState.initial) {
+        if (next.state != AuthState.loading &&
+            next.state != AuthState.initial) {
           // Debounce to prevent rapid successive navigations
           Future.delayed(const Duration(milliseconds: 100), () {
             notifyListeners();
@@ -571,12 +594,21 @@ class _AnnouncementDetailWrapper extends ConsumerWidget {
     return announcementAsync.when(
       data: (announcement) {
         if (announcement == null) {
-          return _buildNotFound(context, l10n.translate('announcement_not_found'), l10n.translate('back'));
+          return _buildNotFound(
+            context,
+            l10n.translate('announcement_not_found'),
+            l10n.translate('back'),
+          );
         }
         return AnnouncementDetailScreen(announcement: announcement);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
+      error: (e, _) => _buildError(
+        context,
+        l10n.translate('error'),
+        e.toString(),
+        l10n.translate('back'),
+      ),
     );
   }
 }
@@ -593,12 +625,21 @@ class _MeetingDetailWrapper extends ConsumerWidget {
     return meetingAsync.when(
       data: (meeting) {
         if (meeting == null) {
-          return _buildNotFound(context, l10n.translate('meeting_not_found'), l10n.translate('back'));
+          return _buildNotFound(
+            context,
+            l10n.translate('meeting_not_found'),
+            l10n.translate('back'),
+          );
         }
         return MeetingDetailScreen(meeting: meeting);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
+      error: (e, _) => _buildError(
+        context,
+        l10n.translate('error'),
+        e.toString(),
+        l10n.translate('back'),
+      ),
     );
   }
 }
@@ -615,12 +656,21 @@ class _InitiativeDetailWrapper extends ConsumerWidget {
     return initiativeAsync.when(
       data: (initiative) {
         if (initiative == null) {
-          return _buildNotFound(context, l10n.translate('initiative_not_found'), l10n.translate('back'));
+          return _buildNotFound(
+            context,
+            l10n.translate('initiative_not_found'),
+            l10n.translate('back'),
+          );
         }
         return InitiativeDetailScreen(initiative: initiative);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
+      error: (e, _) => _buildError(
+        context,
+        l10n.translate('error'),
+        e.toString(),
+        l10n.translate('back'),
+      ),
     );
   }
 }
@@ -637,12 +687,21 @@ class _PollDetailWrapper extends ConsumerWidget {
     return pollAsync.when(
       data: (poll) {
         if (poll == null) {
-          return _buildNotFound(context, l10n.translate('poll_not_found'), l10n.translate('back'));
+          return _buildNotFound(
+            context,
+            l10n.translate('poll_not_found'),
+            l10n.translate('back'),
+          );
         }
         return PollDetailScreen(poll: poll);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
+      error: (e, _) => _buildError(
+        context,
+        l10n.translate('error'),
+        e.toString(),
+        l10n.translate('back'),
+      ),
     );
   }
 }
@@ -659,23 +718,28 @@ class _DocumentDetailWrapper extends ConsumerWidget {
     return documentAsync.when(
       data: (document) {
         if (document == null) {
-          return _buildNotFound(context, l10n.translate('document_not_found'), l10n.translate('back'));
+          return _buildNotFound(
+            context,
+            l10n.translate('document_not_found'),
+            l10n.translate('back'),
+          );
         }
         return DocumentDetailScreen(document: document);
       },
       loading: () => _buildLoading(),
-      error: (e, _) => _buildError(context, l10n.translate('error'), e.toString(), l10n.translate('back')),
+      error: (e, _) => _buildError(
+        context,
+        l10n.translate('error'),
+        e.toString(),
+        l10n.translate('back'),
+      ),
     );
   }
 }
 
 /// Build loading scaffold
 Widget _buildLoading() {
-  return const Scaffold(
-    body: Center(
-      child: CircularProgressIndicator(),
-    ),
-  );
+  return const Scaffold(body: Center(child: CircularProgressIndicator()));
 }
 
 /// Build not found scaffold
@@ -690,10 +754,7 @@ Widget _buildNotFound(BuildContext context, String message, String backText) {
           const SizedBox(height: 16),
           Text(message, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => context.pop(),
-            child: Text(backText),
-          ),
+          ElevatedButton(onPressed: () => context.pop(), child: Text(backText)),
         ],
       ),
     ),
@@ -701,7 +762,12 @@ Widget _buildNotFound(BuildContext context, String message, String backText) {
 }
 
 /// Build error scaffold
-Widget _buildError(BuildContext context, String errorLabel, String errorDetails, String backText) {
+Widget _buildError(
+  BuildContext context,
+  String errorLabel,
+  String errorDetails,
+  String backText,
+) {
   return Scaffold(
     appBar: AppBar(),
     body: Center(
@@ -710,12 +776,12 @@ Widget _buildError(BuildContext context, String errorLabel, String errorDetails,
         children: [
           const Icon(Icons.error_outline, size: 64, color: Colors.red),
           const SizedBox(height: 16),
-          Text('$errorLabel: $errorDetails', style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () => context.pop(),
-            child: Text(backText),
+          Text(
+            '$errorLabel: $errorDetails',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
+          const SizedBox(height: 24),
+          ElevatedButton(onPressed: () => context.pop(), child: Text(backText)),
         ],
       ),
     ),

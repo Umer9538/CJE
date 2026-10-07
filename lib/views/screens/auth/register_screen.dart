@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,17 +6,22 @@ import 'package:go_router/go_router.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
-import '../../../routes/route_names.dart';
+import '../../widgets/common/registration_privacy_section.dart';
 
 /// Provider to fetch schools list filtered by county - REAL-TIME UPDATES
 /// Uses real-time snapshots() stream to automatically update when schools are added
 /// Firestore rules allow public read on schools collection for registration
-final schoolsByCountyProvider = StreamProvider.family<List<SchoolModel>, String?>((ref, county) {
+final schoolsByCountyProvider = StreamProvider.family<List<SchoolModel>, String?>((
+  ref,
+  county,
+) {
   if (county == null || county.isEmpty) {
     return Stream.value([]);
   }
 
-  debugPrint('schoolsByCountyProvider: Setting up REAL-TIME stream for county: $county');
+  debugPrint(
+    'schoolsByCountyProvider: Setting up REAL-TIME stream for county: $county',
+  );
   final countyLower = county.toLowerCase().trim();
 
   // Use snapshots() for real-time updates - schools collection allows public read
@@ -25,7 +29,9 @@ final schoolsByCountyProvider = StreamProvider.family<List<SchoolModel>, String?
       .collection('schools')
       .snapshots()
       .map((snapshot) {
-        debugPrint('schoolsByCountyProvider: Received snapshot with ${snapshot.docs.length} docs');
+        debugPrint(
+          'schoolsByCountyProvider: Received snapshot with ${snapshot.docs.length} docs',
+        );
 
         final allSchools = snapshot.docs
             .map((doc) {
@@ -40,24 +46,26 @@ final schoolsByCountyProvider = StreamProvider.family<List<SchoolModel>, String?
             .toList();
 
         // Filter by city (case-insensitive, trimmed) and active status
-        final schools = allSchools
-            .where((school) => school.isActive)
-            .where((school) {
-              final schoolCity = school.city?.toLowerCase().trim();
-              if (schoolCity == null) return false;
-              return schoolCity == countyLower ||
-                     schoolCity.contains(countyLower) ||
-                     countyLower.contains(schoolCity);
-            })
-            .toList()
-          ..sort((a, b) => a.name.compareTo(b.name));
+        final schools = allSchools.where((school) => school.isActive).where((
+          school,
+        ) {
+          final schoolCity = school.city?.toLowerCase().trim();
+          if (schoolCity == null) return false;
+          return schoolCity == countyLower ||
+              schoolCity.contains(countyLower) ||
+              countyLower.contains(schoolCity);
+        }).toList()..sort((a, b) => a.name.compareTo(b.name));
 
-        debugPrint('schoolsByCountyProvider: Found ${schools.length} schools matching "$county"');
+        debugPrint(
+          'schoolsByCountyProvider: Found ${schools.length} schools matching "$county"',
+        );
 
         if (schools.isNotEmpty) {
           return schools;
         } else {
-          debugPrint('schoolsByCountyProvider: No schools found, using sample schools');
+          debugPrint(
+            'schoolsByCountyProvider: No schools found, using sample schools',
+          );
           return _getSampleSchools(county);
         }
       })
@@ -71,7 +79,9 @@ final schoolsByCountyProvider = StreamProvider.family<List<SchoolModel>, String?
 List<SchoolModel> _getSampleSchools(String county) {
   // Return sample schools for the selected county
   // These are only shown when database has no schools for this county
-  final countyAbbr = county.length >= 2 ? county.substring(0, 2).toUpperCase() : county.toUpperCase();
+  final countyAbbr = county.length >= 2
+      ? county.substring(0, 2).toUpperCase()
+      : county.toUpperCase();
   return [
     SchoolModel(
       id: '${county.toLowerCase().replaceAll(' ', '_').replaceAll('-', '_')}_school_1',
@@ -120,8 +130,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _obscureCityPassword = true;
+  bool? _isUnder16;
+  bool _privacyNoticeAcknowledged = false;
+  bool _termsAccepted = false;
   String? _errorMessage;
-  int _titleTapCount = 0;
 
   // County passwords for access control (Registration codes from Parole_judete.xlsx)
   // IMPORTANT: Must match passwords in profile_setup_screen.dart
@@ -233,7 +245,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_selectedCity == null) return false;
     final expectedPassword = _cityPasswords[_selectedCity];
     return expectedPassword != null &&
-           _cityPasswordController.text.trim() == expectedPassword;
+        _cityPasswordController.text.trim() == expectedPassword;
   }
 
   Future<void> _handleRegister() async {
@@ -261,15 +273,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _errorMessage = null;
     });
 
-    final fullName = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
+    final fullName =
+        '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
 
-    final result = await ref.read(authControllerProvider.notifier).createAccount(
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .createAccount(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           fullName: fullName,
           schoolId: _selectedSchoolId!,
-          phoneNumber: _phoneController.text.trim(),
+          phoneNumber: _phoneController.text.trim().isEmpty
+              ? null
+              : _phoneController.text.trim(),
           city: _selectedCity!,
+          isUnder16: _isUnder16!,
+          privacyNoticeAcknowledged: _privacyNoticeAcknowledged,
+          termsAccepted: _termsAccepted,
           className: _classNameController.text.trim(),
         );
 
@@ -280,13 +300,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(AppLocalizations.of(context).translate('account_created_wait_approval')),
+              content: Text(
+                AppLocalizations.of(
+                  context,
+                ).translate('account_created_wait_approval'),
+              ),
               backgroundColor: Colors.green,
             ),
           );
         }
       } else {
-        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+        setState(
+          () => _errorMessage = _getLocalizedAuthError(result.errorCode),
+        );
       }
     }
   }
@@ -297,13 +323,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _errorMessage = null;
     });
 
-    final result = await ref.read(authControllerProvider.notifier).signInWithGoogle();
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .signInWithGoogle();
 
     if (mounted) {
       setState(() => _isGoogleLoading = false);
 
       if (!result.success) {
-        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+        setState(
+          () => _errorMessage = _getLocalizedAuthError(result.errorCode),
+        );
       }
     }
   }
@@ -314,13 +344,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _errorMessage = null;
     });
 
-    final result = await ref.read(authControllerProvider.notifier).signInWithApple();
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .signInWithApple();
 
     if (mounted) {
       setState(() => _isAppleLoading = false);
 
       if (!result.success) {
-        setState(() => _errorMessage = _getLocalizedAuthError(result.errorCode));
+        setState(
+          () => _errorMessage = _getLocalizedAuthError(result.errorCode),
+        );
       }
     }
   }
@@ -355,31 +389,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 children: [
                   const SizedBox(height: 20),
 
-                  // Title - tap 5 times for admin setup
-                  GestureDetector(
-                    onTap: () {
-                      _titleTapCount++;
-                      if (_titleTapCount >= 5) {
-                        _titleTapCount = 0;
-                        context.push(RouteNames.adminSetup);
-                      } else if (_titleTapCount >= 3) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(l10n.translate('admin_setup_taps').replaceAll('{count}', '${5 - _titleTapCount}')),
-                            duration: const Duration(seconds: 1),
-                          ),
-                        );
-                      }
-                    },
-                    child: Text(
-                      l10n.translate('create_account'),
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: context.textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
+                  Text(
+                    l10n.translate('create_account'),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: context.textPrimary,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
 
@@ -404,12 +421,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.onErrorContainer, size: 20),
+                          Icon(
+                            Icons.error_outline,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onErrorContainer,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: TextStyle(color: Theme.of(context).colorScheme.onErrorContainer, fontSize: 13),
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onErrorContainer,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ],
@@ -438,7 +466,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               controller: _firstNameController,
                               enabled: !_isLoading && !_isGoogleLoading,
                               textCapitalization: TextCapitalization.words,
-                              decoration: _inputDecoration('${l10n.translate('first_name')}...'),
+                              decoration: _inputDecoration(
+                                '${l10n.translate('first_name')}...',
+                              ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return l10n.translate('field_required');
@@ -467,7 +497,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               controller: _lastNameController,
                               enabled: !_isLoading && !_isGoogleLoading,
                               textCapitalization: TextCapitalization.words,
-                              decoration: _inputDecoration('${l10n.translate('last_name')}...'),
+                              decoration: _inputDecoration(
+                                '${l10n.translate('last_name')}...',
+                              ),
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return l10n.translate('field_required');
@@ -496,7 +528,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _emailController,
                     enabled: !_isLoading && !_isGoogleLoading,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: _inputDecoration('${l10n.translate('email')}...'),
+                    decoration: _inputDecoration(
+                      '${l10n.translate('email')}...',
+                    ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return l10n.translate('field_required');
@@ -509,9 +543,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Phone Number (Required)
+                  // Phone number (optional)
                   Text(
-                    l10n.translate('phone_number'),
+                    l10n.translate('phone_number_optional'),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -525,11 +559,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     keyboardType: TextInputType.phone,
                     decoration: _inputDecoration('+40 7XX XXX XXX'),
                     validator: (value) {
+                      // Telefonul este optional (GDPR: minimizarea datelor).
+                      // Daca e completat, trebuie sa fie valid.
                       if (value == null || value.trim().isEmpty) {
-                        return l10n.translate('phone_required');
+                        return null;
                       }
-                      // Basic phone validation - at least 10 digits
-                      final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+                      final digitsOnly = value.replaceAll(
+                        RegExp(r'[^0-9]'),
+                        '',
+                      );
                       if (digitsOnly.length < 10) {
                         return l10n.translate('invalid_phone');
                       }
@@ -563,18 +601,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _cityPasswordController,
-                    enabled: !_isLoading && !_isGoogleLoading && _selectedCity != null,
+                    enabled:
+                        !_isLoading &&
+                        !_isGoogleLoading &&
+                        _selectedCity != null,
                     obscureText: _obscureCityPassword,
                     style: TextStyle(color: context.textPrimary),
                     decoration: _inputDecoration(
                       l10n.translate('city_password_hint'),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureCityPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscureCityPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           color: context.textSecondary,
                           size: 20,
                         ),
-                        onPressed: () => setState(() => _obscureCityPassword = !_obscureCityPassword),
+                        onPressed: () => setState(
+                          () => _obscureCityPassword = !_obscureCityPassword,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -611,7 +656,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   if (_selectedCity == null)
                     // Show disabled dropdown when no city is selected
                     DropdownButtonFormField<String>(
-                      decoration: _inputDecoration(l10n.translate('select_city_first')),
+                      decoration: _inputDecoration(
+                        l10n.translate('select_city_first'),
+                      ),
                       items: const [],
                       onChanged: null,
                     )
@@ -620,12 +667,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       data: (schools) => DropdownButtonFormField<String>(
                         value: _selectedSchoolId,
                         isExpanded: true,
-                        decoration: _inputDecoration('${l10n.translate('select')} ${l10n.translate('school')}...'),
+                        decoration: _inputDecoration(
+                          '${l10n.translate('select')} ${l10n.translate('school')}...',
+                        ),
                         items: schools.map((school) {
                           return DropdownMenuItem(
                             value: school.id,
                             child: Text(
-                              school.name, // Always show full school name, not abbreviation
+                              school
+                                  .name, // Always show full school name, not abbreviation
                               overflow: TextOverflow.ellipsis,
                               maxLines: 2,
                             ),
@@ -633,7 +683,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         }).toList(),
                         onChanged: _isLoading || _isGoogleLoading
                             ? null
-                            : (value) => setState(() => _selectedSchoolId = value),
+                            : (value) =>
+                                  setState(() => _selectedSchoolId = value),
                         validator: (value) {
                           if (value == null) {
                             return l10n.translate('field_required');
@@ -692,11 +743,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       '${l10n.translate('password')}...',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           color: context.textSecondary,
                           size: 20,
                         ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -730,11 +785,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       '${l10n.translate('confirm_password')}...',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           color: context.textSecondary,
                           size: 20,
                         ),
-                        onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                        onPressed: () => setState(
+                          () => _obscureConfirmPassword =
+                              !_obscureConfirmPassword,
+                        ),
                       ),
                     ),
                     validator: (value) {
@@ -749,15 +809,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
 
+                  RegistrationPrivacySection(
+                    isUnder16: _isUnder16,
+                    privacyNoticeAcknowledged: _privacyNoticeAcknowledged,
+                    termsAccepted: _termsAccepted,
+                    onTermsAcceptedChanged: (value) =>
+                        setState(() => _termsAccepted = value),
+                    enabled: !_isLoading && !_isGoogleLoading,
+                    onAgeGroupChanged: (value) =>
+                        setState(() => _isUnder16 = value),
+                    onPrivacyNoticeAcknowledgedChanged: (value) =>
+                        setState(() => _privacyNoticeAcknowledged = value),
+                  ),
+                  const SizedBox(height: 24),
+
                   // Create Account Button
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: _isLoading || _isGoogleLoading ? null : _handleRegister,
+                      onPressed: _isLoading || _isGoogleLoading
+                          ? null
+                          : _handleRegister,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.gold,
                         foregroundColor: AppColors.navy,
-                        disabledBackgroundColor: AppColors.gold.withValues(alpha: 0.6),
+                        disabledBackgroundColor: AppColors.gold.withValues(
+                          alpha: 0.6,
+                        ),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -835,19 +913,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     iconColor: Colors.red,
                     label: 'Continue with Google',
                     isLoading: _isGoogleLoading,
-                    onPressed: _isLoading || _isAppleLoading ? null : _handleGoogleSignUp,
+                    onPressed: _isLoading || _isAppleLoading
+                        ? null
+                        : _handleGoogleSignUp,
                   ),
-                  const SizedBox(height: 12),
+                  // Sign in with Apple is offered on iOS only; it is not
+                  // configured for Android
+                  if (Theme.of(context).platform == TargetPlatform.iOS) ...[
+                    const SizedBox(height: 12),
 
-                  // Apple Sign Up Button
-                  _SocialButton(
-                    icon: '',
-                    iconColor: Colors.white,
-                    label: 'Continue with Apple',
-                    isLoading: _isAppleLoading,
-                    onPressed: _isLoading || _isGoogleLoading ? null : _handleAppleSignUp,
-                    isApple: true,
-                  ),
+                    // Apple Sign Up Button
+                    _SocialButton(
+                      icon: '',
+                      iconColor: Colors.white,
+                      label: 'Continue with Apple',
+                      isLoading: _isAppleLoading,
+                      onPressed: _isLoading || _isGoogleLoading
+                          ? null
+                          : _handleAppleSignUp,
+                      isApple: true,
+                    ),
+                  ],
                   const SizedBox(height: 32),
                 ],
               ),
@@ -879,12 +965,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               onTap: isDisabled ? null : () => _showCitySearchSheet(l10n),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[900] : Colors.grey[50],
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: state.hasError ? context.errorColor : context.borderColor,
+                    color: state.hasError
+                        ? context.errorColor
+                        : context.borderColor,
                     width: state.hasError ? 1.5 : 1,
                   ),
                 ),
@@ -892,7 +983,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        _selectedCity ?? '${l10n.translate('select')} ${l10n.translate('city')}...',
+                        _selectedCity ??
+                            '${l10n.translate('select')} ${l10n.translate('city')}...',
                         style: TextStyle(
                           fontSize: 14,
                           color: _selectedCity != null
@@ -901,11 +993,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         ),
                       ),
                     ),
-                    Icon(
-                      Icons.search,
-                      color: context.textSecondary,
-                      size: 20,
-                    ),
+                    Icon(Icons.search, color: context.textSecondary, size: 20),
                   ],
                 ),
               ),
@@ -915,10 +1003,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 padding: const EdgeInsets.only(top: 8, left: 12),
                 child: Text(
                   state.errorText!,
-                  style: TextStyle(
-                    color: context.errorColor,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: context.errorColor, fontSize: 12),
                 ),
               ),
           ],
@@ -952,10 +1037,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: context.textSecondary,
-        fontSize: 14,
-      ),
+      hintStyle: TextStyle(color: context.textSecondary, fontSize: 14),
       filled: true,
       fillColor: isDark ? Colors.grey[900] : Colors.grey[50],
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -1194,7 +1276,10 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
               onChanged: _filterCities,
             ),
@@ -1223,7 +1308,9 @@ class _CitySearchSheetState extends State<CitySearchSheet> {
                           city,
                           style: TextStyle(
                             color: isDark ? Colors.white : Colors.black,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                         trailing: isSelected

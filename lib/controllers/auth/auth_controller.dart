@@ -1,11 +1,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/core.dart';
 import '../../models/models.dart';
@@ -39,6 +38,7 @@ enum AuthState {
   authenticated,
   unauthenticated,
   needsProfile, // User exists in Firebase Auth but not in Firestore
+  needsPrivacyOnboarding, // Imported/legacy profile lacks privacy acknowledgement
   pendingApproval, // User registered but waiting for admin approval
   suspended, // User account is suspended
   emailNotVerified, // Email not verified
@@ -67,7 +67,10 @@ class AuthStateData {
     return const AuthStateData(state: AuthState.loading);
   }
 
-  factory AuthStateData.authenticated(UserModel user, {bool isEmailVerified = true}) {
+  factory AuthStateData.authenticated(
+    UserModel user, {
+    bool isEmailVerified = true,
+  }) {
     return AuthStateData(
       state: AuthState.authenticated,
       user: user,
@@ -81,6 +84,10 @@ class AuthStateData {
 
   factory AuthStateData.needsProfile() {
     return const AuthStateData(state: AuthState.needsProfile);
+  }
+
+  factory AuthStateData.needsPrivacyOnboarding(UserModel user) {
+    return AuthStateData(state: AuthState.needsPrivacyOnboarding, user: user);
   }
 
   factory AuthStateData.pendingApproval(UserModel user) {
@@ -106,6 +113,7 @@ class AuthStateData {
   bool get isLoading => state == AuthState.loading;
   bool get isAuthenticated => state == AuthState.authenticated;
   bool get isUnauthenticated => state == AuthState.unauthenticated;
+  bool get needsPrivacyNotice => state == AuthState.needsPrivacyOnboarding;
   bool get isPendingApproval => state == AuthState.pendingApproval;
   bool get isSuspended => state == AuthState.suspended;
   bool get needsEmailVerification => state == AuthState.emailNotVerified;
@@ -128,8 +136,8 @@ class AuthStateData {
 /// Auth controller provider
 final authControllerProvider =
     StateNotifierProvider<AuthController, AuthStateData>((ref) {
-  return AuthController(ref);
-});
+      return AuthController(ref);
+    });
 
 /// Current user provider (convenience)
 final currentUserProvider = Provider<UserModel?>((ref) {
@@ -210,8 +218,10 @@ class AuthController extends StateNotifier<AuthStateData> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   StreamSubscription<User?>? _authSubscription;
   StreamSubscription<DocumentSnapshot>? _userSubscription;
-  AuthState? _lastEmittedState; // Track last emitted state to prevent duplicates
-  bool _hasUpdatedLastLogin = false; // Prevent multiple lastLogin updates per session
+  AuthState?
+  _lastEmittedState; // Track last emitted state to prevent duplicates
+  bool _hasUpdatedLastLogin =
+      false; // Prevent multiple lastLogin updates per session
 
   AuthController(this._ref) : super(AuthStateData.initial()) {
     _init();
@@ -223,7 +233,9 @@ class AuthController extends StateNotifier<AuthStateData> {
 
   /// Initialize auth state listener
   void _init() {
-    _authSubscription = _authService.authStateChanges.listen(_onAuthStateChanged);
+    _authSubscription = _authService.authStateChanges.listen(
+      _onAuthStateChanged,
+    );
   }
 
   /// Handle auth state changes
@@ -263,54 +275,77 @@ class AuthController extends StateNotifier<AuthStateData> {
           .collection('users')
           .doc(firebaseUser.uid)
           .snapshots()
-          .listen((snapshot) {
-        if (snapshot.exists) {
-          final user = UserModel.fromFirestore(snapshot);
+          .listen(
+            (snapshot) {
+              if (snapshot.exists) {
+                final user = UserModel.fromFirestore(snapshot);
 
-          // Check user status
-          switch (user.status) {
-            case UserStatus.pending:
-              _setStateIfChanged(AuthStateData.pendingApproval(user));
-              break;
-            case UserStatus.suspended:
-              _setStateIfChanged(AuthStateData.suspended(user));
-              break;
-            case UserStatus.active:
-              // Check email verification for email/password users
-              // Skip email verification for superadmin and bex roles
-              final isEmailUser = firebaseUser.providerData
-                  .any((info) => info.providerId == 'password');
-              final skipEmailVerification = user.role == UserRole.superadmin ||
-                                            user.role == UserRole.bex;
-
-              if (isEmailUser && !firebaseUser.emailVerified && !skipEmailVerification) {
-                _setStateIfChanged(AuthStateData.emailNotVerified(user));
-              } else {
-                _setStateIfChanged(AuthStateData.authenticated(
-                  user,
-                  isEmailVerified: firebaseUser.emailVerified || skipEmailVerification,
-                ));
-                // Update last login only once per session to prevent infinite loop
-                if (!_hasUpdatedLastLogin) {
-                  _hasUpdatedLastLogin = true;
-                  _userRepository.updateLastLogin(user.id);
-                  // Register FCM token for push notifications
-                  _registerFcmToken(user.id);
-                  // Sync preferred language to Firestore for notification localization
-                  _syncPreferredLanguage(user.id);
+                // An importer cannot acknowledge the notice or declare age on
+                // the user's behalf. Force imported and older profiles through
+                // the dedicated first-login step before application access.
+                // Suspended accounts remain on the suspension screen.
+                if (user.status != UserStatus.suspended &&
+                    user.needsPrivacyOnboarding) {
+                  _setStateIfChanged(
+                    AuthStateData.needsPrivacyOnboarding(user),
+                  );
+                  return;
                 }
+
+                // Check user status
+                switch (user.status) {
+                  case UserStatus.pending:
+                    _setStateIfChanged(AuthStateData.pendingApproval(user));
+                    break;
+                  case UserStatus.suspended:
+                    _setStateIfChanged(AuthStateData.suspended(user));
+                    break;
+                  case UserStatus.active:
+                    // Check email verification for email/password users
+                    // Skip email verification for superadmin and bex roles
+                    // Verificarea de email se aplica uniform, indiferent de rol.
+                    // Anterior bex si superadmin erau exceptati, ceea ce lasa exact
+                    // conturile cele mai privilegiate fara aceasta verificare.
+                    final isEmailUser = firebaseUser.providerData.any(
+                      (info) => info.providerId == 'password',
+                    );
+
+                    if (isEmailUser && !firebaseUser.emailVerified) {
+                      _setStateIfChanged(AuthStateData.emailNotVerified(user));
+                    } else {
+                      _setStateIfChanged(
+                        AuthStateData.authenticated(
+                          user,
+                          isEmailVerified: firebaseUser.emailVerified,
+                        ),
+                      );
+                      // Update last login only once per session to prevent infinite loop
+                      if (!_hasUpdatedLastLogin) {
+                        _hasUpdatedLastLogin = true;
+                        _userRepository.updateLastLogin(user.id);
+                        // Register FCM token for push notifications
+                        _registerFcmToken(user.id);
+                        // Sync preferred language to Firestore for notification localization
+                        _syncPreferredLanguage(user.id);
+                      }
+                    }
+                    break;
+                }
+              } else {
+                // User exists in Firebase Auth but not in Firestore
+                _setStateIfChanged(AuthStateData.needsProfile());
               }
-              break;
-          }
-        } else {
-          // User exists in Firebase Auth but not in Firestore
-          _setStateIfChanged(AuthStateData.needsProfile());
-        }
-      }, onError: (error) {
-        _setStateIfChanged(AuthStateData.error('Eroare la încărcarea profilului'));
-      });
+            },
+            onError: (error) {
+              _setStateIfChanged(
+                AuthStateData.error('Eroare la încărcarea profilului'),
+              );
+            },
+          );
     } catch (e) {
-      _setStateIfChanged(AuthStateData.error('Eroare la încărcarea profilului'));
+      _setStateIfChanged(
+        AuthStateData.error('Eroare la încărcarea profilului'),
+      );
     }
   }
 
@@ -326,7 +361,9 @@ class AuthController extends StateNotifier<AuthStateData> {
     );
 
     if (!result.success) {
-      state = AuthStateData.error(result.errorMessage ?? 'Eroare la autentificare');
+      state = AuthStateData.error(
+        result.errorMessage ?? 'Eroare la autentificare',
+      );
     }
     // If success, _onAuthStateChanged will handle the state update
 
@@ -339,7 +376,9 @@ class AuthController extends StateNotifier<AuthStateData> {
     final result = await _authService.signInWithGoogle();
 
     if (!result.success) {
-      state = AuthStateData.error(result.errorMessage ?? 'Eroare la autentificare');
+      state = AuthStateData.error(
+        result.errorMessage ?? 'Eroare la autentificare',
+      );
     }
 
     return result;
@@ -351,10 +390,55 @@ class AuthController extends StateNotifier<AuthStateData> {
     final result = await _authService.signInWithApple();
 
     if (!result.success) {
-      state = AuthStateData.error(result.errorMessage ?? 'Eroare la autentificare');
+      state = AuthStateData.error(
+        result.errorMessage ?? 'Eroare la autentificare',
+      );
     }
 
     return result;
+  }
+
+  /// Complete the mandatory first-login privacy step for imported/legacy
+  /// profiles. An active account declaring that it is under 16 is moved back
+  /// to pending unless a parent/guardian authorisation was already verified.
+  Future<(bool, String?)> completePrivacyOnboarding({
+    required bool isUnder16,
+    required bool privacyNoticeAcknowledged,
+    required bool termsAccepted,
+  }) async {
+    if (!termsAccepted) {
+      return (false, 'Trebuie să accepți Termenii de utilizare.');
+    }
+    if (!privacyNoticeAcknowledged) {
+      return (false, 'Politica de confidențialitate trebuie confirmată.');
+    }
+
+    final user = state.user;
+    if (user == null || user.id.isEmpty) {
+      return (false, 'Profilul utilizatorului nu este disponibil.');
+    }
+
+    final now = Timestamp.now();
+    final fields = <String, dynamic>{
+      'privacyNoticeVersion': AppStrings.privacyNoticeVersion,
+      'privacyNoticeAcknowledgedAt': now,
+      'termsVersion': AppStrings.termsVersion,
+      'termsAcceptedAt': now,
+      'isUnder16': isUnder16,
+      'parentalAuthorizationDeclaredAt': isUnder16 ? now : null,
+    };
+
+    if (user.status == UserStatus.active &&
+        isUnder16 &&
+        user.parentalAuthorizationVerifiedAt == null) {
+      fields['status'] = UserStatus.pending.toFirestore();
+    }
+
+    final success = await _userRepository.updateUserFields(user.id, fields);
+    if (!success) {
+      return (false, 'Confirmarea nu a putut fi salvată. Încearcă din nou.');
+    }
+    return (true, null);
   }
 
   /// Create account with email
@@ -363,10 +447,22 @@ class AuthController extends StateNotifier<AuthStateData> {
     required String password,
     required String fullName,
     required String schoolId,
-    required String phoneNumber,
+    String? phoneNumber,
     required String city,
+    required bool isUnder16,
+    required bool privacyNoticeAcknowledged,
+    required bool termsAccepted,
     String? className,
   }) async {
+    if (!termsAccepted) {
+      return AuthResult.failure('Trebuie să accepți Termenii de utilizare.');
+    }
+    if (!privacyNoticeAcknowledged) {
+      return AuthResult.failure(
+        'Politica de confidențialitate trebuie confirmată.',
+      );
+    }
+
     state = AuthStateData.loading();
 
     // Create Firebase Auth account
@@ -377,7 +473,9 @@ class AuthController extends StateNotifier<AuthStateData> {
     );
 
     if (!result.success) {
-      state = AuthStateData.error(result.errorMessage ?? 'Eroare la creare cont');
+      state = AuthStateData.error(
+        result.errorMessage ?? 'Eroare la creare cont',
+      );
       return result;
     }
 
@@ -386,6 +484,7 @@ class AuthController extends StateNotifier<AuthStateData> {
       final user = result.user!;
       final school = await _schoolRepository.getSchoolById(schoolId);
 
+      final registrationTime = DateTime.now();
       final userModel = UserModel(
         id: user.uid,
         email: email.toLowerCase(),
@@ -398,8 +497,14 @@ class AuthController extends StateNotifier<AuthStateData> {
         schoolId: schoolId,
         schoolName: school?.name,
         className: className,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: registrationTime,
+        updatedAt: registrationTime,
+        privacyNoticeVersion: AppStrings.privacyNoticeVersion,
+        privacyNoticeAcknowledgedAt: registrationTime,
+        termsVersion: AppStrings.termsVersion,
+        termsAcceptedAt: registrationTime,
+        isUnder16: isUnder16,
+        parentalAuthorizationDeclaredAt: isUnder16 ? registrationTime : null,
       );
 
       // Create user in Firestore with retry
@@ -413,7 +518,9 @@ class AuthController extends StateNotifier<AuthStateData> {
 
       if (!success) {
         // If Firestore fails, delete the Firebase Auth account
-        debugPrint('Failed to create user in Firestore, deleting Firebase Auth account');
+        debugPrint(
+          'Failed to create user in Firestore, deleting Firebase Auth account',
+        );
         try {
           await result.user?.delete();
         } catch (deleteError) {
@@ -451,19 +558,27 @@ class AuthController extends StateNotifier<AuthStateData> {
     required String fullName,
     required String schoolId,
     String? schoolName,
-    required String phoneNumber,
+    String? phoneNumber,
     required String city,
+    required bool isUnder16,
+    required bool privacyNoticeAcknowledged,
+    required bool termsAccepted,
     String? className,
   }) async {
+    if (!termsAccepted) {
+      return (false, 'Trebuie să accepți Termenii de utilizare.');
+    }
     debugPrint('=== createGoogleUserProfile START ===');
-    debugPrint('Params: fullName=$fullName, schoolId=$schoolId, schoolName=$schoolName, phone=$phoneNumber, city=$city, class=$className');
 
     final firebaseUser = _authService.currentUser;
     if (firebaseUser == null) {
       debugPrint('createGoogleUserProfile: ERROR - No Firebase user');
       return (false, 'No authenticated user found');
     }
-    debugPrint('Firebase user: uid=${firebaseUser.uid}, email=${firebaseUser.email}');
+
+    if (!privacyNoticeAcknowledged) {
+      return (false, 'Politica de confidențialitate trebuie confirmată.');
+    }
 
     try {
       // Try to get school from Firestore, fall back to provided name for sample schools
@@ -471,15 +586,21 @@ class AuthController extends StateNotifier<AuthStateData> {
       final school = await _schoolRepository.getSchoolById(schoolId);
       debugPrint('School from Firestore: ${school?.name ?? "null"}');
 
-      final effectiveSchoolName = school?.name ?? schoolName ?? 'Unknown School';
+      final effectiveSchoolName =
+          school?.name ?? schoolName ?? 'Unknown School';
 
       if (school == null && schoolName == null) {
-        debugPrint('createGoogleUserProfile: ERROR - School not found and no name provided: $schoolId');
+        debugPrint(
+          'createGoogleUserProfile: ERROR - School not found and no name provided: $schoolId',
+        );
         return (false, 'School not found');
       }
 
-      debugPrint('createGoogleUserProfile: Using school name: $effectiveSchoolName');
+      debugPrint(
+        'createGoogleUserProfile: Using school name: $effectiveSchoolName',
+      );
 
+      final registrationTime = DateTime.now();
       final userModel = UserModel(
         id: firebaseUser.uid,
         email: firebaseUser.email?.toLowerCase() ?? '',
@@ -492,35 +613,50 @@ class AuthController extends StateNotifier<AuthStateData> {
         schoolId: schoolId,
         schoolName: effectiveSchoolName,
         className: className,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+        createdAt: registrationTime,
+        updatedAt: registrationTime,
+        privacyNoticeVersion: AppStrings.privacyNoticeVersion,
+        privacyNoticeAcknowledgedAt: registrationTime,
+        termsVersion: AppStrings.termsVersion,
+        termsAcceptedAt: registrationTime,
+        isUnder16: isUnder16,
+        parentalAuthorizationDeclaredAt: isUnder16 ? registrationTime : null,
       );
-
-      debugPrint('UserModel created: id=${userModel.id}, email=${userModel.email}, fullName=${userModel.fullName}');
-      debugPrint('UserModel school: schoolId=${userModel.schoolId}, schoolName=${userModel.schoolName}');
 
       // Create user in Firestore with retry and exponential backoff
       bool success = false;
       const maxAttempts = 3;
-      final delays = [Duration.zero, const Duration(milliseconds: 500), const Duration(seconds: 2)];
+      final delays = [
+        Duration.zero,
+        const Duration(milliseconds: 500),
+        const Duration(seconds: 2),
+      ];
 
       for (int attempt = 1; attempt <= maxAttempts && !success; attempt++) {
         if (attempt > 1) {
           final delay = delays[attempt - 1];
-          debugPrint('createGoogleUserProfile: Attempt $attempt failed, waiting ${delay.inMilliseconds}ms before retry...');
+          debugPrint(
+            'createGoogleUserProfile: Attempt $attempt failed, waiting ${delay.inMilliseconds}ms before retry...',
+          );
           await Future.delayed(delay);
         }
-        debugPrint('Attempting to save user to Firestore (attempt $attempt of $maxAttempts)...');
+        debugPrint(
+          'Attempting to save user to Firestore (attempt $attempt of $maxAttempts)...',
+        );
         success = await _userRepository.createUser(userModel);
         debugPrint('Attempt $attempt result: $success');
       }
 
       if (!success) {
-        debugPrint('createGoogleUserProfile: ERROR - Failed to create user in Firestore after $maxAttempts attempts');
+        debugPrint(
+          'createGoogleUserProfile: ERROR - Failed to create user in Firestore after $maxAttempts attempts',
+        );
         return (false, 'Failed to save profile to database');
       }
 
-      debugPrint('createGoogleUserProfile: SUCCESS - User created in Firestore');
+      debugPrint(
+        'createGoogleUserProfile: SUCCESS - User created in Firestore',
+      );
 
       // Increment school student count
       if (schoolId.isNotEmpty) {
@@ -553,8 +689,11 @@ class AuthController extends StateNotifier<AuthStateData> {
   /// Check email verification status
   Future<bool> checkEmailVerification() async {
     final isVerified = await _authService.isEmailVerified();
-    if (isVerified && state.user != null) {
-      state = AuthStateData.authenticated(state.user!, isEmailVerified: true);
+    final firebaseUser = _authService.currentUser;
+    if (isVerified && firebaseUser != null) {
+      // Keep Abdul's no-loading redirect fix, but resolve the fresh profile:
+      // verifying email must not bypass suspension, approval or privacy gates.
+      await _loadUserProfile(firebaseUser);
     }
     return isVerified;
   }
@@ -578,10 +717,9 @@ class AuthController extends StateNotifier<AuthStateData> {
     final user = state.user;
     if (user == null) return false;
 
-    final success = await _userRepository.updateUserFields(
-      user.id,
-      {'photoUrl': photoUrl},
-    );
+    final success = await _userRepository.updateUserFields(user.id, {
+      'photoUrl': photoUrl,
+    });
 
     if (success) {
       await _authService.updateProfile(photoUrl: photoUrl);
@@ -690,28 +828,44 @@ class AuthController extends StateNotifier<AuthStateData> {
 
   /// Delete account
   Future<AuthResult> deleteAccount() async {
-    final user = state.user;
+    final user = _authService.currentUser;
     if (user == null) {
       return AuthResult.failure('Nu există utilizator autentificat');
     }
 
     try {
-      // Decrement school student count
-      if (user.schoolId != null && user.schoolId!.isNotEmpty) {
-        await _schoolRepository.decrementStudentCount(user.schoolId!);
-      }
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'deleteAccount',
+        options: HttpsCallableOptions(timeout: const Duration(minutes: 9)),
+      );
+      final applePreparation = await _authService.prepareAppleAccountDeletion();
+      if (!applePreparation.success) return applePreparation;
+      await callable.call<void>();
 
-      // Delete Firestore document first
-      await _userRepository.deleteUser(user.id);
-
-      // Then delete Firebase Auth account
-      final result = await _authService.deleteAccount();
-      if (result.success) {
-        state = AuthStateData.unauthenticated();
+      await _userSubscription?.cancel();
+      _lastEmittedState = null;
+      _hasUpdatedLastLogin = false;
+      await _authService.signOut();
+      state = AuthStateData.unauthenticated();
+      return const AuthResult(success: true);
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'failed-precondition' &&
+          e.message == 'requires-recent-login') {
+        return AuthResult.failure(
+          'Din motive de securitate, autentifică-te din nou înainte de '
+              'ștergerea contului.',
+          'requires-recent-login',
+        );
       }
-      return result;
+      return AuthResult.failure(
+        e.message ?? 'Eroare la ștergerea contului și a datelor asociate.',
+        e.code,
+      );
     } catch (e) {
-      return AuthResult.failure('Eroare la ștergerea contului');
+      debugPrint('Delete account failed: $e');
+      return AuthResult.failure(
+        'Eroare la ștergerea contului și a datelor asociate.',
+      );
     }
   }
 
@@ -734,13 +888,13 @@ class AuthController extends StateNotifier<AuthStateData> {
     required String newPassword,
   }) async {
     final user = state.user;
-    if (user == null || user.email == null) {
+    if (user == null || user.email.isEmpty) {
       throw Exception('Nu există utilizator autentificat');
     }
 
     // First reauthenticate
     final reauthResult = await _authService.reauthenticate(
-      email: user.email!,
+      email: user.email,
       password: currentPassword,
     );
 
@@ -751,7 +905,9 @@ class AuthController extends StateNotifier<AuthStateData> {
     // Then update password
     final updateResult = await _authService.updatePassword(newPassword);
     if (!updateResult.success) {
-      throw Exception(updateResult.errorMessage ?? 'Eroare la schimbarea parolei');
+      throw Exception(
+        updateResult.errorMessage ?? 'Eroare la schimbarea parolei',
+      );
     }
   }
 

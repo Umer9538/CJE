@@ -6,15 +6,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../widgets/common/app_button.dart';
+import '../../widgets/common/account_privacy_action.dart';
 
 class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
 
   @override
-  ConsumerState<EmailVerificationScreen> createState() => _EmailVerificationScreenState();
+  ConsumerState<EmailVerificationScreen> createState() =>
+      _EmailVerificationScreenState();
 }
 
-class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScreen> {
+class _EmailVerificationScreenState
+    extends ConsumerState<EmailVerificationScreen> {
   bool _isResending = false;
   bool _isChecking = false;
   int _resendCooldown = 0;
@@ -46,7 +49,9 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
     setState(() => _isChecking = true);
 
-    final isVerified = await ref.read(authControllerProvider.notifier).checkEmailVerification();
+    final isVerified = await ref
+        .read(authControllerProvider.notifier)
+        .checkEmailVerification();
 
     if (mounted) {
       setState(() => _isChecking = false);
@@ -65,7 +70,9 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
     setState(() => _isResending = true);
 
-    final result = await ref.read(authControllerProvider.notifier).sendEmailVerification();
+    final result = await ref
+        .read(authControllerProvider.notifier)
+        .sendEmailVerification();
 
     if (mounted) {
       setState(() => _isResending = false);
@@ -83,14 +90,21 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(AppLocalizations.of(context).translate('verification_email_resent')),
+            content: Text(
+              AppLocalizations.of(
+                context,
+              ).translate('verification_email_resent'),
+            ),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.errorMessage ?? AppLocalizations.of(context).translate('error_sending_email')),
+            content: Text(
+              result.errorMessage ??
+                  AppLocalizations.of(context).translate('error_sending_email'),
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -110,6 +124,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
     final user = authState.user;
 
     return Scaffold(
+      appBar: AppBar(actions: const [AccountPrivacyAction()]),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppSizes.paddingLG),

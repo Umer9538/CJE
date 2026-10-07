@@ -20,9 +20,16 @@ bool _canViewContent(UserRole? userRole, UserRole? minVisibilityRole) {
   if (userRole == UserRole.bex || userRole == UserRole.superadmin) return true;
   // Compare hierarchy levels
   final canView = userRole.hierarchyLevel >= minVisibilityRole.hierarchyLevel;
-  debugPrint('_canViewContent: userRole=$userRole (level ${userRole.hierarchyLevel}), minVisibilityRole=$minVisibilityRole (level ${minVisibilityRole.hierarchyLevel}), canView=$canView');
+  debugPrint(
+    '_canViewContent: userRole=$userRole (level ${userRole.hierarchyLevel}), minVisibilityRole=$minVisibilityRole (level ${minVisibilityRole.hierarchyLevel}), canView=$canView',
+  );
   return canView;
 }
+
+bool _canViewInitiative(UserModel? user, InitiativeModel initiative) =>
+    user != null &&
+    !user.blockedUsers.contains(initiative.authorId) &&
+    _canViewContent(user.role, initiative.minVisibilityRole);
 
 /// Initiative repository provider
 final initiativeRepositoryProvider = Provider<InitiativeRepository>((ref) {
@@ -30,7 +37,10 @@ final initiativeRepositoryProvider = Provider<InitiativeRepository>((ref) {
 });
 
 /// Initiatives list provider
-final initiativesProvider = FutureProvider.family<List<InitiativeModel>, InitiativeFilter>((ref, filter) async {
+final initiativesProvider = FutureProvider.family<List<InitiativeModel>, InitiativeFilter>((
+  ref,
+  filter,
+) async {
   final repository = ref.watch(initiativeRepositoryProvider);
   // Use ref.watch for reactive dependencies so provider rebuilds when user changes
   final user = ref.watch(currentUserProvider);
@@ -38,81 +48,107 @@ final initiativesProvider = FutureProvider.family<List<InitiativeModel>, Initiat
 
   // For BEX/Superadmin/Department, allow filtering by any school (or all schools if null)
   // For regular users, ALWAYS filter by their own school - ignore UI filter to prevent bypass
-  final isPrivilegedUser = user?.role == UserRole.superadmin ||
-                           user?.role == UserRole.bex ||
-                           user?.role == UserRole.department;
+  final isPrivilegedUser =
+      user?.role == UserRole.superadmin ||
+      user?.role == UserRole.bex ||
+      user?.role == UserRole.department;
   final effectiveSchoolId = isPrivilegedUser ? filter.schoolId : user?.schoolId;
 
   final initiatives = await repository.getInitiatives(
     status: filter.status,
     schoolId: effectiveSchoolId,
-    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
+    countyId:
+        effectiveCounty, // Uses selected county for Superadmin, user's county for others
     authorId: filter.authorId,
     limit: filter.limit,
   );
 
   // Filter by visibility role
-  return initiatives.where((i) => _canViewContent(user?.role, i.minVisibilityRole)).toList();
+  return initiatives.where((i) => _canViewInitiative(user, i)).toList();
 });
 
 /// Initiatives stream provider
-final initiativesStreamProvider = StreamProvider.family<List<InitiativeModel>, InitiativeFilter>((ref, filter) {
-  final repository = ref.watch(initiativeRepositoryProvider);
-  // Use ref.watch for reactive dependencies
-  final user = ref.watch(currentUserProvider);
-  final effectiveCounty = ref.watch(effectiveCountyProvider);
+final initiativesStreamProvider =
+    StreamProvider.family<List<InitiativeModel>, InitiativeFilter>((
+      ref,
+      filter,
+    ) {
+      final repository = ref.watch(initiativeRepositoryProvider);
+      // Use ref.watch for reactive dependencies
+      final user = ref.watch(currentUserProvider);
+      final effectiveCounty = ref.watch(effectiveCountyProvider);
 
-  // For BEX/Superadmin/Department, allow filtering by any school (or all schools if null)
-  // For regular users, ALWAYS filter by their own school - ignore UI filter to prevent bypass
-  final isPrivilegedUser = user?.role == UserRole.superadmin ||
-                           user?.role == UserRole.bex ||
-                           user?.role == UserRole.department;
-  final effectiveSchoolId = isPrivilegedUser ? filter.schoolId : user?.schoolId;
+      // For BEX/Superadmin/Department, allow filtering by any school (or all schools if null)
+      // For regular users, ALWAYS filter by their own school - ignore UI filter to prevent bypass
+      final isPrivilegedUser =
+          user?.role == UserRole.superadmin ||
+          user?.role == UserRole.bex ||
+          user?.role == UserRole.department;
+      final effectiveSchoolId = isPrivilegedUser
+          ? filter.schoolId
+          : user?.schoolId;
 
-  return repository.getInitiativesStream(
-    status: filter.status,
-    schoolId: effectiveSchoolId,
-    countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-    limit: filter.limit,
-  ).map((initiatives) =>
-    initiatives.where((i) => _canViewContent(user?.role, i.minVisibilityRole)).toList()
-  );
-});
+      return repository
+          .getInitiativesStream(
+            status: filter.status,
+            schoolId: effectiveSchoolId,
+            countyId:
+                effectiveCounty, // Uses selected county for Superadmin, user's county for others
+            limit: filter.limit,
+          )
+          .map(
+            (initiatives) =>
+                initiatives.where((i) => _canViewInitiative(user, i)).toList(),
+          );
+    });
 
 /// Single initiative provider
-final initiativeProvider = FutureProvider.family<InitiativeModel?, String>((ref, id) async {
+final initiativeProvider = FutureProvider.family<InitiativeModel?, String>((
+  ref,
+  id,
+) async {
   final repository = ref.watch(initiativeRepositoryProvider);
   return repository.getInitiativeById(id);
 });
 
 /// Recent initiatives for home screen
-final recentInitiativesProvider = FutureProvider<List<InitiativeModel>>((ref) async {
+final recentInitiativesProvider = FutureProvider<List<InitiativeModel>>((
+  ref,
+) async {
   final repository = ref.read(initiativeRepositoryProvider);
   // Use ref.watch for reactive dependencies so provider rebuilds when user changes
   final user = ref.watch(currentUserProvider);
   final effectiveCounty = ref.watch(effectiveCountyProvider);
 
   // For BEX/Superadmin, don't filter by school - they see ALL recent initiatives
-  final shouldFilterBySchool = user?.role != UserRole.superadmin && user?.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user?.role != UserRole.superadmin && user?.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user?.schoolId : null;
 
-  debugPrint('recentInitiativesProvider: user=${user?.fullName}, role=${user?.role}, county=$effectiveCounty, schoolId=$effectiveSchoolId');
+  debugPrint(
+    'recentInitiativesProvider: role=${user?.role}, county=$effectiveCounty, schoolId=$effectiveSchoolId',
+  );
 
   try {
-    final initiatives = await repository.getRecentInitiatives(
-      schoolId: effectiveSchoolId,
-      countyId: effectiveCounty, // Uses selected county for Superadmin, user's county for others
-      limit: 5,
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        debugPrint('recentInitiativesProvider: timeout');
-        return <InitiativeModel>[];
-      },
+    final initiatives = await repository
+        .getRecentInitiatives(
+          schoolId: effectiveSchoolId,
+          countyId:
+              effectiveCounty, // Uses selected county for Superadmin, user's county for others
+          limit: 5,
+        )
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('recentInitiativesProvider: timeout');
+            return <InitiativeModel>[];
+          },
+        );
+    debugPrint(
+      'recentInitiativesProvider: returned ${initiatives.length} initiatives',
     );
-    debugPrint('recentInitiativesProvider: returned ${initiatives.length} initiatives');
     // Filter by visibility role
-    return initiatives.where((i) => _canViewContent(user?.role, i.minVisibilityRole)).toList();
+    return initiatives.where((i) => _canViewInitiative(user, i)).toList();
   } catch (e) {
     debugPrint('recentInitiativesProvider: error $e');
     return <InitiativeModel>[];
@@ -120,7 +156,9 @@ final recentInitiativesProvider = FutureProvider<List<InitiativeModel>>((ref) as
 });
 
 /// Recent initiatives stream for home screen (real-time updates)
-final recentInitiativesStreamProvider = StreamProvider<List<InitiativeModel>>((ref) {
+final recentInitiativesStreamProvider = StreamProvider<List<InitiativeModel>>((
+  ref,
+) {
   final repository = ref.read(initiativeRepositoryProvider);
   final user = ref.watch(currentUserProvider);
   final effectiveCounty = ref.watch(effectiveCountyProvider);
@@ -130,37 +168,62 @@ final recentInitiativesStreamProvider = StreamProvider<List<InitiativeModel>>((r
   }
 
   // For BEX/Superadmin, don't filter by school
-  final shouldFilterBySchool = user.role != UserRole.superadmin && user.role != UserRole.bex;
+  final shouldFilterBySchool =
+      user.role != UserRole.superadmin && user.role != UserRole.bex;
   final effectiveSchoolId = shouldFilterBySchool ? user.schoolId : null;
 
-  return repository.getRecentInitiativesStream(
-    schoolId: effectiveSchoolId,
-    countyId: effectiveCounty,
-    limit: 5,
-  ).map((initiatives) =>
-    initiatives.where((i) => _canViewContent(user.role, i.minVisibilityRole)).toList()
-  );
+  return repository
+      .getRecentInitiativesStream(
+        schoolId: effectiveSchoolId,
+        countyId: effectiveCounty,
+        limit: 5,
+      )
+      .map(
+        (initiatives) =>
+            initiatives.where((i) => _canViewInitiative(user, i)).toList(),
+      );
 });
 
 /// Comments for an initiative
-final initiativeCommentsProvider = FutureProvider.family<List<InitiativeComment>, String>((ref, initiativeId) async {
-  final repository = ref.watch(initiativeRepositoryProvider);
-  return repository.getComments(initiativeId);
-});
+final initiativeCommentsProvider =
+    FutureProvider.family<List<InitiativeComment>, String>((
+      ref,
+      initiativeId,
+    ) async {
+      final repository = ref.watch(initiativeRepositoryProvider);
+      final user = ref.watch(currentUserProvider);
+      final comments = await repository.getComments(initiativeId);
+      return comments
+          .where((c) => !(user?.blockedUsers.contains(c.authorId) ?? true))
+          .toList();
+    });
 
 /// Comments stream
-final initiativeCommentsStreamProvider = StreamProvider.family<List<InitiativeComment>, String>((ref, initiativeId) {
-  // Guard: return empty stream if no initiative ID
-  if (initiativeId.isEmpty) {
-    return Stream.value(<InitiativeComment>[]);
-  }
+final initiativeCommentsStreamProvider =
+    StreamProvider.family<List<InitiativeComment>, String>((ref, initiativeId) {
+      // Guard: return empty stream if no initiative ID
+      if (initiativeId.isEmpty) {
+        return Stream.value(<InitiativeComment>[]);
+      }
 
-  final repository = ref.watch(initiativeRepositoryProvider);
-  return repository.getCommentsStream(initiativeId);
-});
+      final repository = ref.watch(initiativeRepositoryProvider);
+      final user = ref.watch(currentUserProvider);
+      return repository
+          .getCommentsStream(initiativeId)
+          .map(
+            (comments) => comments
+                .where(
+                  (c) => !(user?.blockedUsers.contains(c.authorId) ?? true),
+                )
+                .toList(),
+          );
+    });
 
 /// Check if current user supports initiative
-final isSupportingProvider = FutureProvider.family<bool, String>((ref, initiativeId) async {
+final isSupportingProvider = FutureProvider.family<bool, String>((
+  ref,
+  initiativeId,
+) async {
   // Guard: return false if no initiative ID
   if (initiativeId.isEmpty) return false;
 
@@ -171,22 +234,31 @@ final isSupportingProvider = FutureProvider.family<bool, String>((ref, initiativ
 });
 
 /// Get all votes for an initiative (for admin visibility)
-final initiativeVotesProvider = FutureProvider.family<List<InitiativeVote>, String>((ref, initiativeId) async {
-  final repository = ref.watch(initiativeRepositoryProvider);
-  return repository.getVotes(initiativeId);
-});
+final initiativeVotesProvider =
+    FutureProvider.family<List<InitiativeVote>, String>((
+      ref,
+      initiativeId,
+    ) async {
+      final repository = ref.watch(initiativeRepositoryProvider);
+      return repository.getVotes(initiativeId);
+    });
 
 /// Votes stream for real-time updates
-final initiativeVotesStreamProvider = StreamProvider.family<List<InitiativeVote>, String>((ref, initiativeId) {
-  final repository = ref.watch(initiativeRepositoryProvider);
-  return repository.getVotesStream(initiativeId);
-});
+final initiativeVotesStreamProvider =
+    StreamProvider.family<List<InitiativeVote>, String>((ref, initiativeId) {
+      final repository = ref.watch(initiativeRepositoryProvider);
+      return repository.getVotesStream(initiativeId);
+    });
 
 /// Check current user's vote on an initiative
-final userVoteProvider = FutureProvider.family<String?, ({String initiativeId, String userId})>((ref, params) async {
-  final repository = ref.read(initiativeRepositoryProvider);
-  return repository.getUserVote(params.initiativeId, params.userId);
-});
+final userVoteProvider =
+    FutureProvider.family<String?, ({String initiativeId, String userId})>((
+      ref,
+      params,
+    ) async {
+      final repository = ref.read(initiativeRepositoryProvider);
+      return repository.getUserVote(params.initiativeId, params.userId);
+    });
 
 /// Filter model for initiatives
 class InitiativeFilter {
@@ -213,7 +285,8 @@ class InitiativeFilter {
           limit == other.limit;
 
   @override
-  int get hashCode => status.hashCode ^ schoolId.hashCode ^ authorId.hashCode ^ limit.hashCode;
+  int get hashCode =>
+      status.hashCode ^ schoolId.hashCode ^ authorId.hashCode ^ limit.hashCode;
 }
 
 /// Initiative controller for CRUD operations
@@ -221,7 +294,8 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
   final InitiativeRepository _repository;
   final Ref _ref;
 
-  InitiativeController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  InitiativeController(this._repository, this._ref)
+    : super(const AsyncValue.data(null));
 
   /// Create new initiative
   /// - type: Initiative type (school or county level)
@@ -244,10 +318,19 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
 
     final user = _ref.read(currentUserProvider);
-    debugPrint('createInitiative: user=${user?.fullName}, role=${user?.role}, id=${user?.id}');
+    debugPrint('createInitiative: role=${user?.role}');
     if (user == null) {
       debugPrint('createInitiative: ERROR - User is null, not authenticated');
       state = AsyncValue.error('User not authenticated', StackTrace.current);
+      return null;
+    }
+
+    final effectiveCounty = _ref.read(effectiveCountyProvider);
+    if (effectiveCounty == null || effectiveCounty.isEmpty) {
+      state = AsyncValue.error(
+        'Selecteaza judetul inainte de a crea initiativa',
+        StackTrace.current,
+      );
       return null;
     }
 
@@ -263,7 +346,9 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     }
     // For county-level initiatives, schoolId and schoolName remain null
 
-    debugPrint('createInitiative: minVisibilityRole being saved = $minVisibilityRole');
+    debugPrint(
+      'createInitiative: minVisibilityRole being saved = $minVisibilityRole',
+    );
 
     final initiative = InitiativeModel(
       id: '',
@@ -273,10 +358,12 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       solution: solution,
       impact: impact,
       type: type,
-      status: submitImmediately ? InitiativeStatus.submitted : InitiativeStatus.draft,
+      status: submitImmediately
+          ? InitiativeStatus.submitted
+          : InitiativeStatus.draft,
       authorId: user.id,
       authorName: user.fullName,
-      countyId: user.city, // Save the county for data partitioning (city is the county name)
+      countyId: effectiveCounty,
       schoolId: effectiveSchoolId,
       schoolName: effectiveSchoolName,
       tags: tags ?? [],
@@ -295,7 +382,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(recentInitiativesProvider);
     } else {
-      state = AsyncValue.error('Failed to create initiative', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to create initiative',
+        StackTrace.current,
+      );
     }
 
     return id;
@@ -313,7 +403,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(initiativeProvider(initiative.id));
     } else {
-      state = AsyncValue.error('Failed to update initiative', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to update initiative',
+        StackTrace.current,
+      );
     }
 
     return success;
@@ -331,7 +424,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(initiativesStreamProvider);
       _ref.invalidate(recentInitiativesProvider);
     } else {
-      state = AsyncValue.error('Failed to delete initiative', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to delete initiative',
+        StackTrace.current,
+      );
     }
 
     return success;
@@ -339,7 +435,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
 
   /// Submit initiative for review
   Future<bool> submitInitiative(String id) async {
-    final success = await _repository.updateStatus(id, InitiativeStatus.submitted);
+    final success = await _repository.updateStatus(
+      id,
+      InitiativeStatus.submitted,
+    );
     if (success) {
       _ref.invalidate(initiativesProvider);
       _ref.invalidate(initiativesStreamProvider);
@@ -393,13 +492,19 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
     if (success) {
       _ref.invalidate(initiativeProvider(initiativeId));
       _ref.invalidate(initiativeVotesProvider(initiativeId));
-      _ref.invalidate(userVoteProvider((initiativeId: initiativeId, userId: user.id)));
+      _ref.invalidate(
+        userVoteProvider((initiativeId: initiativeId, userId: user.id)),
+      );
     }
     return success;
   }
 
   /// Add comment
-  Future<String?> addComment(String initiativeId, String content, {bool isOfficial = false}) async {
+  Future<String?> addComment(
+    String initiativeId,
+    String content, {
+    bool isOfficial = false,
+  }) async {
     final user = _ref.read(currentUserProvider);
     if (user == null) return null;
 
@@ -477,7 +582,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(initiativeProvider(id));
       _ref.invalidate(recentInitiativesProvider);
     } else {
-      state = AsyncValue.error('Failed to approve initiative', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to approve initiative',
+        StackTrace.current,
+      );
     }
     return success;
   }
@@ -516,7 +624,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Move initiative to voting stage with specified minimum voting role
-  Future<bool> moveToVotingWithRole(String id, UserRole minimumVotingRole) async {
+  Future<bool> moveToVotingWithRole(
+    String id,
+    UserRole minimumVotingRole,
+  ) async {
     state = const AsyncValue.loading();
 
     final user = _ref.read(currentUserProvider);
@@ -575,7 +686,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       return false;
     }
 
-    final success = await _repository.updateStatus(id, InitiativeStatus.adopted);
+    final success = await _repository.updateStatus(
+      id,
+      InitiativeStatus.adopted,
+    );
     if (success) {
       state = const AsyncValue.data(null);
       _ref.invalidate(initiativesProvider);
@@ -583,7 +697,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(initiativeProvider(id));
       _ref.invalidate(recentInitiativesProvider);
     } else {
-      state = AsyncValue.error('Failed to adopt initiative', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to adopt initiative',
+        StackTrace.current,
+      );
     }
     return success;
   }
@@ -615,7 +732,10 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       _ref.invalidate(initiativeProvider(id));
       _ref.invalidate(recentInitiativesProvider);
     } else {
-      state = AsyncValue.error('Failed to reject initiative', StackTrace.current);
+      state = AsyncValue.error(
+        'Failed to reject initiative',
+        StackTrace.current,
+      );
     }
     return success;
   }
@@ -633,7 +753,9 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
       final user = _ref.read(currentUserProvider);
 
       if (user == null) {
-        debugPrint('InitiativeNotification: ERROR - user is null, cannot send notification');
+        debugPrint(
+          'InitiativeNotification: ERROR - user is null, cannot send notification',
+        );
         return;
       }
 
@@ -644,7 +766,9 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
 
       // Use minimumVotingRole for filtering - this is who should receive the notification
       // Don't use minVisibilityRole here as it controls UI visibility, not notification targeting
-      debugPrint('InitiativeNotification: Sending with minimumVotingRole=$minimumVotingRole, schoolId=$schoolId, countyId=${user.city}, senderId=${user.id}');
+      debugPrint(
+        'InitiativeNotification: Sending with minimumVotingRole=$minimumVotingRole, schoolId=$schoolId, countyId=${user.city}, senderId=${user.id}',
+      );
 
       final result = await notificationRepo.sendCountyWideNotification(
         title: 'Initiative Voting: Cast Your Vote!',
@@ -656,11 +780,15 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
         senderId: user.id,
         senderName: user.fullName,
         additionalData: {'initiativeId': initiativeId},
-        titleBuilder: (lang) =>
-            AppLocalizations.translateForLocale(lang, 'notif_initiative_voting'),
+        titleBuilder: (lang) => AppLocalizations.translateForLocale(
+          lang,
+          'notif_initiative_voting',
+        ),
       );
 
-      debugPrint('InitiativeNotification: sendCountyWideNotification returned $result for initiative: $title');
+      debugPrint(
+        'InitiativeNotification: sendCountyWideNotification returned $result',
+      );
     } catch (e, stackTrace) {
       debugPrint('Error sending initiative voting notification: $e');
       debugPrint('Stack trace: $stackTrace');
@@ -671,16 +799,16 @@ class InitiativeController extends StateNotifier<AsyncValue<void>> {
 /// Initiative controller provider
 final initiativeControllerProvider =
     StateNotifierProvider<InitiativeController, AsyncValue<void>>((ref) {
-  return InitiativeController(
-    ref.watch(initiativeRepositoryProvider),
-    ref,
-  );
-});
+      return InitiativeController(ref.watch(initiativeRepositoryProvider), ref);
+    });
 
 /// Check if current user can approve/reject initiatives
 /// SchoolRep can approve initiatives from their school
 /// BEX and Superadmin can approve all initiatives
-final canApproveInitiativesProvider = Provider.family<bool, InitiativeModel?>((ref, initiative) {
+final canApproveInitiativesProvider = Provider.family<bool, InitiativeModel?>((
+  ref,
+  initiative,
+) {
   final user = ref.watch(currentUserProvider);
   if (user == null || initiative == null) return false;
 
@@ -702,8 +830,8 @@ final canManageInitiativeProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.schoolRep ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can draft initiatives
@@ -712,10 +840,10 @@ final canDraftInitiativesProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.classRep ||
-         user.role == UserRole.schoolRep ||
-         user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.schoolRep ||
+      user.role == UserRole.department ||
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can vote on initiatives
@@ -724,10 +852,10 @@ final canVoteOnInitiativesProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
   return user.role == UserRole.classRep ||
-         user.role == UserRole.schoolRep ||
-         user.role == UserRole.department ||
-         user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+      user.role == UserRole.schoolRep ||
+      user.role == UserRole.department ||
+      user.role == UserRole.bex ||
+      user.role == UserRole.superadmin;
 });
 
 /// Check if current user can comment on initiatives

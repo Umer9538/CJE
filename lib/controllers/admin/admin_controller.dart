@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -11,53 +12,12 @@ import '../../models/models.dart';
 import '../auth/auth_controller.dart';
 import '../warnings/warning_controller.dart';
 
+export '../../core/constants/enums.dart' show romanianCounties;
+
 const _uuid = Uuid();
 
-/// List of all Romanian counties (judete)
-const List<String> romanianCounties = [
-  'Alba',
-  'Arad',
-  'Argeș',
-  'Bacău',
-  'Bihor',
-  'Bistrița-Năsăud',
-  'Botoșani',
-  'Brașov',
-  'Brăila',
-  'București',
-  'Buzău',
-  'Caraș-Severin',
-  'Călărași',
-  'Cluj',
-  'Constanța',
-  'Covasna',
-  'Dâmbovița',
-  'Dolj',
-  'Galați',
-  'Giurgiu',
-  'Gorj',
-  'Harghita',
-  'Hunedoara',
-  'Ialomița',
-  'Iași',
-  'Ilfov',
-  'Maramureș',
-  'Mehedinți',
-  'Mureș',
-  'Neamț',
-  'Olt',
-  'Prahova',
-  'Satu Mare',
-  'Sălaj',
-  'Sibiu',
-  'Suceava',
-  'Teleorman',
-  'Timiș',
-  'Tulcea',
-  'Vaslui',
-  'Vâlcea',
-  'Vrancea',
-];
+// romanianCounties traieste acum in core/constants/enums.dart, ca sursa unica de adevar
+// accesibila si din servicii; re-exportat aici pentru importatorii existenti.
 
 /// Selected county for Superadmin to filter content
 /// null means "All Counties" (no filtering)
@@ -97,11 +57,13 @@ final allUsersProvider = FutureProvider<List<UserModel>>((ref) async {
   }
 
   final repository = ref.read(adminUserRepositoryProvider);
+  // Regula de citire pe users cere ca interogarea sa fie limitata la judet;
+  // effectiveCountyProvider da judetul propriu, sau cel selectat de superadmin.
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
   try {
-    return await repository.getAllUsers().timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => <UserModel>[],
-    );
+    return await repository
+        .getAllUsers(countyId: effectiveCounty)
+        .timeout(const Duration(seconds: 15), onTimeout: () => <UserModel>[]);
   } catch (e) {
     debugPrint('allUsersProvider: error $e');
     return <UserModel>[];
@@ -110,15 +72,15 @@ final allUsersProvider = FutureProvider<List<UserModel>>((ref) async {
 
 /// User count provider - lightweight, only fetches count
 final userCountProvider = FutureProvider<int>((ref) async {
-  final currentUser = ref.read(currentUserProvider);
+  final currentUser = ref.watch(currentUserProvider);
   if (currentUser == null) return 0;
 
   final repository = ref.read(adminUserRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
   try {
-    return await repository.getUserCount().timeout(
-      const Duration(seconds: 5),
-      onTimeout: () => 0,
-    );
+    return await repository
+        .getUserCount(countyId: effectiveCounty)
+        .timeout(const Duration(seconds: 5), onTimeout: () => 0);
   } catch (e) {
     debugPrint('userCountProvider: error $e');
     return 0;
@@ -126,18 +88,21 @@ final userCountProvider = FutureProvider<int>((ref) async {
 });
 
 /// Users by role provider
-final usersByRoleProvider = FutureProvider.family<List<UserModel>, UserRole>((ref, role) async {
+final usersByRoleProvider = FutureProvider.family<List<UserModel>, UserRole>((
+  ref,
+  role,
+) async {
   final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
 
   final repository = ref.read(adminUserRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
   try {
-    return await repository.getUsersByRole(role).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => <UserModel>[],
-    );
+    return await repository
+        .getUsersByRole(role, countyId: effectiveCounty)
+        .timeout(const Duration(seconds: 15), onTimeout: () => <UserModel>[]);
   } catch (e) {
     return <UserModel>[];
   }
@@ -164,30 +129,27 @@ final pendingUsersProvider = FutureProvider<List<UserModel>>((ref) async {
     // - BEX: filter by their county (city field)
     // - Superadmin: uses selected county (null = all pending users)
     String? schoolId;
-    String? countyId;
+    // Judetul vine mereu din effectiveCounty: propriul judet pentru schoolRep si
+    // bex, cel selectat pentru superadmin (null = toate judetele, permis doar lui).
+    final String? countyId = effectiveCounty;
 
     if (currentUser.role == UserRole.schoolRep) {
       schoolId = currentUser.schoolId;
-    } else if (currentUser.role == UserRole.bex) {
-      countyId = currentUser.city; // BEX sees only their county's pending users
-    } else if (currentUser.role == UserRole.superadmin) {
-      countyId = effectiveCounty; // Superadmin uses selected county
     }
 
-    return await repository.getPendingUsers(
-      schoolId: schoolId,
-      countyId: countyId,
-    ).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => <UserModel>[],
-    );
+    return await repository
+        .getPendingUsers(schoolId: schoolId, countyId: countyId)
+        .timeout(const Duration(seconds: 15), onTimeout: () => <UserModel>[]);
   } catch (e) {
     return <UserModel>[];
   }
 });
 
 /// Single user provider
-final adminUserProvider = FutureProvider.family<UserModel?, String>((ref, userId) async {
+final adminUserProvider = FutureProvider.family<UserModel?, String>((
+  ref,
+  userId,
+) async {
   final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return null;
@@ -203,7 +165,10 @@ final adminUserProvider = FutureProvider.family<UserModel?, String>((ref, userId
 /// - BEX: sees only users from their county
 /// - Superadmin: sees all users (or filtered by selected county)
 /// - SchoolRep: sees only users from their school
-final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>((ref, filter) async {
+final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>((
+  ref,
+  filter,
+) async {
   // Watch currentUserProvider to auto-refresh when user changes (login/logout)
   final currentUser = ref.watch(currentUserProvider);
   if (currentUser == null) {
@@ -217,34 +182,36 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
     List<UserModel> users;
 
     if (filter.role != null) {
-      users = await repository.getUsersByRole(filter.role!);
+      users = await repository.getUsersByRole(
+        filter.role!,
+        countyId: effectiveCounty,
+      );
       // County filtering will be applied below
     } else if (filter.status == UserStatus.pending) {
       // Apply same filtering as pendingUsersProvider
       String? schoolId;
-      String? countyId;
       if (currentUser.role == UserRole.schoolRep) {
         schoolId = currentUser.schoolId;
-      } else if (currentUser.role == UserRole.bex) {
-        countyId = currentUser.city;
-      } else if (currentUser.role == UserRole.superadmin) {
-        countyId = effectiveCounty;
       }
       users = await repository.getPendingUsers(
         schoolId: schoolId,
-        countyId: countyId,
+        countyId: effectiveCounty,
       );
     } else {
-      users = await repository.getAllUsers();
+      users = await repository.getAllUsers(countyId: effectiveCounty);
     }
 
     // Apply county filtering for BEX users (they should only see users from their county)
-    if (currentUser.role == UserRole.bex && currentUser.city != null && currentUser.city!.isNotEmpty) {
+    if (currentUser.role == UserRole.bex &&
+        currentUser.city != null &&
+        currentUser.city!.isNotEmpty) {
       users = users.where((u) => u.city == currentUser.city).toList();
     }
 
     // Apply county filtering for Superadmin when a county is selected
-    if (currentUser.role == UserRole.superadmin && effectiveCounty != null && effectiveCounty.isNotEmpty) {
+    if (currentUser.role == UserRole.superadmin &&
+        effectiveCounty != null &&
+        effectiveCounty.isNotEmpty) {
       users = users.where((u) => u.city == effectiveCounty).toList();
     }
 
@@ -254,7 +221,9 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
     }
 
     // Apply status filter for non-pending (when coming from "Active" tab)
-    if (filter.status != null && filter.role == null && filter.status != UserStatus.pending) {
+    if (filter.status != null &&
+        filter.role == null &&
+        filter.status != UserStatus.pending) {
       users = users.where((u) => u.status == filter.status).toList();
     }
 
@@ -264,10 +233,13 @@ final filteredUsersProvider = FutureProvider.family<List<UserModel>, UserFilter>
 
     if (filter.searchQuery != null && filter.searchQuery!.isNotEmpty) {
       final query = filter.searchQuery!.toLowerCase();
-      users = users.where((u) =>
-        u.fullName.toLowerCase().contains(query) ||
-        u.email.toLowerCase().contains(query)
-      ).toList();
+      users = users
+          .where(
+            (u) =>
+                u.fullName.toLowerCase().contains(query) ||
+                u.email.toLowerCase().contains(query),
+          )
+          .toList();
     }
 
     // Sort by name
@@ -286,12 +258,7 @@ class UserFilter {
   final String? schoolId;
   final String? searchQuery;
 
-  const UserFilter({
-    this.role,
-    this.status,
-    this.schoolId,
-    this.searchQuery,
-  });
+  const UserFilter({this.role, this.status, this.schoolId, this.searchQuery});
 
   UserFilter copyWith({
     UserRole? role,
@@ -323,7 +290,10 @@ class UserFilter {
 
   @override
   int get hashCode =>
-      role.hashCode ^ status.hashCode ^ schoolId.hashCode ^ searchQuery.hashCode;
+      role.hashCode ^
+      status.hashCode ^
+      schoolId.hashCode ^
+      searchQuery.hashCode;
 }
 
 /// Admin controller for user management operations
@@ -331,15 +301,15 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   final UserRepository _repository;
   final Ref _ref;
 
-  AdminController(this._repository, this._ref) : super(const AsyncValue.data(null));
+  AdminController(this._repository, this._ref)
+    : super(const AsyncValue.data(null));
 
   /// Check if current user can manage users
   /// Only BEX and Superadmin can manage accounts
   bool get canManageUsers {
     final user = _ref.read(currentUserProvider);
     if (user == null) return false;
-    return user.role == UserRole.bex ||
-           user.role == UserRole.superadmin;
+    return user.role == UserRole.bex || user.role == UserRole.superadmin;
   }
 
   /// Check if current user can change roles (only bex and superadmin)
@@ -354,8 +324,14 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   /// SECURITY: Cannot change Superadmin's role - only Superadmin can modify Superadmin
   /// SECURITY: BEX cannot modify other BEX users - only Superadmin can
   /// For department role, also pass the department type
-  Future<bool> changeUserRole(String userId, UserRole newRole, {DepartmentType? department}) async {
-    debugPrint('AdminController.changeUserRole: canChangeRoles=$canChangeRoles');
+  Future<bool> changeUserRole(
+    String userId,
+    UserRole newRole, {
+    DepartmentType? department,
+  }) async {
+    debugPrint(
+      'AdminController.changeUserRole: canChangeRoles=$canChangeRoles',
+    );
     if (!canChangeRoles) {
       debugPrint('AdminController.changeUserRole: Permission denied');
       return false;
@@ -375,33 +351,47 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     }
 
     // SECURITY: Superadmin accounts can ONLY be modified by themselves (not by BEX)
-    if (targetUser.role == UserRole.superadmin && currentUser.role != UserRole.superadmin) {
-      debugPrint('AdminController.changeUserRole: SECURITY BLOCK - Cannot modify Superadmin account');
+    if (targetUser.role == UserRole.superadmin &&
+        currentUser.role != UserRole.superadmin) {
+      debugPrint(
+        'AdminController.changeUserRole: SECURITY BLOCK - Cannot modify Superadmin account',
+      );
       return false;
     }
 
     // SECURITY: BEX accounts can only be modified by Superadmin
-    if (targetUser.role == UserRole.bex && currentUser.role != UserRole.superadmin) {
-      debugPrint('AdminController.changeUserRole: SECURITY BLOCK - Only Superadmin can modify BEX accounts');
+    if (targetUser.role == UserRole.bex &&
+        currentUser.role != UserRole.superadmin) {
+      debugPrint(
+        'AdminController.changeUserRole: SECURITY BLOCK - Only Superadmin can modify BEX accounts',
+      );
       return false;
     }
 
     // Prevent creating additional superadmins - only one allowed
     if (newRole == UserRole.superadmin) {
-      debugPrint('AdminController.changeUserRole: Cannot promote to superadmin');
+      debugPrint(
+        'AdminController.changeUserRole: Cannot promote to superadmin',
+      );
       return false;
     }
 
     // Department role requires a department type
     if (newRole == UserRole.department && department == null) {
-      debugPrint('AdminController.changeUserRole: Department role requires department type');
+      debugPrint(
+        'AdminController.changeUserRole: Department role requires department type',
+      );
       return false;
     }
 
     state = const AsyncValue.loading();
 
     debugPrint('AdminController.changeUserRole: Calling repository...');
-    final success = await _repository.changeUserRole(userId, newRole, department: department);
+    final success = await _repository.changeUserRole(
+      userId,
+      newRole,
+      department: department,
+    );
     debugPrint('AdminController.changeUserRole: Repository returned $success');
 
     if (success) {
@@ -417,31 +407,53 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Approve pending user
-  Future<bool> approveUser(String userId) async {
+  Future<bool> approveUser(
+    String userId, {
+    bool parentalAuthorizationVerified = false,
+  }) async {
     if (!canManageUsers) return false;
 
     state = const AsyncValue.loading();
 
     // Get user details before approving for logging
     final userToApprove = await _repository.getUserById(userId);
+    final currentUser = _ref.read(currentUserProvider);
 
-    final success = await _repository.approveUser(userId);
+    if (userToApprove == null || userToApprove.needsPrivacyOnboarding) {
+      state = AsyncValue.error(
+        'User must complete the privacy and age step before approval',
+        StackTrace.current,
+      );
+      return false;
+    }
+
+    if (userToApprove.isUnder16 == true && !parentalAuthorizationVerified) {
+      state = AsyncValue.error(
+        'Parental authorisation must be verified before approval',
+        StackTrace.current,
+      );
+      return false;
+    }
+
+    final success = await _repository.approveUser(
+      userId,
+      parentalAuthorizationVerifiedBy: userToApprove.isUnder16 == true
+          ? currentUser?.id
+          : null,
+    );
 
     if (success) {
       state = const AsyncValue.data(null);
       _invalidateProviders(userId);
 
       // Log the activity
-      if (userToApprove != null) {
-        final activityRepo = _ref.read(activityRepositoryProvider);
-        final currentUser = _ref.read(currentUserProvider);
-        await activityRepo.logUserApproved(
-          userId: userId,
-          userName: userToApprove.fullName,
-          approvedBy: currentUser?.fullName,
-        );
-        _ref.invalidate(recentActivitiesProvider);
-      }
+      final activityRepo = _ref.read(activityRepositoryProvider);
+      await activityRepo.logUserApproved(
+        userId: userId,
+        userName: userToApprove.fullName,
+        approvedBy: currentUser?.fullName,
+      );
+      _ref.invalidate(recentActivitiesProvider);
     } else {
       state = AsyncValue.error('Failed to approve user', StackTrace.current);
     }
@@ -462,14 +474,18 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     if (targetUser == null) return false;
 
     // SECURITY: Superadmin cannot be suspended by anyone except themselves
-    if (targetUser.role == UserRole.superadmin && currentUser.role != UserRole.superadmin) {
+    if (targetUser.role == UserRole.superadmin &&
+        currentUser.role != UserRole.superadmin) {
       debugPrint('suspendUser: SECURITY BLOCK - Cannot suspend Superadmin');
       return false;
     }
 
     // SECURITY: BEX can only be suspended by Superadmin
-    if (targetUser.role == UserRole.bex && currentUser.role != UserRole.superadmin) {
-      debugPrint('suspendUser: SECURITY BLOCK - Only Superadmin can suspend BEX');
+    if (targetUser.role == UserRole.bex &&
+        currentUser.role != UserRole.superadmin) {
+      debugPrint(
+        'suspendUser: SECURITY BLOCK - Only Superadmin can suspend BEX',
+      );
       return false;
     }
 
@@ -500,14 +516,20 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     if (targetUser == null) return false;
 
     // SECURITY: Superadmin can only be reactivated by Superadmin
-    if (targetUser.role == UserRole.superadmin && currentUser.role != UserRole.superadmin) {
-      debugPrint('reactivateUser: SECURITY BLOCK - Cannot reactivate Superadmin');
+    if (targetUser.role == UserRole.superadmin &&
+        currentUser.role != UserRole.superadmin) {
+      debugPrint(
+        'reactivateUser: SECURITY BLOCK - Cannot reactivate Superadmin',
+      );
       return false;
     }
 
     // SECURITY: BEX can only be reactivated by Superadmin
-    if (targetUser.role == UserRole.bex && currentUser.role != UserRole.superadmin) {
-      debugPrint('reactivateUser: SECURITY BLOCK - Only Superadmin can reactivate BEX');
+    if (targetUser.role == UserRole.bex &&
+        currentUser.role != UserRole.superadmin) {
+      debugPrint(
+        'reactivateUser: SECURITY BLOCK - Only Superadmin can reactivate BEX',
+      );
       return false;
     }
 
@@ -551,13 +573,17 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
     // SECURITY: Only Superadmin can permanently delete users
     if (currentUser.role != UserRole.superadmin) {
-      debugPrint('deleteUserPermanently: SECURITY BLOCK - Only Superadmin can delete users');
+      debugPrint(
+        'deleteUserPermanently: SECURITY BLOCK - Only Superadmin can delete users',
+      );
       return false;
     }
 
     // SECURITY: Cannot delete yourself
     if (currentUser.id == userId) {
-      debugPrint('deleteUserPermanently: SECURITY BLOCK - Cannot delete your own account');
+      debugPrint(
+        'deleteUserPermanently: SECURITY BLOCK - Cannot delete your own account',
+      );
       return false;
     }
 
@@ -567,7 +593,9 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
     // SECURITY: Cannot delete other Superadmins
     if (targetUser.role == UserRole.superadmin) {
-      debugPrint('deleteUserPermanently: SECURITY BLOCK - Cannot delete Superadmin accounts');
+      debugPrint(
+        'deleteUserPermanently: SECURITY BLOCK - Cannot delete Superadmin accounts',
+      );
       return false;
     }
 
@@ -674,7 +702,11 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Resolve a warning
-  Future<bool> resolveWarning(String userId, String warningId, String? resolutionNote) async {
+  Future<bool> resolveWarning(
+    String userId,
+    String warningId,
+    String? resolutionNote,
+  ) async {
     if (!canManageUsers) return false;
 
     final currentUser = _ref.read(currentUserProvider);
@@ -834,7 +866,11 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
   }
 
   /// Excuse an absence
-  Future<bool> excuseAbsence(String userId, String absenceId, String reason) async {
+  Future<bool> excuseAbsence(
+    String userId,
+    String absenceId,
+    String reason,
+  ) async {
     if (!canManageUsers) return false;
 
     state = const AsyncValue.loading();
@@ -860,6 +896,53 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
   // ==================== DIRECT USER CREATION ====================
 
+  /// Creeaza conturi prin Cloud Function `importUsers`.
+  ///
+  /// Crearea de conturi Firebase Auth nu se poate face din aplicatie: ar
+  /// deconecta administratorul. Calea veche scria doar un document Firestore cu
+  /// ID auto-generat, fara cont Auth, iar aplicatia cauta profilul la
+  /// `users/{uid}` -- deci documentele erau inaccesibile, iar elevul care se
+  /// inregistra apoi singur isi pierdea rolul atribuit.
+  ///
+  /// Functia creeaza intai contul Auth si scrie profilul la `users/{uid}`.
+  Future<Map<String, dynamic>?> _apelImportUsers(
+    List<Map<String, dynamic>> randuri,
+  ) async {
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('importUsers');
+      final result = await callable.call<Map<String, dynamic>>({
+        'rows': randuri,
+      });
+      return Map<String, dynamic>.from(result.data);
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('importUsers refuzat: ${e.code}');
+      state = AsyncValue.error(
+        e.message ?? 'Import refuzat',
+        StackTrace.current,
+      );
+      return null;
+    } catch (e) {
+      debugPrint('importUsers a esuat');
+      state = AsyncValue.error('Eroare la import', StackTrace.current);
+      return null;
+    }
+  }
+
+  /// Converteste un UserModel intr-un rand pentru `importUsers`.
+  Map<String, dynamic> _randDinModel(UserModel u) {
+    return <String, dynamic>{
+      'email': u.email,
+      'fullName': u.fullName,
+      'phoneNumber': u.phoneNumber,
+      'city': u.city,
+      'role': u.role.toFirestore(),
+      'schoolId': u.schoolId,
+      'schoolName': u.schoolName,
+      'className': u.className,
+      'department': u.department?.toFirestore(),
+    };
+  }
+
   /// Create user directly in Firestore (without Firebase Auth)
   /// This is used by admins to add users without getting logged out
   /// The user will need to use "Forgot Password" to set their password
@@ -868,7 +951,7 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     required String fullName,
     required String schoolId,
     required String? schoolName,
-    required String phoneNumber,
+    String? phoneNumber,
     required String city,
     required UserRole role,
     String? className,
@@ -877,48 +960,51 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 
     state = const AsyncValue.loading();
 
-    try {
-      // Check if email already exists
-      final existingUser = await _repository.getUserByEmail(email);
-      if (existingUser != null) {
-        state = AsyncValue.error('Email already exists', StackTrace.current);
-        return null;
-      }
+    // Aceeasi problema ca la importul CSV: contul trebuie creat in Auth, nu doar
+    // in Firestore, altfel utilizatorul nu se poate autentifica niciodata.
+    final raspuns = await _apelImportUsers([
+      <String, dynamic>{
+        'email': email.toLowerCase(),
+        'fullName': fullName,
+        'phoneNumber': phoneNumber,
+        'city': city,
+        'role': role.toFirestore(),
+        'schoolId': schoolId,
+        'schoolName': schoolName,
+        'className': className,
+      },
+    ]);
 
-      // Create user model
-      final userModel = UserModel(
-        id: '', // Will be set by Firestore auto-ID
-        email: email.toLowerCase(),
-        fullName: fullName,
-        phoneNumber: phoneNumber,
-        city: city,
-        role: role,
-        status: UserStatus.pending,
-        schoolId: schoolId,
-        schoolName: schoolName,
-        className: className,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+    if (raspuns == null) return null;
+
+    final processedCount = (raspuns['processedCount'] as num?)?.toInt() ?? 0;
+    final esuate = List<dynamic>.from(raspuns['failed'] as List? ?? const []);
+
+    if (esuate.isNotEmpty) {
+      final erori = _eroriDin(raspuns);
+      state = AsyncValue.error(
+        erori.isEmpty ? 'Failed to create user' : erori.first.message,
+        StackTrace.current,
       );
-
-      // Create in Firestore with auto-generated ID
-      final userId = await _repository.createUserWithAutoId(userModel);
-
-      if (userId != null) {
-        state = const AsyncValue.data(null);
-        _ref.invalidate(allUsersProvider);
-        _ref.invalidate(pendingUsersProvider);
-        _ref.invalidate(filteredUsersProvider);
-        return userId;
-      } else {
-        state = AsyncValue.error('Failed to create user', StackTrace.current);
-        return null;
-      }
-    } catch (e) {
-      debugPrint('Error creating user directly: $e');
-      state = AsyncValue.error('Error: $e', StackTrace.current);
       return null;
     }
+
+    // Nu putem sti daca acest email a produs un cont nou sau exista deja:
+    // functia nu mai face distinctia, tocmai ca sa nu poata fi folosita pentru
+    // a testa daca o adresa e inregistrata. In ambele cazuri exista acum un cont
+    // pentru acea adresa, iar utilizatorul isi poate seta parola.
+    if (processedCount == 0) {
+      state = AsyncValue.error('Failed to create user', StackTrace.current);
+      return null;
+    }
+
+    state = const AsyncValue.data(null);
+    _ref.invalidate(allUsersProvider);
+    _ref.invalidate(pendingUsersProvider);
+    _ref.invalidate(filteredUsersProvider);
+    // Functia nu mai returneaza uid-uri; contul a fost creat, dar id-ul lui se
+    // vede prin reincarcarea listei de utilizatori.
+    return 'created';
   }
 
   // ==================== CSV IMPORT ====================
@@ -928,7 +1014,12 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     if (!canChangeRoles) {
       return CSVImportResult(
         successfulUsers: [],
-        errors: [CSVImportError(rowNumber: 0, message: 'No permission to import users')],
+        errors: [
+          CSVImportError(
+            rowNumber: 0,
+            message: 'No permission to import users',
+          ),
+        ],
         totalRows: 0,
       );
     }
@@ -943,35 +1034,26 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
       return parseResult;
     }
 
-    // Check for duplicate emails
-    final List<UserModel> usersToCreate = [];
-    final List<CSVImportError> additionalErrors = [];
+    // Conturile se creeaza prin Cloud Function: are nevoie de Admin SDK ca sa
+    // creeze contul Auth fara sa deconecteze administratorul, si scrie profilul
+    // la users/{uid}. Verificarea de duplicat se face tot acolo, pe Auth, nu pe
+    // Firestore -- vechea verificare pe Firestore era oricum limitata la judet.
+    final randuri = parseResult.successfulUsers.map(_randDinModel).toList();
+    final raspuns = await _apelImportUsers(randuri);
 
-    for (final user in parseResult.successfulUsers) {
-      final existingUser = await _repository.getUserByEmail(user.email);
-      if (existingUser != null) {
-        additionalErrors.add(CSVImportError(
-          rowNumber: parseResult.successfulUsers.indexOf(user) + 2, // +2 for header and 0-index
-          message: 'Email already exists: ${user.email}',
-        ));
-      } else {
-        usersToCreate.add(user);
-      }
+    if (raspuns == null) {
+      return CSVImportResult(
+        successfulUsers: const [],
+        errors: [
+          ...parseResult.errors,
+          CSVImportError(rowNumber: 0, message: 'Import refuzat de server'),
+        ],
+        totalRows: parseResult.totalRows,
+      );
     }
 
-    // Create users in Firestore
-    final List<UserModel> createdUsers = [];
-    for (final user in usersToCreate) {
-      final userId = await _repository.createUserWithAutoId(user);
-      if (userId != null) {
-        createdUsers.add(user.copyWith(id: userId));
-      } else {
-        additionalErrors.add(CSVImportError(
-          rowNumber: parseResult.successfulUsers.indexOf(user) + 2,
-          message: 'Failed to create user: ${user.email}',
-        ));
-      }
-    }
+    final createdUsers = _rezultatIn(parseResult, raspuns);
+    final additionalErrors = _eroriDin(raspuns);
 
     state = const AsyncValue.data(null);
     _ref.invalidate(allUsersProvider);
@@ -984,12 +1066,77 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
     );
   }
 
+  /// Randurile procesate cu succes.
+  ///
+  /// Functia returneaza un singur `processedCount`, care aduna conturile create
+  /// si pe cele care existau deja. Raportarea lor separat ar transforma un
+  /// import cu un singur rand intr-un oracol de enumerare a conturilor: cine
+  /// apeleaza ar putea testa orice adresa si ar afla daca e inregistrata.
+  /// Deducem randurile procesate scazandu-le pe cele raportate ca esuate.
+  List<UserModel> _rezultatIn(
+    CSVImportResult parseResult,
+    Map<String, dynamic> raspuns,
+  ) {
+    final esuate = List<dynamic>.from(
+      raspuns['failed'] as List? ?? const [],
+    ).map((e) => ((e as Map)['row'] as num?)?.toInt() ?? -1).toSet();
+    final processedCount = (raspuns['processedCount'] as num?)?.toInt() ?? 0;
+
+    final reusite = <UserModel>[];
+    for (var i = 0; i < parseResult.successfulUsers.length; i++) {
+      if (esuate.contains(i + 1)) continue;
+      if (reusite.length >= processedCount) break;
+      reusite.add(parseResult.successfulUsers[i]);
+    }
+    return reusite;
+  }
+
+  /// Randurile deja existente si cele esuate, ca erori de import.
+  ///
+  /// Mesajele sunt generice: serverul nu mai trimite detalii care ar dezvalui
+  /// daca un email exista sau nu in sistem.
+  List<CSVImportError> _eroriDin(Map<String, dynamic> raspuns) {
+    final erori = <CSVImportError>[];
+
+    const motive = <String, String>{
+      'invalid-email': 'Email lipsa sau invalid',
+      'invalid-role':
+          'Rol neimportabil. Se accepta doar: student, classRep, '
+          'schoolRep, department',
+      'invalid-county': 'Judet lipsa sau invalid',
+      'wrong-county': 'Judetul randului nu este judetul tau',
+      'unknown-school': 'Scoala indicata nu exista',
+      'school-wrong-county': 'Scoala indicata este in alt judet decat randul',
+      'quota-exhausted': 'Limita zilnica de conturi a fost atinsa',
+      'internal': 'Eroare la creare',
+    };
+
+    for (final e in List<dynamic>.from(
+      raspuns['failed'] as List? ?? const [],
+    )) {
+      final m = e as Map;
+      final motiv = m['reason']?.toString() ?? 'internal';
+      erori.add(
+        CSVImportError(
+          rowNumber: (m['row'] as num?)?.toInt() ?? 0,
+          message: motive[motiv] ?? 'Eroare la creare',
+        ),
+      );
+    }
+    return erori;
+  }
+
   /// Import users from file (CSV or Excel)
   Future<CSVImportResult> importUsersFromFile(String filePath) async {
     if (!canChangeRoles) {
       return CSVImportResult(
         successfulUsers: [],
-        errors: [CSVImportError(rowNumber: 0, message: 'No permission to import users')],
+        errors: [
+          CSVImportError(
+            rowNumber: 0,
+            message: 'No permission to import users',
+          ),
+        ],
         totalRows: 0,
       );
     }
@@ -1004,35 +1151,23 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
       return parseResult;
     }
 
-    // Check for duplicate emails
-    final List<UserModel> usersToCreate = [];
-    final List<CSVImportError> additionalErrors = [];
+    // Aceeasi cale ca la importul din text: conturile trec prin Cloud Function.
+    final randuri = parseResult.successfulUsers.map(_randDinModel).toList();
+    final raspuns = await _apelImportUsers(randuri);
 
-    for (final user in parseResult.successfulUsers) {
-      final existingUser = await _repository.getUserByEmail(user.email);
-      if (existingUser != null) {
-        additionalErrors.add(CSVImportError(
-          rowNumber: parseResult.successfulUsers.indexOf(user) + 2,
-          message: 'Email already exists: ${user.email}',
-        ));
-      } else {
-        usersToCreate.add(user);
-      }
+    if (raspuns == null) {
+      return CSVImportResult(
+        successfulUsers: const [],
+        errors: [
+          ...parseResult.errors,
+          CSVImportError(rowNumber: 0, message: 'Import refuzat de server'),
+        ],
+        totalRows: parseResult.totalRows,
+      );
     }
 
-    // Create users in Firestore
-    final List<UserModel> createdUsers = [];
-    for (final user in usersToCreate) {
-      final userId = await _repository.createUserWithAutoId(user);
-      if (userId != null) {
-        createdUsers.add(user.copyWith(id: userId));
-      } else {
-        additionalErrors.add(CSVImportError(
-          rowNumber: parseResult.successfulUsers.indexOf(user) + 2,
-          message: 'Failed to create user: ${user.email}',
-        ));
-      }
-    }
+    final createdUsers = _rezultatIn(parseResult, raspuns);
+    final additionalErrors = _eroriDin(raspuns);
 
     state = const AsyncValue.data(null);
     _ref.invalidate(allUsersProvider);
@@ -1049,19 +1184,15 @@ class AdminController extends StateNotifier<AsyncValue<void>> {
 /// Admin controller provider
 final adminControllerProvider =
     StateNotifierProvider<AdminController, AsyncValue<void>>((ref) {
-  return AdminController(
-    ref.watch(adminUserRepositoryProvider),
-    ref,
-  );
-});
+      return AdminController(ref.watch(adminUserRepositoryProvider), ref);
+    });
 
 /// Check if current user has admin access
 /// Only BEX and Superadmin can access admin panel
 final hasAdminAccessProvider = Provider<bool>((ref) {
   final user = ref.watch(currentUserProvider);
   if (user == null) return false;
-  return user.role == UserRole.bex ||
-         user.role == UserRole.superadmin;
+  return user.role == UserRole.bex || user.role == UserRole.superadmin;
 });
 
 /// Check if current user can change roles
@@ -1072,33 +1203,41 @@ final canChangeRolesProvider = Provider<bool>((ref) {
 });
 
 /// Users by school provider (one-time fetch)
-final usersBySchoolProvider = FutureProvider.family<List<UserModel>, String>((ref, schoolId) async {
+final usersBySchoolProvider = FutureProvider.family<List<UserModel>, String>((
+  ref,
+  schoolId,
+) async {
   final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <UserModel>[];
   }
 
   final repository = ref.read(adminUserRepositoryProvider);
+  final effectiveCounty = ref.watch(effectiveCountyProvider);
   try {
-    return await repository.getUsersBySchool(schoolId).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () => <UserModel>[],
-    );
+    return await repository
+        .getUsersBySchool(schoolId, countyId: effectiveCounty)
+        .timeout(const Duration(seconds: 15), onTimeout: () => <UserModel>[]);
   } catch (e) {
     return <UserModel>[];
   }
 });
 
 /// Users by school stream provider (real-time updates)
-final usersBySchoolStreamProvider = StreamProvider.family<List<UserModel>, String>((ref, schoolId) {
-  final currentUser = ref.read(currentUserProvider);
-  if (currentUser == null) {
-    return Stream.value(<UserModel>[]);
-  }
+final usersBySchoolStreamProvider =
+    StreamProvider.family<List<UserModel>, String>((ref, schoolId) {
+      final currentUser = ref.read(currentUserProvider);
+      if (currentUser == null) {
+        return Stream.value(<UserModel>[]);
+      }
 
-  final repository = ref.read(adminUserRepositoryProvider);
-  return repository.getUsersBySchoolStream(schoolId);
-});
+      final repository = ref.read(adminUserRepositoryProvider);
+      final effectiveCounty = ref.watch(effectiveCountyProvider);
+      return repository.getUsersBySchoolStream(
+        schoolId,
+        countyId: effectiveCounty,
+      );
+    });
 
 // ==================== ACTIVITY PROVIDERS ====================
 
@@ -1108,7 +1247,9 @@ final activityRepositoryProvider = Provider<ActivityRepository>((ref) {
 });
 
 /// Recent activities provider
-final recentActivitiesProvider = FutureProvider<List<ActivityModel>>((ref) async {
+final recentActivitiesProvider = FutureProvider<List<ActivityModel>>((
+  ref,
+) async {
   final currentUser = ref.read(currentUserProvider);
   if (currentUser == null) {
     return <ActivityModel>[];
@@ -1116,10 +1257,12 @@ final recentActivitiesProvider = FutureProvider<List<ActivityModel>>((ref) async
 
   final repository = ref.read(activityRepositoryProvider);
   try {
-    return await repository.getRecentActivities(limit: 10).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () => <ActivityModel>[],
-    );
+    return await repository
+        .getRecentActivities(limit: 10)
+        .timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => <ActivityModel>[],
+        );
   } catch (e) {
     debugPrint('recentActivitiesProvider: error $e');
     return <ActivityModel>[];
@@ -1127,7 +1270,9 @@ final recentActivitiesProvider = FutureProvider<List<ActivityModel>>((ref) async
 });
 
 /// Recent activities stream provider
-final recentActivitiesStreamProvider = StreamProvider<List<ActivityModel>>((ref) {
+final recentActivitiesStreamProvider = StreamProvider<List<ActivityModel>>((
+  ref,
+) {
   final repository = ref.watch(activityRepositoryProvider);
   return repository.getActivitiesStream(limit: 10);
 });

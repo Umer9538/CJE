@@ -1,7 +1,7 @@
 name: cje
 description: "CJE Platform - Student Council Management App"
 publish_to: 'none'
-version: 1.0.0+13
+version: 1.1.0+16
 
 environment:
   sdk: ^3.9.0
@@ -14,7 +14,6 @@ dependencies:
 
   # UI Components
   cupertino_icons: ^1.0.8
-  google_fonts: ^6.1.0
   flutter_svg: ^2.0.9
   cached_network_image: ^3.3.0
   shimmer: ^3.0.0
@@ -30,6 +29,7 @@ dependencies:
   # Firebase
   firebase_core: ^3.8.1
   firebase_auth: ^5.3.4
+  cloud_functions: ^5.1.6
   cloud_firestore: ^5.6.0
   firebase_storage: ^12.4.0
   firebase_messaging: ^15.2.0
@@ -39,7 +39,7 @@ dependencies:
   google_sign_in: ^6.1.6
 
   # Apple Sign In
-  sign_in_with_apple: ^8.0.0
+  sign_in_with_apple: 8.1.0
 
   # ML Kit Translation
   google_mlkit_translation: ^0.12.0
@@ -85,6 +85,7 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
+  remove_alpha_ios: true
   image_path: "assets/images/App_logo.png"
   min_sdk_android: 21
   adaptive_icon_background: "#FFFFFF"
@@ -95,5 +96,4 @@ flutter:
 
   assets:
     - assets/images/
-    - assets/icons/
     - assets/

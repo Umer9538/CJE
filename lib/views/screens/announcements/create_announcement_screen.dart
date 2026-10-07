@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
-import '../../../controllers/admin/admin_controller.dart';
 import '../../../controllers/controllers.dart';
 import '../../../core/core.dart';
 import '../../../models/models.dart';
@@ -73,12 +72,16 @@ class _CreateAnnouncementScreenState
     final user = ref.watch(currentUserProvider);
 
     // Check if user can create county-level announcements
-    final canCreateCounty = user != null &&
+    final canCreateCounty =
+        user != null &&
         (user.role == UserRole.bex || user.role == UserRole.superadmin);
 
     // Check if user can select a school (Department/BEX/Superadmin)
-    final canSelectSchool = user != null &&
-        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin);
+    final canSelectSchool =
+        user != null &&
+        (user.role == UserRole.department ||
+            user.role == UserRole.bex ||
+            user.role == UserRole.superadmin);
 
     return Scaffold(
       backgroundColor: context.scaffoldBackgroundColor,
@@ -133,50 +136,17 @@ class _CreateAnnouncementScreenState
         child: ResponsiveContainer(
           maxWidth: 600,
           child: ListView(
-            padding: EdgeInsets.all(context.responsive.value(mobile: 24.0, tablet: 32.0, desktop: 48.0)),
-          children: [
-            // Type selector
-            Text(
-              l10n.translate('announcement_type'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
+            padding: EdgeInsets.all(
+              context.responsive.value(
+                mobile: 24.0,
+                tablet: 32.0,
+                desktop: 48.0,
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _TypeCard(
-                    title: l10n.translate('school'),
-                    icon: Icons.school_rounded,
-                    isSelected: _selectedType == AnnouncementType.school,
-                    onTap: () =>
-                        setState(() => _selectedType = AnnouncementType.school),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _TypeCard(
-                    title: 'CJE',
-                    icon: Icons.account_balance_rounded,
-                    isSelected: _selectedType == AnnouncementType.county,
-                    isDisabled: !canCreateCounty,
-                    onTap: canCreateCounty
-                        ? () => setState(
-                            () => _selectedType = AnnouncementType.county)
-                        : null,
-                  ),
-                ),
-              ],
-            ),
-
-            // School dropdown (for Department/BEX/Superadmin when School type is selected)
-            if (_selectedType == AnnouncementType.school && canSelectSchool) ...[
-              const SizedBox(height: 16),
+            children: [
+              // Type selector
               Text(
-                l10n.translate('select_school'),
+                l10n.translate('announcement_type'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -184,345 +154,399 @@ class _CreateAnnouncementScreenState
                 ),
               ),
               const SizedBox(height: 12),
-              _buildSchoolDropdown(context, l10n),
-            ],
-            const SizedBox(height: 24),
-
-            // Title field
-            Text(
-              l10n.translate('title'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                hintText: l10n.translate('announcement_title_hint'),
-                hintStyle: TextStyle(color: context.textSecondary),
-                filled: true,
-                fillColor: context.cardColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: context.borderColor),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: context.borderColor),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.gold, width: 2),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Colors.red),
-                ),
-                contentPadding: const EdgeInsets.all(20),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return l10n.translate('title_required');
-                }
-                if (value.trim().length < 5) {
-                  return l10n.translate('title_too_short');
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Content field
-            Text(
-              l10n.translate('content'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _contentController,
-              maxLines: 8,
-              decoration: InputDecoration(
-                hintText: l10n.translate('announcement_content_hint'),
-                hintStyle: TextStyle(color: context.textSecondary),
-                filled: true,
-                fillColor: context.cardColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: context.borderColor),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: context.borderColor),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.gold, width: 2),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: Colors.red),
-                ),
-                contentPadding: const EdgeInsets.all(20),
-              ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return l10n.translate('content_required');
-                }
-                if (value.trim().length < 20) {
-                  return l10n.translate('content_too_short');
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 24),
-
-            // Pin toggle
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: context.cardColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
+              Row(
                 children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: _isPinned
-                          ? AppColors.gold.withValues(alpha: 0.15)
-                          : context.textSecondary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.push_pin_rounded,
-                      color: _isPinned ? AppColors.gold : context.textSecondary,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          l10n.translate('pin_announcement'),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: context.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          l10n.translate('pin_announcement_desc'),
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: context.textSecondary,
-                          ),
-                        ),
-                      ],
+                    child: _TypeCard(
+                      title: l10n.translate('school'),
+                      icon: Icons.school_rounded,
+                      isSelected: _selectedType == AnnouncementType.school,
+                      onTap: () => setState(
+                        () => _selectedType = AnnouncementType.school,
+                      ),
                     ),
                   ),
-                  Switch(
-                    value: _isPinned,
-                    onChanged: (value) => setState(() => _isPinned = value),
-                    activeTrackColor: AppColors.gold.withValues(alpha: 0.5),
-                    thumbColor: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return AppColors.gold;
-                      }
-                      return null;
-                    }),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _TypeCard(
+                      title: 'CJE',
+                      icon: Icons.account_balance_rounded,
+                      isSelected: _selectedType == AnnouncementType.county,
+                      isDisabled: !canCreateCounty,
+                      onTap: canCreateCounty
+                          ? () => setState(
+                              () => _selectedType = AnnouncementType.county,
+                            )
+                          : null,
+                    ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
 
-            // Visibility Role Selector
-            Text(
-              l10n.translate('visibility'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: context.cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: context.borderColor),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<UserRole?>(
-                  value: _minVisibilityRole,
-                  hint: Text(
-                    l10n.translate('visible_to_all'),
-                    style: TextStyle(color: context.textPrimary),
+              // School dropdown (for Department/BEX/Superadmin when School type is selected)
+              if (_selectedType == AnnouncementType.school &&
+                  canSelectSchool) ...[
+                const SizedBox(height: 16),
+                Text(
+                  l10n.translate('select_school'),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
                   ),
-                  isExpanded: true,
-                  borderRadius: BorderRadius.circular(16),
-                  dropdownColor: context.cardColor,
-                  items: [
-                    DropdownMenuItem<UserRole?>(
-                      value: null,
-                      child: Text(
-                        l10n.translate('visible_to_all'),
-                        style: TextStyle(color: context.textPrimary),
-                      ),
-                    ),
-                    ...UserRole.values.where((role) => role != UserRole.superadmin).map((role) {
-                      return DropdownMenuItem<UserRole?>(
-                        value: role,
-                        child: Text(
-                          '${l10n.translate(role.translationKey)} ${l10n.translate('and_above')}',
-                          style: TextStyle(color: context.textPrimary),
-                        ),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setState(() => _minVisibilityRole = value);
-                  },
+                ),
+                const SizedBox(height: 12),
+                _buildSchoolDropdown(context, l10n),
+              ],
+              const SizedBox(height: 24),
+
+              // Title field
+              Text(
+                l10n.translate('title'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.translate('visibility_hint'),
-              style: TextStyle(
-                fontSize: 12,
-                color: context.textSecondary,
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  hintText: l10n.translate('announcement_title_hint'),
+                  hintStyle: TextStyle(color: context.textSecondary),
+                  filled: true,
+                  fillColor: context.cardColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: AppColors.gold,
+                      width: 2,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  contentPadding: const EdgeInsets.all(20),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return l10n.translate('title_required');
+                  }
+                  if (value.trim().length < 5) {
+                    return l10n.translate('title_too_short');
+                  }
+                  return null;
+                },
               ),
-            ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Featured Image Section
-            Text(
-              l10n.translate('featured_image'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
+              // Content field
+              Text(
+                l10n.translate('content'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            if (_selectedImage != null)
-              _buildImagePreview()
-            else if (_existingImageUrl != null && _existingImageUrl!.isNotEmpty)
-              _buildExistingImagePreview()
-            else
-              _buildAddButton(
-                icon: Icons.image_rounded,
-                label: l10n.translate('add_image'),
-                onTap: _pickImage,
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _contentController,
+                maxLines: 8,
+                decoration: InputDecoration(
+                  hintText: l10n.translate('announcement_content_hint'),
+                  hintStyle: TextStyle(color: context.textSecondary),
+                  filled: true,
+                  fillColor: context.cardColor,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: context.borderColor),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: AppColors.gold,
+                      width: 2,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  contentPadding: const EdgeInsets.all(20),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return l10n.translate('content_required');
+                  }
+                  if (value.trim().length < 20) {
+                    return l10n.translate('content_too_short');
+                  }
+                  return null;
+                },
               ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
 
-            // Attachments Section
-            Text(
-              l10n.translate('attachments'),
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: context.textPrimary,
+              // Pin toggle
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: context.cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: _isPinned
+                            ? AppColors.gold.withValues(alpha: 0.15)
+                            : context.textSecondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.push_pin_rounded,
+                        color: _isPinned
+                            ? AppColors.gold
+                            : context.textSecondary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.translate('pin_announcement'),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: context.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            l10n.translate('pin_announcement_desc'),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: context.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _isPinned,
+                      onChanged: (value) => setState(() => _isPinned = value),
+                      activeTrackColor: AppColors.gold.withValues(alpha: 0.5),
+                      thumbColor: WidgetStateProperty.resolveWith((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return AppColors.gold;
+                        }
+                        return null;
+                      }),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            if (_selectedAttachments.isNotEmpty)
-              ..._selectedAttachments.asMap().entries.map(
-                (e) => _buildAttachmentItem(e.key, e.value),
-              ),
-            _buildAddButton(
-              icon: Icons.attach_file_rounded,
-              label: l10n.translate('add_attachment'),
-              onTap: _pickAttachment,
-            ),
+              const SizedBox(height: 24),
 
-            // Upload progress
-            if (_isUploading) ...[
-              const SizedBox(height: 16),
-              LinearProgressIndicator(
-                value: _uploadProgress,
-                backgroundColor: context.borderColor,
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.gold),
+              // Visibility Role Selector
+              Text(
+                l10n.translate('visibility'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: context.cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: context.borderColor),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<UserRole?>(
+                    value: _minVisibilityRole,
+                    hint: Text(
+                      l10n.translate('visible_to_all'),
+                      style: TextStyle(color: context.textPrimary),
+                    ),
+                    isExpanded: true,
+                    borderRadius: BorderRadius.circular(16),
+                    dropdownColor: context.cardColor,
+                    items: [
+                      DropdownMenuItem<UserRole?>(
+                        value: null,
+                        child: Text(
+                          l10n.translate('visible_to_all'),
+                          style: TextStyle(color: context.textPrimary),
+                        ),
+                      ),
+                      ...UserRole.values
+                          .where((role) => role != UserRole.superadmin)
+                          .map((role) {
+                            return DropdownMenuItem<UserRole?>(
+                              value: role,
+                              child: Text(
+                                '${l10n.translate(role.translationKey)} ${l10n.translate('and_above')}',
+                                style: TextStyle(color: context.textPrimary),
+                              ),
+                            );
+                          }),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _minVisibilityRole = value);
+                    },
+                  ),
+                ),
               ),
               const SizedBox(height: 8),
               Text(
-                '${(_uploadProgress * 100).toStringAsFixed(0)}% ${l10n.translate('uploading')}',
+                l10n.translate('visibility_hint'),
                 style: TextStyle(fontSize: 12, color: context.textSecondary),
-                textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 24),
+
+              // Featured Image Section
+              Text(
+                l10n.translate('featured_image'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_selectedImage != null)
+                _buildImagePreview()
+              else if (_existingImageUrl != null &&
+                  _existingImageUrl!.isNotEmpty)
+                _buildExistingImagePreview()
+              else
+                _buildAddButton(
+                  icon: Icons.image_rounded,
+                  label: l10n.translate('add_image'),
+                  onTap: _pickImage,
+                ),
+              const SizedBox(height: 24),
+
+              // Attachments Section
+              Text(
+                l10n.translate('attachments'),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: context.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (_selectedAttachments.isNotEmpty)
+                ..._selectedAttachments.asMap().entries.map(
+                  (e) => _buildAttachmentItem(e.key, e.value),
+                ),
+              _buildAddButton(
+                icon: Icons.attach_file_rounded,
+                label: l10n.translate('add_attachment'),
+                onTap: _pickAttachment,
+              ),
+
+              // Upload progress
+              if (_isUploading) ...[
+                const SizedBox(height: 16),
+                LinearProgressIndicator(
+                  value: _uploadProgress,
+                  backgroundColor: context.borderColor,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    AppColors.gold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${(_uploadProgress * 100).toStringAsFixed(0)}% ${l10n.translate('uploading')}',
+                  style: TextStyle(fontSize: 12, color: context.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 32),
+
+              // Publish button
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handlePublish,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.gold,
+                    foregroundColor: AppColors.navy,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.navy,
+                          ),
+                        )
+                      : Text(
+                          l10n.translate('publish_announcement'),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Save as draft button
+              SizedBox(
+                height: 56,
+                child: OutlinedButton(
+                  onPressed: _isLoading ? null : _handleSaveDraft,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.gold,
+                    side: const BorderSide(color: AppColors.gold),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    l10n.translate('save_as_draft'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(
+                height: 100,
+              ), // Extra padding for bottom navigation bar
             ],
-            const SizedBox(height: 32),
-
-            // Publish button
-            SizedBox(
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _handlePublish,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.gold,
-                  foregroundColor: AppColors.navy,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.navy,
-                        ),
-                      )
-                    : Text(
-                        l10n.translate('publish_announcement'),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Save as draft button
-            SizedBox(
-              height: 56,
-              child: OutlinedButton(
-                onPressed: _isLoading ? null : _handleSaveDraft,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.gold,
-                  side: const BorderSide(color: AppColors.gold),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  l10n.translate('save_as_draft'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 100), // Extra padding for bottom navigation bar
-          ],
           ),
         ),
       ),
@@ -549,14 +573,20 @@ class _CreateAnnouncementScreenState
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: _isUploading ? context.textSecondary : context.textPrimary, size: 22),
+            Icon(
+              icon,
+              color: _isUploading ? context.textSecondary : context.textPrimary,
+              size: 22,
+            ),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: _isUploading ? context.textSecondary : context.textPrimary,
+                color: _isUploading
+                    ? context.textSecondary
+                    : context.textPrimary,
               ),
             ),
           ],
@@ -697,7 +727,8 @@ class _CreateAnnouncementScreenState
             ),
           ),
           IconButton(
-            onPressed: () => setState(() => _selectedAttachments.removeAt(index)),
+            onPressed: () =>
+                setState(() => _selectedAttachments.removeAt(index)),
             icon: const Icon(Icons.close, color: Colors.red, size: 20),
           ),
         ],
@@ -831,7 +862,10 @@ class _CreateAnnouncementScreenState
           child: SizedBox(
             width: 24,
             height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.gold),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppColors.gold,
+            ),
           ),
         ),
       ),
@@ -867,7 +901,9 @@ class _CreateAnnouncementScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_picking_image')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_picking_image')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -879,7 +915,19 @@ class _CreateAnnouncementScreenState
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'],
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+          'ppt',
+          'pptx',
+          'txt',
+          'jpg',
+          'jpeg',
+          'png',
+        ],
         allowMultiple: true,
       );
 
@@ -896,7 +944,9 @@ class _CreateAnnouncementScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context).translate('error_picking_file')}: $e'),
+            content: Text(
+              '${AppLocalizations.of(context).translate('error_picking_file')}: $e',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -908,18 +958,34 @@ class _CreateAnnouncementScreenState
     if (_selectedImage == null) return null;
 
     try {
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_announcement.jpg';
+      final user = ref.read(currentUserProvider);
+      final countyId =
+          widget.draftAnnouncement?.countyId ??
+          ref.read(effectiveCountyProvider);
+      if (user == null || countyId == null || countyId.isEmpty) return null;
+
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_announcement.jpg';
       final storageRef = FirebaseStorage.instance
           .ref()
           .child('announcements')
+          .child(countyId)
           .child('images')
           .child(fileName);
 
-      final uploadTask = storageRef.putFile(_selectedImage!);
+      final uploadTask = storageRef.putFile(
+        _selectedImage!,
+        SettableMetadata(
+          customMetadata: {'countyId': countyId, 'ownerId': user.id},
+        ),
+      );
 
       uploadTask.snapshotEvents.listen((event) {
         setState(() {
-          _uploadProgress = event.bytesTransferred / event.totalBytes * 0.5; // Image is 50% of progress
+          _uploadProgress =
+              event.bytesTransferred /
+              event.totalBytes *
+              0.5; // Image is 50% of progress
         });
       });
 
@@ -934,20 +1000,31 @@ class _CreateAnnouncementScreenState
   Future<List<String>> _uploadAttachments() async {
     final urls = <String>[];
     final totalFiles = _selectedAttachments.length;
+    final user = ref.read(currentUserProvider);
+    final countyId =
+        widget.draftAnnouncement?.countyId ?? ref.read(effectiveCountyProvider);
+    if (user == null || countyId == null || countyId.isEmpty) return urls;
 
     for (var i = 0; i < _selectedAttachments.length; i++) {
       final file = _selectedAttachments[i];
       if (file.path == null) continue;
 
       try {
-        final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
+        final fileName =
+            '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
         final storageRef = FirebaseStorage.instance
             .ref()
             .child('announcements')
+            .child(countyId)
             .child('attachments')
             .child(fileName);
 
-        final uploadTask = storageRef.putFile(File(file.path!));
+        final uploadTask = storageRef.putFile(
+          File(file.path!),
+          SettableMetadata(
+            customMetadata: {'countyId': countyId, 'ownerId': user.id},
+          ),
+        );
 
         uploadTask.snapshotEvents.listen((event) {
           setState(() {
@@ -973,11 +1050,16 @@ class _CreateAnnouncementScreenState
 
     final l10n = AppLocalizations.of(context);
     final user = ref.read(currentUserProvider);
-    final canSelectSchool = user != null &&
-        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin);
+    final canSelectSchool =
+        user != null &&
+        (user.role == UserRole.department ||
+            user.role == UserRole.bex ||
+            user.role == UserRole.superadmin);
 
     // Validate school selection for Department/BEX/Superadmin when School type is selected
-    if (_selectedType == AnnouncementType.school && canSelectSchool && _selectedSchoolId == null) {
+    if (_selectedType == AnnouncementType.school &&
+        canSelectSchool &&
+        _selectedSchoolId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.translate('select_school')),
@@ -1022,9 +1104,15 @@ class _CreateAnnouncementScreenState
         content: _contentController.text.trim(),
         type: _selectedType,
         imageUrl: effectiveImageUrl,
-        attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : widget.draftAnnouncement!.attachmentUrls,
-        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
-        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
+        attachmentUrls: attachmentUrls.isNotEmpty
+            ? attachmentUrls
+            : widget.draftAnnouncement!.attachmentUrls,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolId
+            : widget.draftAnnouncement!.schoolId,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolName
+            : widget.draftAnnouncement!.schoolName,
         isPinned: _isPinned,
         isPublished: true,
         publishedAt: DateTime.now(),
@@ -1041,8 +1129,12 @@ class _CreateAnnouncementScreenState
         imageUrl: effectiveImageUrl,
         attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
         publishImmediately: true,
-        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : null,
-        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : null,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolId
+            : null,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolName
+            : null,
         minVisibilityRole: _minVisibilityRole,
       );
       success = resultId != null;
@@ -1061,14 +1153,20 @@ class _CreateAnnouncementScreenState
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('announcement_published')),
+          content: Text(
+            AppLocalizations.of(context).translate('announcement_published'),
+          ),
           backgroundColor: Colors.green,
         ),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('error_creating_announcement')),
+          content: Text(
+            AppLocalizations.of(
+              context,
+            ).translate('error_creating_announcement'),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -1079,7 +1177,9 @@ class _CreateAnnouncementScreenState
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('title_required')),
+          content: Text(
+            AppLocalizations.of(context).translate('title_required'),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -1087,8 +1187,11 @@ class _CreateAnnouncementScreenState
     }
 
     final user = ref.read(currentUserProvider);
-    final canSelectSchool = user != null &&
-        (user.role == UserRole.department || user.role == UserRole.bex || user.role == UserRole.superadmin);
+    final canSelectSchool =
+        user != null &&
+        (user.role == UserRole.department ||
+            user.role == UserRole.bex ||
+            user.role == UserRole.superadmin);
 
     setState(() {
       _isLoading = true;
@@ -1125,9 +1228,15 @@ class _CreateAnnouncementScreenState
         content: _contentController.text.trim(),
         type: _selectedType,
         imageUrl: effectiveImageUrl,
-        attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : widget.draftAnnouncement!.attachmentUrls,
-        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : widget.draftAnnouncement!.schoolId,
-        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : widget.draftAnnouncement!.schoolName,
+        attachmentUrls: attachmentUrls.isNotEmpty
+            ? attachmentUrls
+            : widget.draftAnnouncement!.attachmentUrls,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolId
+            : widget.draftAnnouncement!.schoolId,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolName
+            : widget.draftAnnouncement!.schoolName,
         isPinned: _isPinned,
         updatedAt: DateTime.now(),
       );
@@ -1142,8 +1251,12 @@ class _CreateAnnouncementScreenState
         imageUrl: effectiveImageUrl,
         attachmentUrls: attachmentUrls.isNotEmpty ? attachmentUrls : null,
         publishImmediately: false,
-        schoolId: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolId : null,
-        schoolName: _selectedType == AnnouncementType.school && canSelectSchool ? _selectedSchoolName : null,
+        schoolId: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolId
+            : null,
+        schoolName: _selectedType == AnnouncementType.school && canSelectSchool
+            ? _selectedSchoolName
+            : null,
         minVisibilityRole: _minVisibilityRole,
       );
       success = resultId != null;
@@ -1168,7 +1281,9 @@ class _CreateAnnouncementScreenState
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(AppLocalizations.of(context).translate('error_saving_draft')),
+          content: Text(
+            AppLocalizations.of(context).translate('error_saving_draft'),
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -1200,14 +1315,16 @@ class _TypeCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.gold.withValues(alpha: 0.15) : context.cardColor,
+          color: isSelected
+              ? AppColors.gold.withValues(alpha: 0.15)
+              : context.cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? AppColors.gold
                 : isDisabled
-                    ? context.borderColor
-                    : context.borderColor,
+                ? context.borderColor
+                : context.borderColor,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -1219,8 +1336,8 @@ class _TypeCard extends StatelessWidget {
               color: isDisabled
                   ? context.textSecondary.withValues(alpha: 0.5)
                   : isSelected
-                      ? AppColors.gold
-                      : context.textPrimary,
+                  ? AppColors.gold
+                  : context.textPrimary,
             ),
             const SizedBox(height: 8),
             Text(
@@ -1231,8 +1348,8 @@ class _TypeCard extends StatelessWidget {
                 color: isDisabled
                     ? context.textSecondary.withValues(alpha: 0.5)
                     : isSelected
-                        ? AppColors.gold
-                        : context.textPrimary,
+                    ? AppColors.gold
+                    : context.textPrimary,
               ),
             ),
           ],
