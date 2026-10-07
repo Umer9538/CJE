@@ -56,3 +56,7 @@ app.*.map.json
 # Client handoff of the 1.1.0 version (separate source tree)
 /New version (V1)/
 /New version (V1).zip
+
+# Client release deliveries (contain local signing files; final source is synced into this repo)
+/CJE_FLUTTER_ONLY_*/
+/CJE_FLUTTER_ONLY_*.zip
