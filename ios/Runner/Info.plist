@@ -29,7 +29,7 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.317912008960-cjb36u6jg36pivd3psh4flas7tigbunp</string>
+				<string>com.googleusercontent.apps.317912008960-t07shsauadipvf0duq3skodm6c18di39</string>
 			</array>
 		</dict>
 	</array>
@@ -38,7 +38,7 @@
 	<key>FirebaseMessagingAutoInitEnabled</key>
 	<true/>
 	<key>GIDClientID</key>
-	<string>317912008960-cjb36u6jg36pivd3psh4flas7tigbunp.apps.googleusercontent.com</string>
+	<string>317912008960-t07shsauadipvf0duq3skodm6c18di39.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
